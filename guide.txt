@@ -1,0 +1,65 @@
+-------------------
+1. Clone the repo:
+   git clone https://github.com/qlxqq/underflow_hackit.git
+
+2. Move into the project folder:
+   cd underflow_hackit
+
+3. Install dependencies:
+   npm install
+
+4. Copy the env template:
+   copy .env.example .env   
+
+6. Start the server:
+   npm run dev
+
+7. Open in your browser:
+   http://localhost:3000
+
+
+FOLDER GUIDE
+------------
+config/       - environment/config settings
+controllers/  - logic for each feature (called by routes)
+database/     - database connection setup (if used)
+middleware/   - custom Express middleware (error handling, etc.)
+model/        - data models/schemas (if using a database)
+public/       - frontend files (HTML/CSS/JS) - served directly by Express
+routes/       - defines API endpoints, points to controller functions
+services/     - shared logic used across features (e.g. AI API calls)
+tests/        - test files
+utils/        - small reusable helper functions
+
+
+HOW TO ADD YOUR OWN FEATURE
+----------------------------
+1. Create a route file in routes/ (e.g. routes/yourFeature.js)
+   - Defines the URL endpoint (e.g. POST /api/your-feature)
+
+2. Create a controller file in controllers/ (e.g. yourFeatureController.js)
+   - Contains the actual logic: build prompt, call AI, return response
+
+3. If you need shared AI-calling logic, put it in services/ so multiple
+   features can reuse it instead of repeating code
+
+4. Wire your route into app.js:
+   app.use("/api/your-feature", require("./routes/yourFeature"));
+
+5. Add your frontend HTML/CSS/JS inside public/ for the UI part
+
+
+GIT WORKFLOW
+------------
+- main branch should always stay working - don't push broken code directly to it
+- Create your own branch for your feature:
+   git checkout -b feature/your-feature-name
+
+- Push your branch:
+   git push origin feature/your-feature-name
+
+- Open a Pull Request on GitHub into main when your feature works
+
+- Before starting work each session, pull the latest changes:
+   git checkout main
+   git pull origin main
