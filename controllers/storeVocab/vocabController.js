@@ -1,6 +1,6 @@
-const { segmentText } = require("../services/segmentationService");
-const { getMeaning } = require("../services/translationService");
-const vocabularyModel = require("../model/Vocabulary");
+const { segmentText } = require("../../services/segmentationService");
+const { getMeaning } = require("../../services/translationService");
+const vocabularyModel = require("../../model/storeVocab/vocabModel");
 
 // Captures submitted text, segments it into words, fetches meanings, and saves each as a vocabulary entry.
 async function captureText(req, res) {
@@ -12,7 +12,7 @@ async function captureText(req, res) {
     const savedEntries = [];
     for (const word of words) {
       const meaning = await getMeaning(word, language);
-      const entry = vocabularyModel.saveEntry({
+      const entry = await vocabularyModel.saveEntry({
         word,
         language,
         romanization: meaning.romanization,
