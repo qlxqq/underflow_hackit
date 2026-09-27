@@ -1,5 +1,5 @@
 const sql = require("mssql");
-const dbConfig = require("../config/config");
+const dbConfig = require("../../config/config");
 
 // Retrieves all vocabulary entries needed for this request and returns the resulting data.
 async function getAll() {
