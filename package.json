@@ -7,9 +7,9 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "node --watch server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +20,10 @@
     "dotenv": "^18.0.3",
     "express": "^5.2.1",
     "joi": "^18.2.9",
+    "mssql": "^12.7.2",
     "segmentit": "^2.0.3"
+  },
+  "devDependencies": {
+    "jest": "^30.5.2"
   }
 }
