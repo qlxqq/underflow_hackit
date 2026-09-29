@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Word Bank - Underflow Hackit</title>
+  <link rel="stylesheet" href="../../css/storeVocab/style.css" />
+
+  <!-- Supabase client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- OCR (runs entirely in the browser) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <h1>Mother Tongue Word Bank</h1>
+
+  <form id="capture-form">
+    <select id="capture-language">
+      <option value="zh">Chinese</option>
+      <option value="ms">Malay</option>
+      <option value="ta">Tamil</option>
+    </select>
+    <textarea id="capture-text" placeholder="Paste text here..."></textarea>
+    <input type="file" id="capture-image" accept="image/*" />
+    <button type="submit">Preview words</button>
+  </form>
+
+  <div id="preview-list"></div>
+  <button id="save-selected">Save selected words</button>
+
+  <h2>Your Collection</h2>
+  <div id="card-grid"></div>
+
+  <!-- Chinese segmentation: loaded as an ES module from a CDN, then
+       exposed on window so the plain <script> files below can use it. -->
+  <script type="module">
+    import { Segment, useDefault } from "https://esm.sh/segmentit@2.0.3";
+    window.segmentitInstance = useDefault(new Segment());
+  </script>
+
+  <script src="../../js/storeVocab/supabaseClient.js"></script>
+  <script src="../../js/storeVocab/zhFrequency.js"></script>
+  <script src="../../js/storeVocab/rarity.js"></script>
+  <script src="../../js/storeVocab/fillerWords.js"></script>
+  <script src="../../js/storeVocab/segmentation.js"></script>
+  <script src="../../js/storeVocab/ocr.js"></script>
+  <script src="../../js/storeVocab/pronunciation.js"></script>
+  <script src="../../js/storeVocab/vocabulary.js"></script>
+  <script src="../../js/storeVocab/cards.js"></script>
+  <script src="../../js/storeVocab/script.js"></script>
+</body>
+</html>

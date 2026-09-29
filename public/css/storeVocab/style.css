@@ -1,0 +1,55 @@
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 80px;
+}
+
+.preview-row {
+  display: block;
+  padding: 6px 0;
+}
+
+.rarity-tag {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: white;
+}
+.rarity-tag.rarity-common   { background: #888; }
+.rarity-tag.rarity-uncommon { background: #2e86de; }
+.rarity-tag.rarity-rare     { background: #e17055; }
+
+#card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.vocab-card {
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}
+.vocab-card.rarity-common   { border-color: #888; }
+.vocab-card.rarity-uncommon { border-color: #2e86de; }
+.vocab-card.rarity-rare     { border-color: #e17055; box-shadow: 0 0 8px #e17055; }
+
+.card-rarity, .card-stage {
+  font-size: 11px;
+  color: #666;
+}
+.card-word { font-size: 22px; font-weight: bold; margin: 6px 0; }
+.card-romanization { font-size: 12px; color: #999; }
+.card-meaning { font-size: 13px; margin: 6px 0; }
+.card-play-audio {
+  font-size: 12px;
+  padding: 4px 8px;
+}
