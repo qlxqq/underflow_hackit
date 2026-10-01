@@ -1,0 +1,11 @@
+{
+  "name": "underflow_hackit-frontend-tests",
+  "version": "1.0.0",
+  "description": "Lightweight tests for pure logic files only (rarity, filler words). No build step for the app itself - this is dev-only tooling.",
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
