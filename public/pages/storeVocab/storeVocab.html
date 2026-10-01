@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Word Bank - Underflow Hackit</title>
   <link rel="stylesheet" href="../../css/storeVocab/style.css" />
 
@@ -13,6 +14,8 @@
 </head>
 <body>
   <h1>Mother Tongue Word Bank</h1>
+
+  <div id="status-message" class="status-message"></div>
 
   <form id="capture-form">
     <select id="capture-language">
@@ -40,6 +43,8 @@
 
   <script src="../../js/storeVocab/supabaseClient.js"></script>
   <script src="../../js/storeVocab/zhFrequency.js"></script>
+  <script src="../../js/storeVocab/msFrequency.js"></script>
+  <script src="../../js/storeVocab/taFrequency.js"></script>
   <script src="../../js/storeVocab/rarity.js"></script>
   <script src="../../js/storeVocab/fillerWords.js"></script>
   <script src="../../js/storeVocab/segmentation.js"></script>
