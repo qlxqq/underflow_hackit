@@ -1,85 +1,41 @@
-// Wires up the UI: capturing text/images, previewing words, saving picks,
-// and refreshing the card grid.
+// Renders vocabulary entries as collectible cards.
 
-const captureForm = document.getElementById("capture-form");
-const textInput = document.getElementById("capture-text");
-const languageSelect = document.getElementById("capture-language");
-const previewList = document.getElementById("preview-list");
-const cardGrid = document.getElementById("card-grid");
-const imageInput = document.getElementById("capture-image");
+const RARITY_LABELS = { common: "Common", uncommon: "Uncommon", rare: "Rare" };
+const STAGE_LABELS = ["Caught", "Trained", "Mastered"];
 
-let currentPreviewWords = [];
-let currentContextSentence = "";
+function renderCard(entry, onDelete) {
+  const card = document.createElement("div");
+  card.className = `vocab-card rarity-${entry.rarity} stage-${entry.evolution_stage}`;
 
-async function loadCardGrid() {
-  const entries = await getAllVocabulary();
-  renderCardGrid(entries, cardGrid);
-}
+  card.innerHTML = `
+    <div class="card-rarity">${RARITY_LABELS[entry.rarity] || "Common"}</div>
+    <div class="card-stage">${STAGE_LABELS[entry.evolution_stage] || "Caught"}</div>
+    <div class="card-word">${entry.word}</div>
+    <div class="card-romanization">${entry.romanization || ""}</div>
+    <div class="card-meaning">${entry.english_meaning || "(meaning pending)"}</div>
+    <button class="card-play-audio" data-word="${entry.word}" data-lang="${entry.language}">
+      Play pronunciation
+    </button>
+    <button class="card-delete" data-id="${entry.vocab_id}">Delete</button>
+  `;
 
-async function buildPreview(text, language) {
-  const rawWords = await segmentText(text, language);
-  const words = filterFillerWords(rawWords, language);
-  const existing = new Set((await findExistingWords(language, words)).map((w) => w.toLowerCase()));
-
-  currentPreviewWords = words.map((word) => ({
-    word,
-    language,
-    rarity: getRarity(word, language),
-    alreadySaved: existing.has(word.toLowerCase()),
-  }));
-  currentContextSentence = text;
-
-  renderPreview();
-}
-
-function renderPreview() {
-  previewList.innerHTML = "";
-  currentPreviewWords.forEach((item, index) => {
-    const row = document.createElement("label");
-    row.className = "preview-row";
-    row.innerHTML = `
-      <input type="checkbox" data-index="${index}" ${item.alreadySaved ? "disabled" : ""} />
-      ${item.word} <span class="rarity-tag rarity-${item.rarity}">${item.rarity}</span>
-      ${item.alreadySaved ? "<em>(already saved)</em>" : ""}
-    `;
-    previewList.appendChild(row);
+  card.querySelector(".card-play-audio").addEventListener("click", (e) => {
+    speakWord(e.target.dataset.word, e.target.dataset.lang);
   });
+
+  card.querySelector(".card-delete").addEventListener("click", () => {
+    const confirmed = window.confirm(`Delete "${entry.word}" from your word bank?`);
+    if (confirmed) onDelete(entry.vocab_id);
+  });
+
+  return card;
 }
 
-captureForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const text = textInput.value.trim();
-  const language = languageSelect.value;
-  if (!text) return;
-  await buildPreview(text, language);
-});
-
-imageInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const language = languageSelect.value;
-  const extractedText = await extractTextFromImage(file, language);
-  textInput.value = extractedText;
-  await buildPreview(extractedText, language);
-});
-
-document.getElementById("save-selected").addEventListener("click", async () => {
-  const checked = [...previewList.querySelectorAll("input[type=checkbox]:checked")];
-
-  for (const checkbox of checked) {
-    const item = currentPreviewWords[checkbox.dataset.index];
-    await saveEntry({
-      word: item.word,
-      language: item.language,
-      contextSentence: currentContextSentence,
-      source: "text",
-      rarity: item.rarity,
-    });
+function renderCardGrid(entries, containerEl, onDelete) {
+  containerEl.innerHTML = "";
+  if (entries.length === 0) {
+    containerEl.innerHTML = `<p class="empty-state">No words caught yet. Capture some above!</p>`;
+    return;
   }
-
-  previewList.innerHTML = "";
-  textInput.value = "";
-  await loadCardGrid();
-});
-
-loadCardGrid();
+  entries.forEach((entry) => containerEl.appendChild(renderCard(entry, onDelete)));
+}
