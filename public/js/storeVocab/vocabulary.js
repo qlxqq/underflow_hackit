@@ -1,8 +1,15 @@
 // Data layer: all reads/writes to the Supabase "vocabulary" table.
-// This replaces what used to be model/storeVocab/vocabModel.js.
+// Every function now takes userId explicitly and filters by it, rather
+// than relying on Row Level Security alone - RLS is still the real
+// enforcement, but filtering here too makes the intent clear in the code
+// and avoids ever accidentally fetching another user's rows client-side.
 
-async function getAllVocabulary(language) {
-  let query = supabase.from("vocabulary").select("*").order("created_at", { ascending: false });
+async function getAllVocabulary(userId, language) {
+  let query = supabase
+    .from("vocabulary")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
   if (language) query = query.eq("language", language);
 
   const { data, error } = await query;
@@ -10,12 +17,13 @@ async function getAllVocabulary(language) {
   return data;
 }
 
-async function findExistingWords(language, words) {
+async function findExistingWords(userId, language, words) {
   if (words.length === 0) return [];
 
   const { data, error } = await supabase
     .from("vocabulary")
     .select("word")
+    .eq("user_id", userId)
     .eq("language", language)
     .in("word", words);
 
@@ -23,10 +31,11 @@ async function findExistingWords(language, words) {
   return data.map((row) => row.word);
 }
 
-async function saveEntry(entry) {
+async function saveEntry(userId, entry) {
   const { data, error } = await supabase
     .from("vocabulary")
     .insert({
+      user_id: userId,
       word: entry.word,
       language: entry.language,
       romanization: entry.romanization || null,
@@ -44,16 +53,20 @@ async function saveEntry(entry) {
   return data;
 }
 
-async function deleteById(id) {
-  const { error } = await supabase.from("vocabulary").delete().eq("vocab_id", id);
+async function deleteById(userId, id) {
+  const { error } = await supabase
+    .from("vocabulary")
+    .delete()
+    .eq("vocab_id", id)
+    .eq("user_id", userId);
   if (error) throw error;
 }
 
-// Called whenever a word gets used successfully (e.g. in the future quiz
-// feature). Bumps the usage count and evolves the card at set thresholds.
-const EVOLUTION_THRESHOLDS = [1, 3]; // usage count needed for stage 1, stage 2
+// Still waiting on the composition-quiz feature to call this - unchanged
+// from before, aside from now requiring userId to scope the update.
+const EVOLUTION_THRESHOLDS = [1, 3];
 
-async function incrementUsage(vocabId, currentUsageCount, currentStage) {
+async function incrementUsage(userId, vocabId, currentUsageCount, currentStage) {
   const newUsageCount = currentUsageCount + 1;
   let newStage = currentStage;
 
@@ -65,6 +78,7 @@ async function incrementUsage(vocabId, currentUsageCount, currentStage) {
     .from("vocabulary")
     .update({ usage_count: newUsageCount, evolution_stage: newStage })
     .eq("vocab_id", vocabId)
+    .eq("user_id", userId)
     .select()
     .single();
 

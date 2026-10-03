@@ -5,37 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Word Bank - Underflow Hackit</title>
   <link rel="stylesheet" href="../../css/storeVocab/style.css" />
-
-  <!-- Supabase client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- OCR (runs entirely in the browser) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
   <h1>Mother Tongue Word Bank</h1>
 
-  <div id="status-message" class="status-message"></div>
+  <section id="auth-section">
+    <div id="auth-status" class="status-message"></div>
 
-  <form id="capture-form">
-    <select id="capture-language">
-      <option value="zh">Chinese</option>
-      <option value="ms">Malay</option>
-      <option value="ta">Tamil</option>
-    </select>
-    <textarea id="capture-text" placeholder="Paste text here..."></textarea>
-    <input type="file" id="capture-image" accept="image/*" />
-    <button type="submit">Preview words</button>
-  </form>
+    <h2>Sign up</h2>
+    <form id="signup-form">
+      <input type="email" id="signup-email" placeholder="Email" required />
+      <input type="password" id="signup-password" placeholder="Password" required minlength="6" />
+      <button type="submit">Sign up</button>
+    </form>
 
-  <div id="preview-list"></div>
-  <button id="save-selected">Save selected words</button>
+    <h2>Log in</h2>
+    <form id="login-form">
+      <input type="email" id="login-email" placeholder="Email" required />
+      <input type="password" id="login-password" placeholder="Password" required />
+      <button type="submit">Log in</button>
+    </form>
+  </section>
 
-  <h2>Your Collection</h2>
-  <div id="card-grid"></div>
+  <section id="app-section" hidden>
+    <button id="sign-out">Sign out</button>
 
-  <!-- Chinese segmentation: loaded as an ES module from a CDN, then
-       exposed on window so the plain <script> files below can use it. -->
+    <div id="status-message" class="status-message"></div>
+
+    <form id="capture-form">
+      <select id="capture-language">
+        <option value="zh">Chinese</option>
+        <option value="ms">Malay</option>
+        <option value="ta">Tamil</option>
+      </select>
+      <textarea id="capture-text" placeholder="Paste text here..."></textarea>
+      <input type="file" id="capture-image" accept="image/*" />
+      <button type="submit">Preview words</button>
+    </form>
+
+    <div id="preview-list"></div>
+    <button id="save-selected">Save selected words</button>
+
+    <h2>Your Collection</h2>
+    <div id="card-grid"></div>
+  </section>
+
   <script type="module">
     import { Segment, useDefault } from "https://esm.sh/segmentit@2.0.3";
     window.segmentitInstance = useDefault(new Segment());
@@ -50,7 +66,10 @@
   <script src="../../js/storeVocab/segmentation.js"></script>
   <script src="../../js/storeVocab/ocr.js"></script>
   <script src="../../js/storeVocab/pronunciation.js"></script>
+  <script src="../../js/storeVocab/auth.js"></script>
+  <script src="../../js/storeVocab/meaningLookup.js"></script>
   <script src="../../js/storeVocab/vocabulary.js"></script>
+  <script src="../../js/storeVocab/cardArt.js"></script>
   <script src="../../js/storeVocab/cards.js"></script>
   <script src="../../js/storeVocab/script.js"></script>
 </body>
