@@ -54,7 +54,7 @@ function clearBusy(button) {
 async function loadCardGrid() {
   try {
     const entries = await getAllVocabulary(currentUser.id);
-    renderCardGrid(entries, cardGrid, handleDelete);
+    renderCardGrid(entries, cardGrid, handleDelete, handlePractice);
   } catch (err) {
     console.error("Failed to load word bank:", err);
     showStatus("Could not load your word bank. Check your connection and try again.", "error");
@@ -69,6 +69,23 @@ async function handleDelete(vocabId) {
   } catch (err) {
     console.error("Failed to delete word:", err);
     showStatus("Could not delete that word. Try again.", "error");
+  }
+}
+
+// TODO: placeholder trigger for incrementUsage until the real
+// composition-quiz branch exists and calls this after a correct answer.
+async function handlePractice(vocabId, currentUsageCount, currentStage) {
+  try {
+    const updated = await incrementUsage(currentUser.id, vocabId, currentUsageCount, currentStage);
+    if (updated.evolution_stage > currentStage) {
+      showStatus(`"${updated.word}" evolved!`, "success");
+    } else {
+      showStatus(`Practiced "${updated.word}".`, "success");
+    }
+    await loadCardGrid();
+  } catch (err) {
+    console.error("Failed to record practice:", err);
+    showStatus("Could not record that practice attempt.", "error");
   }
 }
 
