@@ -1,32 +1,42 @@
-// Turns the existing frequency wordlists into Journey levels. Level 1 gets
-// the most common words, each later level gets progressively rarer ones.
-// This re-uses the same ZH/MS/TA_COMMON_WORDS arrays that power rarity.js -
-// one dataset, two features.
-const WORDS_PER_LEVEL = 10;
+// Journey structure: 3 zones x 3 levels. Each level is ONE mini-game, and
+// the mini-game type rotates through the list below. The mini-games
+// themselves are not built yet - these are names and blurbs only.
+const ZONES = [
+  { id: "void-deck", name: "Void Deck", levels: [1, 2, 3] },
+  { id: "hawker-centre", name: "Hawker Centre", levels: [4, 5, 6] },
+  { id: "marina-bay", name: "Marina Bay", levels: [7, 8, 9] },
+];
 
-const FREQUENCY_LISTS = {
-  zh: typeof ZH_COMMON_WORDS !== "undefined" ? ZH_COMMON_WORDS : [],
-  ms: typeof MS_COMMON_WORDS !== "undefined" ? MS_COMMON_WORDS : [],
-  ta: typeof TA_COMMON_WORDS !== "undefined" ? TA_COMMON_WORDS : [],
-};
+const MINI_GAMES = [
+  { id: "typing", name: "Typing", icon: "keyboard", blurb: "Type each word as you see it." },
+  { id: "pronunciation", name: "Pronunciation", icon: "mic", blurb: "Listen to each word, then say it out loud." },
+  { id: "composition", name: "Composition", icon: "pen", blurb: "Use the words to build your own sentences." },
+];
 
-// Returns the words assigned to a given level (1-indexed).
-function getLevelWords(language, levelNumber) {
-  const list = FREQUENCY_LISTS[language] || [];
-  const start = (levelNumber - 1) * WORDS_PER_LEVEL;
-  return list.slice(start, start + WORDS_PER_LEVEL);
+function getTotalLevels() {
+  return ZONES.reduce((sum, zone) => sum + zone.levels.length, 0);
 }
 
-// How many levels exist in total for a language, based on wordlist length.
-function getTotalLevels(language) {
-  const list = FREQUENCY_LISTS[language] || [];
-  return Math.max(1, Math.ceil(list.length / WORDS_PER_LEVEL));
+function getZoneForLevel(levelNumber) {
+  return ZONES.find((zone) => zone.levels.includes(levelNumber)) || null;
+}
+
+function getMiniGameForLevel(levelNumber) {
+  return MINI_GAMES[(levelNumber - 1) % MINI_GAMES.length];
+}
+
+// Words for a level come from its zone, so every word is related to the
+// zone's theme. Returns [] for languages with no list yet.
+function getLevelWords(language, levelNumber) {
+  const zone = getZoneForLevel(levelNumber);
+  if (!zone) return [];
+  const byLanguage = ZONE_WORDS[language];
+  return (byLanguage && byLanguage[zone.id]) || [];
 }
 
 // Placeholder for later: once store-vocabulary is merged in, this should
-// query the vocabulary table for this user's own captured words and mix
-// them in, prioritized over the auto-generated list (per the "user input
-// words are priority" decision). Returns [] until that integration exists.
+// return the user's own captured words that match the zone's theme, so
+// they can be shown first. Returns [] until that integration exists.
 async function getPriorityWords(userId, language) {
   return [];
 }
