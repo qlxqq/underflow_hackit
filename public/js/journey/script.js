@@ -1,49 +1,53 @@
-// Wires up the Journey screen: auth forms, a deliberate Mother Tongue
-// choice before anything else loads, and a scrollable list of every
-// level. Levels still unlock in order, but once reached they stay open
-// for replay - nothing gets locked away again just because it's done.
-// Clicking a slot marks it complete immediately for now - there's no
-// real mini-game yet, this just lets the level-unlock flow be tested
-// end to end. Each slot will later link out to its own mini-game, built
-// on its own branch.
+// Journey screen: auth, a deliberate Mother Tongue choice, and the road
+// map. Levels unlock in order; once reached, a level stays open for replay.
+// This branch is only the layout and structure - the circles are
+// placeholders until each mini-game exists (see openLevel below).
 
-const authSection = document.getElementById("auth-section");
-const languageSelectSection = document.getElementById("language-select-section");
-const journeySection = document.getElementById("journey-section");
-const signupForm = document.getElementById("signup-form");
-const loginForm = document.getElementById("login-form");
-const authStatus = document.getElementById("auth-status");
-const signOutButton = document.getElementById("sign-out");
-const changeLanguageButton = document.getElementById("change-language");
-const levelsContainer = document.getElementById("levels-container");
+const $ = (id) => document.getElementById(id);
+
+const authSection = $("auth-section");
+const languageSection = $("language-select-section");
+const journeySection = $("journey-section");
+const signupForm = $("signup-form");
+const loginForm = $("login-form");
+const authStatus = $("auth-status");
+const signOutButton = $("sign-out");
+const changeLanguageButton = $("change-language");
+const mapEl = $("map");
+const statusMessage = $("status-message");
+
+const LANGUAGES = {
+  zh: { glyph: "中文", name: "Chinese" },
+  ms: { glyph: "BM", name: "Malay" },
+  ta: { glyph: "தமிழ்", name: "Tamil" },
+};
 
 let currentUser = null;
-let currentLanguage = null; // set only once the user deliberately picks one
+let currentLanguage = null;
 
-function showAuthError(message) {
+function showScreen(name) {
+  authSection.hidden = name !== "auth";
+  languageSection.hidden = name !== "language";
+  journeySection.hidden = name !== "journey";
+  const nav = $("bottom-nav");
+  if (nav) nav.hidden = name !== "journey";
+}
+
+function showAuthMessage(message, type) {
   authStatus.textContent = message;
-  authStatus.className = "status-message status-error";
+  authStatus.className = `status-message status-${type}`;
 }
 
-function showLanguageChoice() {
-  authSection.hidden = true;
-  journeySection.hidden = true;
-  languageSelectSection.hidden = false;
+function renderLanguageChip() {
+  const lang = LANGUAGES[currentLanguage];
+  changeLanguageButton.innerHTML =
+    `<span class="chip-glyph">${lang.glyph}</span><span>${lang.name}</span>${icon("chevDown", 18)}`;
 }
 
-async function startJourneyFor(language) {
-  currentLanguage = language;
-  languageSelectSection.hidden = true;
-  journeySection.hidden = false;
-  await refreshJourneyView();
-}
-
-// Finds the first incomplete level - everything up to and including this
-// one is unlocked; anything after it stays locked until this one's done.
+// The first incomplete level - everything up to it is open, the rest locked.
 async function findCurrentLevel(totalLevels) {
   let level = 1;
   let progress = await ensureProgressRow(currentUser.id, currentLanguage, level);
-
   while (isLevelComplete(progress) && level < totalLevels) {
     level += 1;
     progress = await ensureProgressRow(currentUser.id, currentLanguage, level);
@@ -52,95 +56,87 @@ async function findCurrentLevel(totalLevels) {
 }
 
 async function refreshJourneyView() {
-  const totalLevels = getTotalLevels(currentLanguage);
+  const totalLevels = getTotalLevels();
   const currentLevel = await findCurrentLevel(totalLevels);
+  const currentRow = await getProgress(currentUser.id, currentLanguage, currentLevel);
+  const everythingDone = currentLevel === totalLevels && isLevelComplete(currentRow);
 
-  levelsContainer.innerHTML = "";
+  const states = getVisibleLevelNumbers(totalLevels).map((n) => {
+    if (n < currentLevel) return "done";
+    if (n === currentLevel) return everythingDone ? "done" : "current";
+    return "locked";
+  });
 
-  for (const levelNumber of getVisibleLevelNumbers(totalLevels)) {
-    const locked = isLevelLocked(levelNumber, currentLevel);
-    // Only unlocked levels have a real progress row to read; locked ones
-    // are shown as empty placeholders with nothing created in the database
-    // until the user actually reaches them.
-    const progress = locked
-      ? { slot_1_completed: false, slot_2_completed: false, slot_3_completed: false }
-      : await ensureProgressRow(currentUser.id, currentLanguage, levelNumber);
+  mapEl.innerHTML = buildMapHtml(states, currentLevel);
 
-    levelsContainer.appendChild(renderLevelBlock(levelNumber, progress, locked));
+  // Bring the player's current spot into view (or the last level if all done).
+  const dones = mapEl.querySelectorAll(".node-done");
+  const target = mapEl.querySelector(".node-current") || dones[dones.length - 1];
+  if (target && target.scrollIntoView) target.scrollIntoView({ block: "center" });
+}
+
+async function startJourneyFor(language) {
+  currentLanguage = language;
+  renderLanguageChip();
+  showScreen("journey");
+  try {
+    await refreshJourneyView();
+  } catch (err) {
+    console.error("Could not load journey:", err);
+    mapEl.innerHTML = `<p class="empty-state">Could not load your journey. Check your connection and try again.</p>`;
   }
 }
 
-function renderLevelBlock(levelNumber, progress, locked) {
-  const block = document.createElement("div");
-  block.className = `level-block ${locked ? "level-locked" : ""}`;
-
-  const title = document.createElement("h3");
-  title.className = "level-title";
-  title.textContent = locked ? `Level ${levelNumber} (locked)` : `Level ${levelNumber}`;
-  block.appendChild(title);
-
-  const words = getLevelWords(currentLanguage, levelNumber);
-
-  [1, 2, 3].forEach((slotNumber) => {
-    const completed = progress[`slot_${slotNumber}_completed`];
-
-    const button = document.createElement("button");
-    button.className = `practice-slot ${completed ? "slot-completed" : ""}`;
-    button.textContent = completed ? `Practice ${slotNumber} ✓ (replay)` : `Practice ${slotNumber}`;
-    button.disabled = locked; // completed levels stay clickable - only locked ones are blocked
-
-    if (!locked) {
-      button.addEventListener("click", async () => {
-        // TODO: replace this with actually launching the real mini-game
-        // once it exists on its own branch. For now, clicking just marks
-        // it done (or re-confirms it, if already done) so the
-        // level-unlock flow can be demoed.
-        await completeSlot(currentUser.id, currentLanguage, levelNumber, slotNumber);
-        await refreshJourneyView();
-      });
-    }
-
-    const wordPreview = document.createElement("p");
-    wordPreview.className = "slot-words-preview";
-    wordPreview.textContent = `Words: ${words.join(", ")}`;
-
-    const wrapper = document.createElement("div");
-    wrapper.className = "slot-wrapper";
-    wrapper.appendChild(button);
-    wrapper.appendChild(wordPreview);
-    block.appendChild(wrapper);
-  });
-
-  return block;
+// ---- tapping a level ----
+let toastTimer = null;
+function showToast(message) {
+  clearTimeout(toastTimer);
+  statusMessage.textContent = message;
+  statusMessage.className = "status-message status-info toast";
+  toastTimer = setTimeout(() => {
+    statusMessage.textContent = "";
+    statusMessage.className = "status-message toast";
+  }, 2500);
 }
 
+// Placeholder. Unlocked circles (the current level and finished ones, which
+// can be replayed) call this; locked circles are not clickable.
+// TODO: each mini-game branch replaces this to open its own game for
+// `level`, e.g. by calling getMiniGameForLevel(level) and navigating.
+function openLevel(level, state) {
+  const game = getMiniGameForLevel(level);
+  showToast(`${game.name} is coming soon.`);
+}
+
+mapEl.addEventListener("click", (e) => {
+  const node = e.target.closest("[data-level]");
+  if (!node) return;
+  openLevel(Number(node.dataset.level), node.dataset.state);
+});
+
+// ---- auth + language choice ----
 signupForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = document.getElementById("signup-email").value.trim();
-  const password = document.getElementById("signup-password").value;
-  const username = document.getElementById("signup-username").value.trim();
-
+  const email = $("signup-email").value.trim();
+  const password = $("signup-password").value;
+  const username = $("signup-username").value.trim();
   try {
     await signUp(email, password, username);
-    authStatus.textContent = "Account created. Check your email if confirmation is required, then log in.";
-    authStatus.className = "status-message status-success";
+    showAuthMessage("Account created. If email confirmation is on, confirm it first, then log in.", "success");
   } catch (err) {
     console.error("Sign up failed:", err);
-    showAuthError(err.message || "Could not sign up.");
+    showAuthMessage(err.message || "Could not sign up.", "error");
   }
 });
 
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = document.getElementById("login-email").value.trim();
-  const password = document.getElementById("login-password").value;
-
   try {
-    await signIn(email, password);
+    await signIn($("login-email").value.trim(), $("login-password").value);
     await enterApp();
   } catch (err) {
     console.error("Login failed:", err);
-    showAuthError(err.message || "Could not log in.");
+    showAuthMessage(err.message || "Could not log in.", "error");
   }
 });
 
@@ -148,12 +144,10 @@ signOutButton.addEventListener("click", async () => {
   await signOut();
   currentUser = null;
   currentLanguage = null;
-  journeySection.hidden = true;
-  languageSelectSection.hidden = true;
-  authSection.hidden = false;
+  showScreen("auth");
 });
 
-changeLanguageButton.addEventListener("click", showLanguageChoice);
+changeLanguageButton.addEventListener("click", () => showScreen("language"));
 
 document.querySelectorAll(".language-choice").forEach((button) => {
   button.addEventListener("click", () => startJourneyFor(button.dataset.lang));
@@ -161,12 +155,13 @@ document.querySelectorAll(".language-choice").forEach((button) => {
 
 async function enterApp() {
   currentUser = await getCurrentUser();
-  if (!currentUser) return;
-  // Every time someone enters the app, they choose (or re-choose) which
-  // Mother Tongue this session's levels are shown in.
-  showLanguageChoice();
+  if (!currentUser) {
+    showScreen("auth");
+    return;
+  }
+  // Every visit starts by choosing which Mother Tongue to practise.
+  showScreen("language");
 }
 
-// If already logged in from a previous visit, skip straight past the
-// login form to the language choice.
+renderBottomNav();
 enterApp();

@@ -4,56 +4,91 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Journey - Underflow Hackit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@500;700&family=Noto+Sans+Tamil:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../css/shared/base.css" />
   <link rel="stylesheet" href="../../css/journey/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
 </head>
 <body>
-  <h1>Your Journey</h1>
+  <div class="app">
 
-  <section id="auth-section">
-    <div id="auth-status" class="status-message"></div>
+    <section id="auth-section" class="auth-screen">
+      <h1 class="auth-title">Your Journey</h1>
+      <div id="auth-status" class="status-message" role="status" aria-live="polite"></div>
 
-    <h2>Sign up</h2>
-    <form id="signup-form">
-      <input type="email" id="signup-email" placeholder="Email" required />
-      <input type="password" id="signup-password" placeholder="Password" required minlength="6" />
-      <input type="text" id="signup-username" placeholder="Username" required />
-      <button type="submit">Sign up</button>
-    </form>
+      <form id="signup-form" class="auth-card">
+        <h2>Sign up</h2>
+        <label class="visually-hidden" for="signup-email">Email</label>
+        <input class="field" type="email" id="signup-email" placeholder="Email" autocomplete="email" required />
+        <label class="visually-hidden" for="signup-password">Password</label>
+        <input class="field" type="password" id="signup-password" placeholder="Password" autocomplete="new-password" required minlength="6" />
+        <label class="visually-hidden" for="signup-username">Username</label>
+        <input class="field" type="text" id="signup-username" placeholder="Username" autocomplete="username" required />
+        <button type="submit" class="btn btn-primary">Sign up</button>
+      </form>
 
-    <h2>Log in</h2>
-    <form id="login-form">
-      <input type="email" id="login-email" placeholder="Email" required />
-      <input type="password" id="login-password" placeholder="Password" required />
-      <button type="submit">Log in</button>
-    </form>
-  </section>
+      <form id="login-form" class="auth-card">
+        <h2>Log in</h2>
+        <label class="visually-hidden" for="login-email">Email</label>
+        <input class="field" type="email" id="login-email" placeholder="Email" autocomplete="email" required />
+        <label class="visually-hidden" for="login-password">Password</label>
+        <input class="field" type="password" id="login-password" placeholder="Password" autocomplete="current-password" required />
+        <button type="submit" class="btn btn-dark">Log in</button>
+      </form>
+    </section>
 
-  <!-- Shown right after login, before any levels - choosing a Mother
-       Tongue is a deliberate first step, not a silent default. -->
-  <section id="language-select-section" hidden>
-    <h2>Which Mother Tongue do you want to practice?</h2>
-    <button class="language-choice" data-lang="zh">Chinese</button>
-    <button class="language-choice" data-lang="ms">Malay</button>
-    <button class="language-choice" data-lang="ta">Tamil</button>
-  </section>
+    <section id="language-select-section" class="language-screen" hidden>
+      <h1 class="auth-title">Which Mother Tongue do you want to practise?</h1>
+      <p class="language-hint">You can switch any time from the top of your journey.</p>
+      <div class="language-grid">
+        <button type="button" class="language-choice" data-lang="zh">
+          <span class="language-text">
+            <span class="language-native" lang="zh-Hans">中文</span>
+            <span class="language-english">Chinese · Mandarin</span>
+          </span>
+          <span class="language-arrow" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="language-choice" data-lang="ms">
+          <span class="language-text">
+            <span class="language-native" lang="ms">Bahasa Melayu</span>
+            <span class="language-english">Malay</span>
+          </span>
+          <span class="language-arrow" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="language-choice" data-lang="ta">
+          <span class="language-text">
+            <span class="language-native" lang="ta">தமிழ்</span>
+            <span class="language-english">Tamil</span>
+          </span>
+          <span class="language-arrow" aria-hidden="true"></span>
+        </button>
+      </div>
+    </section>
 
-  <section id="journey-section" hidden>
-    <button id="sign-out">Sign out</button>
-    <button id="change-language">Switch Mother Tongue</button>
+    <section id="journey-section" class="journey-screen" hidden>
+      <header class="top-bar">
+        <button type="button" id="change-language" class="chip" aria-label="Switch Mother Tongue"></button>
+        <button type="button" id="sign-out" class="icon-btn muted" aria-label="Sign out"><svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5v16h5M15 8l4 4-4 4M9 12h10" /></svg></button>
+      </header>
+      <div id="map" class="map"></div>
+    </section>
 
-    <div id="levels-container"></div>
-  </section>
+    <div id="status-message" class="status-message toast" role="status" aria-live="polite"></div>
 
-  <!-- NOTE: these point at a placeholder Supabase config for now. Once this
-       branch merges with store-vocabulary, point this at the same
-       supabaseClient.js the capture feature already uses, instead of a
-       duplicate file, so there's only one source of truth for the connection. -->
+    <nav id="bottom-nav" data-active="journey" hidden></nav>
+  </div>
+
+  <!-- NOTE: placeholder Supabase config + auth, duplicated from the
+       store-vocabulary branch so this page runs on its own. After the
+       branches merge, delete the placeholder and point at the shared files. -->
   <script src="../../js/journey/supabaseClientPlaceholder.js"></script>
-  <script src="../../js/journey/zhFrequencyPlaceholder.js"></script>
-  <script src="../../js/journey/msFrequencyPlaceholder.js"></script>
-  <script src="../../js/journey/taFrequencyPlaceholder.js"></script>
+  <script src="../../js/shared/icons.js"></script>
+  <script src="../../js/shared/bottomNav.js"></script>
+  <script src="../../js/journey/zoneWords.js"></script>
   <script src="../../js/journey/levels.js"></script>
+  <script src="../../js/journey/mapScene.js"></script>
   <script src="../../js/journey/auth.js"></script>
   <script src="../../js/journey/progress.js"></script>
   <script src="../../js/journey/script.js"></script>
