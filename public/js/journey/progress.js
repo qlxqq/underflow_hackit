@@ -1,5 +1,9 @@
-// Reads/writes journey_progress, plus pure helper logic for deciding
-// when a level is complete and what the next level should be.
+// Reads/writes journey_progress, plus pure helper logic for deciding when
+// a level is complete and which levels are locked.
+//
+// Each level is now ONE mini-game, so a level counts as complete when
+// slot_1_completed is true. slot_2_completed / slot_3_completed remain in
+// the table from the earlier three-slot design and are unused.
 
 async function getProgress(userId, language, levelNumber) {
   const { data, error } = await supabase
@@ -28,11 +32,10 @@ async function ensureProgressRow(userId, language, levelNumber) {
   return data;
 }
 
-async function completeSlot(userId, language, levelNumber, slotNumber) {
-  const columnName = `slot_${slotNumber}_completed`;
+async function completeLevel(userId, language, levelNumber) {
   const { data, error } = await supabase
     .from("journey_progress")
-    .update({ [columnName]: true, updated_at: new Date().toISOString() })
+    .update({ slot_1_completed: true, updated_at: new Date().toISOString() })
     .eq("user_id", userId)
     .eq("language", language)
     .eq("level_number", levelNumber)
@@ -46,20 +49,16 @@ async function completeSlot(userId, language, levelNumber, slotNumber) {
 // Pure logic below - no Supabase calls, safe to unit test directly.
 
 function isLevelComplete(progressRow) {
-  if (!progressRow) return false;
-  return (
-    progressRow.slot_1_completed && progressRow.slot_2_completed && progressRow.slot_3_completed
-  );
+  return !!progressRow && !!progressRow.slot_1_completed;
 }
 
 function nextLevelNumber(currentLevel, totalLevels, progressRow) {
-  if (!isLevelComplete(progressRow)) return currentLevel; // stay put until all 3 slots are done
-  return Math.min(currentLevel + 1, totalLevels); // don't go past the last level
+  if (!isLevelComplete(progressRow)) return currentLevel;
+  return Math.min(currentLevel + 1, totalLevels);
 }
 
-// A level is locked if it's beyond the first incomplete level - you can't
-// skip ahead, but everything up to and including your current level stays
-// open for replay once reached, even after it's marked complete.
+// A level is locked if it is beyond the first incomplete level. Everything
+// up to and including the current level stays open for replay.
 function isLevelLocked(levelNumber, currentLevel) {
   return levelNumber > currentLevel;
 }
