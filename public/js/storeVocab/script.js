@@ -1,41 +1,50 @@
-// Wires up the UI: login gate, capturing text/images, previewing words,
-// saving picks, deleting cards, and refreshing the card grid. Every data
-// call now passes the logged-in user's id, since vocabulary is scoped
-// per user now that real accounts exist.
+// Capture page: login gate, then three views - Capture, Words found, and
+// Collection - switched by showView(). Every data call passes the logged-in
+// user's id, since vocabulary is scoped per user.
 
-const authSection = document.getElementById("auth-section");
-const appSection = document.getElementById("app-section");
-const signupForm = document.getElementById("signup-form");
-const loginForm = document.getElementById("login-form");
-const authStatus = document.getElementById("auth-status");
-const signOutButton = document.getElementById("sign-out");
+const $ = (id) => document.getElementById(id);
 
-const captureForm = document.getElementById("capture-form");
-const textInput = document.getElementById("capture-text");
-const languageSelect = document.getElementById("capture-language");
-const previewList = document.getElementById("preview-list");
-const cardGrid = document.getElementById("card-grid");
-const imageInput = document.getElementById("capture-image");
-const statusMessage = document.getElementById("status-message");
+const authSection = $("auth-section");
+const appSection = $("app-section");
+const signupForm = $("signup-form");
+const loginForm = $("login-form");
+const authStatus = $("auth-status");
+const signOutButton = $("sign-out");
+
+const views = { capture: $("capture-view"), found: $("found-view"), collection: $("collection-view") };
+const captureForm = $("capture-form");
+const textInput = $("capture-text");
+const languageSelect = $("capture-language");
+const imageInput = $("capture-image");
+const previewList = $("preview-list");
+const sourceText = $("source-text");
+const cardGrid = $("card-grid");
+const statusMessage = $("status-message");
 const previewButton = captureForm.querySelector("button[type=submit]");
-const saveButton = document.getElementById("save-selected");
+const saveButton = $("save-selected");
+const foundBack = $("found-back");
 
 let currentUser = null;
 let currentPreviewWords = [];
 let currentContextSentence = "";
 let isSaving = false;
+let statusTimer = null;
 
+// ---- small helpers ----
 function showAuthError(message) {
   authStatus.textContent = message;
   authStatus.className = "status-message status-error";
 }
 
 function showStatus(message, type = "info") {
+  clearTimeout(statusTimer);
   statusMessage.textContent = message;
   statusMessage.className = `status-message status-${type}`;
+  statusTimer = setTimeout(clearStatus, 6000);
 }
 
 function clearStatus() {
+  clearTimeout(statusTimer);
   statusMessage.textContent = "";
   statusMessage.className = "status-message";
 }
@@ -51,6 +60,13 @@ function clearBusy(button) {
   button.textContent = button.dataset.originalText || button.textContent;
 }
 
+function showView(name) {
+  Object.entries(views).forEach(([key, el]) => (el.hidden = key !== name));
+  setBottomNavActive(name === "collection" ? "collection" : "capture");
+  window.scrollTo(0, 0);
+}
+
+// ---- collection ----
 async function loadCardGrid() {
   try {
     const entries = await getAllVocabulary(currentUser.id);
@@ -72,16 +88,12 @@ async function handleDelete(vocabId) {
   }
 }
 
-// TODO: placeholder trigger for incrementUsage until the real
-// composition-quiz branch exists and calls this after a correct answer.
+// TODO: placeholder trigger for incrementUsage until the real composition
+// mini-game exists and calls this after a correct answer.
 async function handlePractice(vocabId, currentUsageCount, currentStage) {
   try {
     const updated = await incrementUsage(currentUser.id, vocabId, currentUsageCount, currentStage);
-    if (updated.evolution_stage > currentStage) {
-      showStatus(`"${updated.word}" evolved!`, "success");
-    } else {
-      showStatus(`Practiced "${updated.word}".`, "success");
-    }
+    showStatus(updated.evolution_stage > currentStage ? `"${updated.word}" evolved!` : `Practised "${updated.word}".`, "success");
     await loadCardGrid();
   } catch (err) {
     console.error("Failed to record practice:", err);
@@ -89,6 +101,7 @@ async function handlePractice(vocabId, currentUsageCount, currentStage) {
   }
 }
 
+// ---- capture -> words found ----
 async function buildPreview(text, language) {
   const rawWords = await segmentText(text, language);
   const words = filterFillerWords(rawWords, language);
@@ -96,9 +109,8 @@ async function buildPreview(text, language) {
     (await findExistingWords(currentUser.id, language, words)).map((w) => w.toLowerCase()),
   );
 
-  // Auto-fill meanings via the Edge Function. If it fails or is slow, this
-  // just comes back empty and the fields stay manually editable, same as
-  // before - capture never gets blocked waiting on this.
+  // Auto-fill meanings via the Edge Function. If it fails or is slow this
+  // comes back empty and the fields stay editable - capture never blocks.
   const meanings = await lookupMeanings(words, language, text);
 
   currentPreviewWords = words.map((word) => ({
@@ -111,7 +123,15 @@ async function buildPreview(text, language) {
   }));
   currentContextSentence = text;
 
+  sourceText.textContent = text;
   renderPreview();
+  showView("found");
+}
+
+function updateSaveButton() {
+  const count = previewList.querySelectorAll("input[type=checkbox]:checked:not(:disabled)").length;
+  saveButton.textContent = count === 0 ? "Select words to add" : `Add ${count} word${count === 1 ? "" : "s"} to collection`;
+  saveButton.disabled = count === 0 || isSaving;
 }
 
 function renderPreview() {
@@ -119,27 +139,33 @@ function renderPreview() {
 
   if (currentPreviewWords.length === 0) {
     previewList.innerHTML = `<p class="empty-state">No words found. Try different text.</p>`;
+    updateSaveButton();
     return;
   }
 
   currentPreviewWords.forEach((item, index) => {
+    const word = escapeHtml(item.word);
     const row = document.createElement("div");
-    row.className = "preview-row";
+    row.className = "found-row";
     row.innerHTML = `
-      <label>
-        <input type="checkbox" data-index="${index}" ${item.alreadySaved ? "disabled" : ""} />
-        <strong>${item.word}</strong>
-        <span class="rarity-tag rarity-${item.rarity}">${item.rarity}</span>
-        ${item.alreadySaved ? "<em>(already saved)</em>" : ""}
+      <label class="check-wrap">
+        <input type="checkbox" data-index="${index}" aria-label="Add ${word}" ${item.alreadySaved ? "disabled" : "checked"} />
       </label>
-      ${
-        !item.alreadySaved
-          ? `
-        <input type="text" class="meaning-input" data-index="${index}" placeholder="English meaning" value="${item.englishMeaning}" />
-        <input type="text" class="romanization-input" data-index="${index}" placeholder="Romanization / pinyin" value="${item.romanization}" />
-      `
-          : ""
-      }
+      <div class="found-main">
+        <div class="found-head">
+          <span class="found-word">${word}</span>
+          <span class="found-tag rarity-${item.rarity}">${item.rarity}</span>
+          ${item.alreadySaved ? '<span class="found-tag in-collection">In collection</span>' : ""}
+        </div>
+        ${
+          item.alreadySaved
+            ? ""
+            : `<div class="found-fields">
+          <input type="text" class="field-inline meaning-input" data-index="${index}" aria-label="English meaning of ${word}" placeholder="English meaning" value="${escapeHtml(item.englishMeaning)}" />
+          <input type="text" class="field-inline romanization-input" data-index="${index}" aria-label="Romanization of ${word}" placeholder="Romanization" value="${escapeHtml(item.romanization)}" />
+        </div>`
+        }
+      </div>
     `;
     previewList.appendChild(row);
   });
@@ -154,57 +180,26 @@ function renderPreview() {
       currentPreviewWords[e.target.dataset.index].romanization = e.target.value;
     });
   });
+
+  updateSaveButton();
 }
 
-signupForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const email = document.getElementById("signup-email").value.trim();
-  const password = document.getElementById("signup-password").value;
-
-  try {
-    await signUp(email, password);
-    authStatus.textContent = "Account created. Check your email if confirmation is required, then log in.";
-    authStatus.className = "status-message status-success";
-  } catch (err) {
-    console.error("Sign up failed:", err);
-    showAuthError(err.message || "Could not sign up.");
-  }
-});
-
-loginForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const email = document.getElementById("login-email").value.trim();
-  const password = document.getElementById("login-password").value;
-
-  try {
-    await signIn(email, password);
-    await enterApp();
-  } catch (err) {
-    console.error("Login failed:", err);
-    showAuthError(err.message || "Could not log in.");
-  }
-});
-
-signOutButton.addEventListener("click", async () => {
-  await signOut();
-  currentUser = null;
-  appSection.hidden = true;
-  authSection.hidden = false;
+previewList.addEventListener("change", (e) => {
+  if (e.target.matches("input[type=checkbox]")) updateSaveButton();
 });
 
 captureForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = textInput.value.trim();
-  const language = languageSelect.value;
   if (!text) {
     showStatus("Type or paste some text first.", "error");
     return;
   }
 
   clearStatus();
-  setBusy(previewButton, "Processing...");
+  setBusy(previewButton, "Finding words...");
   try {
-    await buildPreview(text, language);
+    await buildPreview(text, languageSelect.value);
   } catch (err) {
     console.error("Failed to preview text:", err);
     showStatus("Could not process that text. Try again.", "error");
@@ -216,40 +211,42 @@ captureForm.addEventListener("submit", async (e) => {
 imageInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  const language = languageSelect.value;
 
   clearStatus();
-  showStatus("Reading text from image, this can take a moment...", "info");
+  showStatus("Reading text from the photo. This can take a moment...", "info");
   imageInput.disabled = true;
 
   try {
-    const extractedText = await extractTextFromImage(file, language);
+    const extractedText = await extractTextFromImage(file, languageSelect.value);
     if (!extractedText) {
-      showStatus("Could not find any text in that image. Try a clearer photo.", "error");
+      showStatus("Could not find any text in that photo. Try a clearer one.", "error");
       return;
     }
     textInput.value = extractedText;
-    await buildPreview(extractedText, language);
+    await buildPreview(extractedText, languageSelect.value);
     clearStatus();
   } catch (err) {
     console.error("Failed to process image:", err);
-    showStatus("Could not read that image. Try a clearer photo.", "error");
+    showStatus("Could not read that photo. Try a clearer one.", "error");
   } finally {
     imageInput.disabled = false;
+    imageInput.value = "";
   }
 });
 
+foundBack.addEventListener("click", () => showView("capture"));
+
 saveButton.addEventListener("click", async () => {
   if (isSaving) return;
-  const checked = [...previewList.querySelectorAll("input[type=checkbox]:checked")];
-
+  const checked = [...previewList.querySelectorAll("input[type=checkbox]:checked:not(:disabled)")];
   if (checked.length === 0) {
-    showStatus("Select at least one word to save.", "error");
+    showStatus("Select at least one word to add.", "error");
     return;
   }
 
   isSaving = true;
-  setBusy(saveButton, "Saving...");
+  saveButton.disabled = true;
+  saveButton.textContent = "Adding...";
   clearStatus();
 
   let savedCount = 0;
@@ -269,26 +266,72 @@ saveButton.addEventListener("click", async () => {
       });
       savedCount++;
     } catch (err) {
+      // Most likely the unique constraint rejecting a duplicate that
+      // slipped through (e.g. two tabs saving the same word at once).
       console.error(`Failed to save "${item.word}":`, err);
       skippedCount++;
     }
   }
 
+  isSaving = false;
   previewList.innerHTML = "";
   textInput.value = "";
-  isSaving = false;
-  clearBusy(saveButton);
+  history.replaceState(null, "", "#collection");
+  showView("collection");
+  await loadCardGrid();
 
   if (skippedCount === 0) {
-    showStatus(`Saved ${savedCount} word${savedCount === 1 ? "" : "s"}.`, "success");
+    showStatus(`Added ${savedCount} word${savedCount === 1 ? "" : "s"} to your collection.`, "success");
   } else {
-    showStatus(
-      `Saved ${savedCount}, but ${skippedCount} could not be saved (likely already in your word bank).`,
-      "error",
-    );
+    showStatus(`Added ${savedCount}, but ${skippedCount} could not be added (likely already in your collection).`, "error");
   }
+});
 
-  await loadCardGrid();
+// ---- bottom nav: Capture and Collection switch views in place ----
+$("bottom-nav").addEventListener("click", async (e) => {
+  const link = e.target.closest("[data-nav]");
+  if (!link) return;
+  if (link.dataset.nav === "capture") {
+    e.preventDefault();
+    history.replaceState(null, "", "#capture");
+    showView("capture");
+  } else if (link.dataset.nav === "collection") {
+    e.preventDefault();
+    history.replaceState(null, "", "#collection");
+    showView("collection");
+    await loadCardGrid();
+  }
+});
+
+// ---- auth ----
+signupForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await signUp($("signup-email").value.trim(), $("signup-password").value);
+    authStatus.textContent = "Account created. If email confirmation is on, confirm it first, then log in.";
+    authStatus.className = "status-message status-success";
+  } catch (err) {
+    console.error("Sign up failed:", err);
+    showAuthError(err.message || "Could not sign up.");
+  }
+});
+
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await signIn($("login-email").value.trim(), $("login-password").value);
+    await enterApp();
+  } catch (err) {
+    console.error("Login failed:", err);
+    showAuthError(err.message || "Could not log in.");
+  }
+});
+
+signOutButton.addEventListener("click", async () => {
+  await signOut();
+  currentUser = null;
+  appSection.hidden = true;
+  authSection.hidden = false;
 });
 
 async function enterApp() {
@@ -296,9 +339,19 @@ async function enterApp() {
   if (!currentUser) return;
   authSection.hidden = true;
   appSection.hidden = false;
-  await loadCardGrid();
+
+  if (location.hash === "#collection") {
+    showView("collection");
+    await loadCardGrid();
+  } else {
+    showView("capture");
+  }
 }
 
-// If already logged in from a previous visit, skip straight past the
-// login form.
+// ---- one-time setup: icons that live in static markup, then the nav ----
+$("photo-icon").innerHTML = icon("camera", 24);
+$("found-back").innerHTML = icon("chevLeft", 22);
+$("found-note-icon").innerHTML = icon("info", 18);
+signOutButton.innerHTML = icon("logout", 22);
+renderBottomNav();
 enterApp();

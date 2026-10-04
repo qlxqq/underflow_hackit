@@ -1,55 +1,131 @@
-body {
-  font-family: system-ui, sans-serif;
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
+/* Capture page styles. Tokens and shared components come from
+   css/shared/base.css. */
+
+/* ---- login gate ---- */
+.auth-screen { padding: 32px 20px 40px; }
+.auth-title { margin: 0 0 20px; font-size: 28px; font-weight: 800; line-height: 1.2; }
+.auth-screen .status-message { margin: 0 0 16px; }
+.auth-card {
+  display: flex; flex-direction: column; gap: 12px;
+  margin-bottom: 16px; padding: 20px;
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg);
+}
+.auth-card h2 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
+
+/* ---- shared screen layout ---- */
+.screen { min-height: 100vh; padding-bottom: calc(var(--nav-h) + 32px); }
+
+/* Toast: floats above the bottom nav so it is visible on any view. */
+#status-message {
+  position: fixed; left: 50%; bottom: calc(var(--nav-h) + 16px);
+  transform: translateX(-50%); z-index: 30;
+  width: calc(100% - 40px); max-width: 390px; margin: 0;
+  box-shadow: 0 6px 20px rgba(24, 35, 58, 0.18);
 }
 
-textarea {
-  width: 100%;
-  min-height: 80px;
+/* ---- language select styled as a chip ---- */
+.lang-select select {
+  appearance: none; -webkit-appearance: none;
+  min-height: 44px; padding: 0 38px 0 16px; border-radius: 22px;
+  border: 1px solid var(--line);
+  background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235b6783' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 12px center;
+  font: 700 15px var(--font-ui); color: var(--ink); cursor: pointer;
 }
 
-.preview-row {
-  display: block;
-  padding: 6px 0;
-}
+/* ---- capture view ---- */
+.capture-form { display: flex; flex-direction: column; padding: 8px 20px 0; }
 
-.rarity-tag {
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: white;
+.photo-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  min-height: 132px; padding: 16px; text-align: center; cursor: pointer;
+  background: var(--white); border: 1px dashed #b7c2d3; border-radius: var(--radius-lg);
 }
-.rarity-tag.rarity-common   { background: #888; }
-.rarity-tag.rarity-uncommon { background: #2e86de; }
-.rarity-tag.rarity-rare     { background: #e17055; }
+.photo-tile:focus-within { outline: 3px solid var(--amber); outline-offset: 2px; }
+.photo-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--amber-bg); color: var(--amber-txt);
+}
+.photo-title { font-weight: 800; font-size: 17px; }
+.photo-sub { font-weight: 500; font-size: 13px; color: var(--muted); }
 
-#card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
+.or-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; }
+.or-divider::before, .or-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.or-divider span { font-weight: 600; font-size: 12px; color: var(--muted); }
+
+.text-card {
+  height: 168px; margin-bottom: 16px; padding: 16px;
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-md);
 }
+.text-card:focus-within { outline: 2px solid var(--amber); outline-offset: 1px; }
+.text-card textarea {
+  width: 100%; height: 100%; padding: 0; border: none; outline: none; resize: none;
+  background: transparent; color: var(--ink);
+  font: 500 20px/1.5 var(--font-cjk);
+}
+.text-card textarea::placeholder { color: #8190a8; font-family: var(--font-ui); font-size: 16px; }
+
+/* ---- words found view ---- */
+.source-card {
+  margin: 16px 20px 0; padding: 14px 16px;
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-md);
+}
+.source-label { margin-bottom: 6px; font-weight: 700; font-size: 12px; color: var(--muted); }
+.source-text { font: 500 20px/1.5 var(--font-cjk); overflow-wrap: anywhere; }
+
+.found-list { display: flex; flex-direction: column; gap: 8px; margin: 14px 20px 0; }
+.found-row {
+  display: flex; align-items: flex-start; gap: 6px;
+  padding: 10px 14px 12px 4px;
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-md);
+}
+.check-wrap { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 44px; height: 44px; cursor: pointer; }
+.check-wrap input { width: 22px; height: 22px; margin: 0; accent-color: var(--amber); }
+.found-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.found-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 44px; }
+.found-word { font: 700 22px var(--font-cjk); overflow-wrap: anywhere; }
+
+.found-tag {
+  padding: 3px 10px; border-radius: 12px; white-space: nowrap;
+  font-weight: 700; font-size: 11px; text-transform: capitalize;
+  background: var(--bg); border: 1px solid var(--line); color: var(--muted);
+}
+.found-tag.rarity-uncommon { background: #e7f4f2; border-color: #bfe3de; color: #0f6f64; }
+.found-tag.rarity-rare { background: var(--amber-bg); border-color: var(--amber-bd); color: var(--amber-txt); }
+.found-tag.in-collection { background: var(--green-bg); border-color: transparent; color: var(--green-txt); }
+
+.found-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.field-inline {
+  width: 100%; min-height: 44px; padding: 0 12px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--bg);
+  font: 600 14px var(--font-ui); color: var(--ink);
+}
+.field-inline::placeholder { color: #8190a8; font-weight: 500; }
+
+.found-footer { display: flex; flex-direction: column; gap: 12px; margin: 20px 20px 0; }
+.found-note {
+  display: flex; align-items: flex-start; gap: 8px; margin: 0;
+  font-weight: 600; font-size: 13px; line-height: 1.4; color: var(--muted);
+}
+.found-note > span:first-child { flex-shrink: 0; margin-top: 1px; }
+
+/* ---- collection view ---- */
+.card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px 20px 0; }
+.card-grid > .empty-state { grid-column: 1 / -1; }
 
 .vocab-card {
-  border: 2px solid #ccc;
-  border-radius: 10px;
-  padding: 10px;
-  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px 10px 12px; text-align: center;
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-md);
+  border-top: 4px solid var(--lock-ic);
 }
-.vocab-card.rarity-common   { border-color: #888; }
-.vocab-card.rarity-uncommon { border-color: #2e86de; }
-.vocab-card.rarity-rare     { border-color: #e17055; box-shadow: 0 0 8px #e17055; }
+.vocab-card.rarity-uncommon { border-top-color: var(--teal); }
+.vocab-card.rarity-rare { border-top-color: var(--amber); }
 
-.card-rarity, .card-stage {
-  font-size: 11px;
-  color: #666;
-}
-.card-word { font-size: 22px; font-weight: bold; margin: 6px 0; }
-.card-romanization { font-size: 12px; color: #999; }
-.card-meaning { font-size: 13px; margin: 6px 0; }
-.card-play-audio {
-  font-size: 12px;
-  padding: 4px 8px;
-}
+.card-top { display: flex; justify-content: space-between; width: 100%; font-weight: 700; font-size: 11px; color: var(--muted); }
+.card-art svg { width: 56px; height: 56px; }
+.card-word { font: 700 24px/1.2 var(--font-cjk); overflow-wrap: anywhere; }
+.card-romanization { min-height: 16px; font-weight: 600; font-size: 12px; color: var(--muted); }
+.card-meaning { font-weight: 700; font-size: 13px; line-height: 1.35; }
+.card-usage { font-weight: 600; font-size: 11px; color: var(--muted); }
+.card-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
