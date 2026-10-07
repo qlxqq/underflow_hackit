@@ -1,15 +1,14 @@
-// Journey structure: 3 zones x 3 levels. Each level is ONE mini-game, and
-// the mini-game type rotates through the list below. The mini-games
-// themselves are not built yet - these are names and blurbs only.
+// Journey structure: 3 zones x 3 levels. Each level is one mini-game
+
 const ZONES = [
-  { id: "void-deck", name: "Void Deck", levels: [1, 2, 3] },
+  { id: "neighbourhood", name: "Neighbourhood", levels: [1, 2, 3] },
   { id: "hawker-centre", name: "Hawker Centre", levels: [4, 5, 6] },
-  { id: "marina-bay", name: "Marina Bay", levels: [7, 8, 9] },
+  { id: "public-transport", name: "Public Transport", levels: [7, 8, 9] },
 ];
 
 const MINI_GAMES = [
-  { id: "typing", name: "Typing", icon: "keyboard", blurb: "Type each word as you see it." },
   { id: "pronunciation", name: "Pronunciation", icon: "mic", blurb: "Listen to each word, then say it out loud." },
+  { id: "typing", name: "Typing", icon: "keyboard", blurb: "Type each word as you see it." },
   { id: "composition", name: "Composition", icon: "pen", blurb: "Use the words to build your own sentences." },
 ];
 
@@ -34,9 +33,15 @@ function getLevelWords(language, levelNumber) {
   return (byLanguage && byLanguage[zone.id]) || [];
 }
 
-// Placeholder for later: once store-vocabulary is merged in, this should
-// return the user's own captured words that match the zone's theme, so
+// Return the user's own captured words that match the zone's theme, so
 // they can be shown first. Returns [] until that integration exists.
 async function getPriorityWords(userId, language) {
   return [];
+}
+
+// What to tell a player who taps the map somewhere that is not a level dot.
+function getTapPrompt(currentLevel, lockedLevel = null) {
+  if (currentLevel === null) return "You've finished every level. Tap any dot to replay one.";
+  if (lockedLevel !== null) return `Level ${lockedLevel} is locked. Tap the dot for Level ${currentLevel} to play.`;
+  return `Tap the dot for Level ${currentLevel} to play.`;
 }
