@@ -1,7 +1,4 @@
-/* Shared design tokens and base components.
-   This file is identical on feature/journey and store-vocabulary so the
-   two branches merge cleanly. Page-specific styles live in
-   css/<feature>/style.css. */
+/* Shared design tokens and base components. */
 
 :root {
   --ink: #18233a;
@@ -21,7 +18,7 @@
   --lock-bg: #e3e8ef;
   --lock-ic: #6e7d96;
   --font-ui: "Manrope", "Noto Sans SC", "Noto Sans Tamil", system-ui, sans-serif;
-  /* Used for Chinese and Tamil text (words, scripts). */
+  /* Used for Chinese and Tamil text */
   --font-cjk: "Noto Sans SC", "Noto Sans Tamil", sans-serif;
   --radius-lg: 20px;
   --radius-md: 16px;
@@ -38,6 +35,10 @@
 
 html, body { margin: 0; }
 
+/* Keep the page the same width whether or not a scrollbar shows, so moving
+   between screens never makes the layout jump sideways. */
+html { scrollbar-gutter: stable; }
+
 body {
   font-family: var(--font-ui);
   color: var(--ink);
@@ -49,6 +50,7 @@ body {
   position: relative;
   max-width: 430px;
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0 auto;
   background: var(--bg);
 }
