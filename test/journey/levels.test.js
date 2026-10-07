@@ -28,13 +28,13 @@ describe("journey structure", () => {
     expect(run("getTotalLevels()")).toBe(9);
   });
 
-  test("levels 1-3, 4-6 and 7-9 belong to Void Deck, Hawker Centre and Marina Bay", () => {
-    expect(run("getZoneForLevel(1).id")).toBe("void-deck");
-    expect(run("getZoneForLevel(3).id")).toBe("void-deck");
+  test("levels 1-3, 4-6 and 7-9 belong to Neighbourhood, Hawker Centre and Public Transport", () => {
+    expect(run("getZoneForLevel(1).id")).toBe("neighbourhood");
+    expect(run("getZoneForLevel(3).id")).toBe("neighbourhood");
     expect(run("getZoneForLevel(4).id")).toBe("hawker-centre");
     expect(run("getZoneForLevel(6).id")).toBe("hawker-centre");
-    expect(run("getZoneForLevel(7).id")).toBe("marina-bay");
-    expect(run("getZoneForLevel(9).id")).toBe("marina-bay");
+    expect(run("getZoneForLevel(7).id")).toBe("public-transport");
+    expect(run("getZoneForLevel(9).id")).toBe("public-transport");
   });
 
   test("a level number outside the journey has no zone", () => {
@@ -42,11 +42,12 @@ describe("journey structure", () => {
     expect(run("getLevelWords('zh', 10)")).toEqual([]);
   });
 
-  test("mini-game types rotate typing, pronunciation, composition", () => {
-    expect(run("getMiniGameForLevel(1).id")).toBe("typing");
-    expect(run("getMiniGameForLevel(2).id")).toBe("pronunciation");
+  test("each zone starts with pronunciation, then typing, then composition", () => {
+    expect(run("getMiniGameForLevel(1).id")).toBe("pronunciation");
+    expect(run("getMiniGameForLevel(2).id")).toBe("typing");
     expect(run("getMiniGameForLevel(3).id")).toBe("composition");
-    expect(run("getMiniGameForLevel(4).id")).toBe("typing");
+    expect(run("getMiniGameForLevel(4).id")).toBe("pronunciation");
+    expect(run("getMiniGameForLevel(7).id")).toBe("pronunciation");
   });
 });
 
@@ -62,10 +63,9 @@ describe("zone word lists", () => {
     expect(level1[0].word).toBe("邻居");
   });
 
-  test("different zones have different words", () => {
-    const voidDeck = run("getLevelWords('zh', 1)").map((w) => w.word);
-    const hawker = run("getLevelWords('zh', 4)").map((w) => w.word);
-    expect(voidDeck.filter((w) => hawker.includes(w))).toHaveLength(0);
+  test("no word appears in more than one zone", () => {
+    const all = [1, 4, 7].flatMap((level) => run(`getLevelWords('zh', ${level})`).map((w) => w.word));
+    expect(new Set(all).size).toBe(all.length);
   });
 
   test("each zone has at least 10 Chinese words, each with pinyin", () => {
