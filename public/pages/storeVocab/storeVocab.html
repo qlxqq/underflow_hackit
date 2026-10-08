@@ -15,29 +15,6 @@
 <body>
   <div class="app">
 
-    <section id="auth-section" class="auth-screen">
-      <h1 class="auth-title" data-brand-name>App name</h1>
-      <div id="auth-status" class="status-message" role="status" aria-live="polite"></div>
-
-      <form id="signup-form" class="auth-card">
-        <h2>Sign up</h2>
-        <label class="visually-hidden" for="signup-email">Email</label>
-        <input class="field" type="email" id="signup-email" placeholder="Email" autocomplete="email" required />
-        <label class="visually-hidden" for="signup-password">Password</label>
-        <input class="field" type="password" id="signup-password" placeholder="Password" autocomplete="new-password" required minlength="6" />
-        <button type="submit" class="btn btn-primary">Sign up</button>
-      </form>
-
-      <form id="login-form" class="auth-card">
-        <h2>Log in</h2>
-        <label class="visually-hidden" for="login-email">Email</label>
-        <input class="field" type="email" id="login-email" placeholder="Email" autocomplete="email" required />
-        <label class="visually-hidden" for="login-password">Password</label>
-        <input class="field" type="password" id="login-password" placeholder="Password" autocomplete="current-password" required />
-        <button type="submit" class="btn btn-dark">Log in</button>
-      </form>
-    </section>
-
     <div id="app-section" hidden>
 
       <section id="capture-view" class="screen" hidden>
@@ -119,7 +96,7 @@
     window.segmentitInstance = useDefault(new Segment());
   </script>
 
-  <script src="../../js/storeVocab/supabaseClient.js"></script>
+  <script src="../../js/shared/supabaseClient.js"></script>
   <script src="../../js/shared/icons.js"></script>
   <script src="../../js/shared/bottomNav.js"></script>
   <script src="../../js/shared/brand.js"></script>
@@ -131,7 +108,7 @@
   <script src="../../js/storeVocab/segmentation.js"></script>
   <script src="../../js/storeVocab/ocr.js"></script>
   <script src="../../js/storeVocab/pronunciation.js"></script>
-  <script src="../../js/storeVocab/auth.js"></script>
+  <script src="../../js/shared/auth.js"></script>
   <script src="../../js/storeVocab/meaningLookup.js"></script>
   <script src="../../js/storeVocab/vocabulary.js"></script>
   <script src="../../js/storeVocab/cardArt.js"></script>
