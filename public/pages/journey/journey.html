@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Journey - Underflow Hackit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@500;700&family=Noto+Sans+Tamil:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../css/shared/base.css" />
+  <link rel="stylesheet" href="../../css/journey/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+</head>
+<body>
+  <div class="app">
+
+    <section id="auth-section" class="auth-screen">
+      <div class="scene scene-login">
+        <div id="auth-hero-art" class="scene-art"></div>
+        <div class="brand">
+          <h1 class="brand-name" data-brand-name>App name</h1>
+          <p class="brand-tagline" data-brand-tagline></p>
+        </div>
+      </div>
+
+      <div class="auth-panel">
+        <div id="auth-status" class="status-message" role="status" aria-live="polite"></div>
+
+        <div class="auth-box">
+          <div class="auth-tabs" role="tablist" aria-label="Log in or sign up">
+            <button type="button" id="tab-login" class="auth-tab" role="tab" aria-selected="true" aria-controls="login-form">Log in</button>
+            <button type="button" id="tab-signup" class="auth-tab" role="tab" aria-selected="false" aria-controls="signup-form">Sign up</button>
+          </div>
+
+          <div class="auth-intro">
+            <h2 id="auth-heading" class="auth-heading">Welcome back</h2>
+            <p id="auth-subheading" class="auth-subheading">Log in to pick up where you left off.</p>
+          </div>
+
+          <form id="login-form" class="auth-card" role="tabpanel" aria-labelledby="tab-login">
+            <label class="visually-hidden" for="login-email">Email</label>
+            <input class="field" type="email" id="login-email" placeholder="Email" autocomplete="email" required />
+            <label class="visually-hidden" for="login-password">Password</label>
+            <input class="field" type="password" id="login-password" placeholder="Password" autocomplete="current-password" required />
+            <button type="submit" class="btn btn-primary btn-auth">Log in</button>
+          </form>
+
+          <form id="signup-form" class="auth-card" role="tabpanel" aria-labelledby="tab-signup" hidden>
+            <label class="visually-hidden" for="signup-email">Email</label>
+            <input class="field" type="email" id="signup-email" placeholder="Email" autocomplete="email" required />
+            <label class="visually-hidden" for="signup-password">Password</label>
+            <input class="field" type="password" id="signup-password" placeholder="Password (6+ characters)" autocomplete="new-password" required minlength="6" />
+            <label class="visually-hidden" for="signup-username">Username</label>
+            <input class="field" type="text" id="signup-username" placeholder="Username" autocomplete="username" required />
+            <button type="submit" class="btn btn-primary btn-auth">Create account</button>
+          </form>
+        </div>
+
+        <p class="auth-languages" aria-label="Chinese, Malay and Tamil">
+          <span lang="zh-Hans">中文</span><span lang="ms">Bahasa Melayu</span><span lang="ta">தமிழ்</span>
+        </p>
+      </div>
+
+      <div class="scene scene-footer"><div id="auth-footer-art" class="scene-art"></div></div>
+    </section>
+
+    <section id="language-select-section" class="language-screen" hidden>
+      <div class="scene scene-language">
+        <div id="language-hero-art" class="scene-art"></div>
+      </div>
+      <div class="language-body">
+        <h1 class="language-title">Which Mother Tongue do you want to practise?</h1>
+        <p class="language-hint">You can switch any time from the top of your journey.</p>
+        <div class="language-grid">
+          <button type="button" class="language-choice" data-lang="zh">
+            <span class="language-text">
+              <span class="language-native" lang="zh-Hans">中文</span>
+              <span class="language-english">Chinese · Mandarin</span>
+            </span>
+            <span class="language-arrow" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="language-choice" data-lang="ms">
+            <span class="language-text">
+              <span class="language-native" lang="ms">Bahasa Melayu</span>
+              <span class="language-english">Malay</span>
+            </span>
+            <span class="language-arrow" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="language-choice" data-lang="ta">
+            <span class="language-text">
+              <span class="language-native" lang="ta">தமிழ்</span>
+              <span class="language-english">Tamil</span>
+            </span>
+            <span class="language-arrow" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="journey-section" class="journey-screen" hidden>
+      <header class="top-bar journey-bar">
+        <div class="stats">
+          <button type="button" id="change-language" class="stat-chip" aria-label="Switch Mother Tongue"></button>
+          <div id="streak-chip" class="stat-chip stat-streak" role="img" hidden></div>
+          <!-- The XP bar will sit here, next to the streak. -->
+        </div>
+        <button type="button" id="open-profile" class="avatar-btn" aria-label="Your profile and picture"></button>
+      </header>
+      <div id="map" class="map"></div>
+    </section>
+
+    <div id="profile-sheet" class="sheet-backdrop" hidden>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="profile-title">
+        <div class="sheet-handle"></div>
+        <div class="sheet-head">
+          <div id="profile-avatar-large" class="profile-avatar-large"></div>
+          <div class="sheet-titles">
+            <div id="profile-title" class="sheet-title">Your profile</div>
+            <div id="profile-streak-line" class="sheet-sub"></div>
+          </div>
+          <button type="button" id="profile-close" class="icon-btn muted" aria-label="Close"></button>
+        </div>
+        <h2 class="sheet-label">Choose your picture</h2>
+        <div id="avatar-grid" class="avatar-grid" role="radiogroup" aria-label="Profile picture"></div>
+        <button type="button" id="sign-out" class="btn btn-outline btn-block">Sign out</button>
+      </div>
+    </div>
+
+    <div id="status-message" class="status-message toast" role="status" aria-live="polite"></div>
+
+    <nav id="bottom-nav" data-active="journey" hidden></nav>
+  </div>
+
+  <!-- NOTE: placeholder Supabase config + auth, duplicated from the
+       store-vocabulary branch so this page runs on its own. After the
+       branches merge, delete the placeholder and point at the shared files. -->
+  <script src="../../js/journey/supabaseClientPlaceholder.js"></script>
+  <script src="../../js/shared/icons.js"></script>
+  <script src="../../js/shared/avatars.js"></script>
+  <script src="../../js/shared/bottomNav.js"></script>
+  <script src="../../js/shared/brand.js"></script>
+  <script src="../../js/journey/zoneWords.js"></script>
+  <script src="../../js/journey/levels.js"></script>
+  <script src="../../js/journey/scenes.js"></script>
+  <script src="../../js/journey/sgItems.js"></script>
+  <script src="../../js/journey/routeScene.js"></script>
+  <script src="../../js/journey/auth.js"></script>
+  <script src="../../js/journey/progress.js"></script>
+  <script src="../../js/journey/streak.js"></script>
+  <script src="../../js/journey/profile.js"></script>
+  <script src="../../js/journey/script.js"></script>
+</body>
+</html>
