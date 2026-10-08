@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture - Underflow Hackit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@500;700&family=Noto+Sans+Tamil:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../css/shared/base.css" />
+  <link rel="stylesheet" href="../../css/storeVocab/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+  <div class="app">
+
+    <section id="auth-section" class="auth-screen">
+      <h1 class="auth-title" data-brand-name>App name</h1>
+      <div id="auth-status" class="status-message" role="status" aria-live="polite"></div>
+
+      <form id="signup-form" class="auth-card">
+        <h2>Sign up</h2>
+        <label class="visually-hidden" for="signup-email">Email</label>
+        <input class="field" type="email" id="signup-email" placeholder="Email" autocomplete="email" required />
+        <label class="visually-hidden" for="signup-password">Password</label>
+        <input class="field" type="password" id="signup-password" placeholder="Password" autocomplete="new-password" required minlength="6" />
+        <button type="submit" class="btn btn-primary">Sign up</button>
+      </form>
+
+      <form id="login-form" class="auth-card">
+        <h2>Log in</h2>
+        <label class="visually-hidden" for="login-email">Email</label>
+        <input class="field" type="email" id="login-email" placeholder="Email" autocomplete="email" required />
+        <label class="visually-hidden" for="login-password">Password</label>
+        <input class="field" type="password" id="login-password" placeholder="Password" autocomplete="current-password" required />
+        <button type="submit" class="btn btn-dark">Log in</button>
+      </form>
+    </section>
+
+    <div id="app-section" hidden>
+
+      <section id="capture-view" class="screen" hidden>
+        <header class="top-bar">
+          <h1 class="top-title">Capture words</h1>
+          <label class="lang-select">
+            <span class="visually-hidden">Language</span>
+            <select id="capture-language">
+              <option value="zh">Chinese</option>
+              <option value="ms">Malay</option>
+              <option value="ta">Tamil</option>
+            </select>
+          </label>
+        </header>
+
+        <div id="street-strip" class="street-strip" aria-hidden="true"></div>
+
+        <div class="capture-intro">
+          <h2 class="intro-title">Collect words from daily life</h2>
+          <p class="intro-sub">Snap a sign or paste some text. Each word becomes a card.</p>
+        </div>
+
+        <form id="capture-form" class="capture-form">
+          <label class="photo-tile" for="capture-image">
+            <input class="visually-hidden" type="file" id="capture-image" accept="image/*" capture="environment" />
+            <span class="photo-icon" id="photo-icon"></span>
+            <span class="photo-title">Take a photo</span>
+            <span class="photo-sub">Point your camera at a sign, menu or page</span>
+          </label>
+
+          <div class="or-divider"><span>or type it in</span></div>
+
+          <div class="text-card">
+            <label class="visually-hidden" for="capture-text">Text to capture</label>
+            <textarea id="capture-text" placeholder="Type or paste text here"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">Find words</button>
+        </form>
+      </section>
+
+      <section id="found-view" class="screen" hidden>
+        <header class="top-bar has-back">
+          <button type="button" id="found-back" class="icon-btn" aria-label="Back to capture"></button>
+          <h1 class="top-title">Words found</h1>
+        </header>
+
+        <div id="found-strip" class="street-strip short" aria-hidden="true"></div>
+
+        <div id="found-summary" class="found-summary" hidden></div>
+
+        <div id="preview-list" class="found-list"></div>
+
+        <div class="found-footer">
+          <p class="found-note"><span id="found-note-icon"></span><span>Tick the words you want. You can edit a meaning before adding it.</span></p>
+          <button type="button" id="save-selected" class="btn btn-primary btn-block">Add words to collection</button>
+        </div>
+      </section>
+
+      <section id="collection-view" class="screen" hidden>
+        <header class="top-bar">
+          <h1 class="top-title">Collection</h1>
+          <button type="button" id="sign-out" class="icon-btn muted" aria-label="Sign out"></button>
+        </header>
+        <div id="collection-stats" class="collection-stats" hidden></div>
+        <div id="card-grid" class="card-grid"></div>
+      </section>
+
+      <div id="status-message" class="status-message" role="status" aria-live="polite"></div>
+
+      <nav id="bottom-nav" data-active="capture"></nav>
+    </div>
+  </div>
+
+  <!-- Chinese segmentation: loaded as an ES module from a CDN, then exposed
+       on window so the plain <script> files below can use it. -->
+  <script type="module">
+    import { Segment, useDefault } from "https://esm.sh/segmentit@2.0.3";
+    window.segmentitInstance = useDefault(new Segment());
+  </script>
+
+  <script src="../../js/storeVocab/supabaseClient.js"></script>
+  <script src="../../js/shared/icons.js"></script>
+  <script src="../../js/shared/bottomNav.js"></script>
+  <script src="../../js/shared/brand.js"></script>
+  <script src="../../js/storeVocab/zhFrequency.js"></script>
+  <script src="../../js/storeVocab/msFrequency.js"></script>
+  <script src="../../js/storeVocab/taFrequency.js"></script>
+  <script src="../../js/storeVocab/rarity.js"></script>
+  <script src="../../js/storeVocab/fillerWords.js"></script>
+  <script src="../../js/storeVocab/segmentation.js"></script>
+  <script src="../../js/storeVocab/ocr.js"></script>
+  <script src="../../js/storeVocab/pronunciation.js"></script>
+  <script src="../../js/storeVocab/auth.js"></script>
+  <script src="../../js/storeVocab/meaningLookup.js"></script>
+  <script src="../../js/storeVocab/vocabulary.js"></script>
+  <script src="../../js/storeVocab/cardArt.js"></script>
+  <script src="../../js/storeVocab/decor.js"></script>
+  <script src="../../js/storeVocab/cards.js"></script>
+  <script src="../../js/storeVocab/script.js"></script>
+</body>
+</html>
