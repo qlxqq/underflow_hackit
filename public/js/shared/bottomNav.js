@@ -1,7 +1,4 @@
 // Renders the shared bottom navigation into <nav id="bottom-nav" data-active="...">.
-// Identical file on both branches. Links assume the merged layout:
-//   public/pages/journey/journey.html
-//   public/pages/storeVocab/storeVocab.html
 // Scenarios and Friends are not built yet, so they render as disabled tabs.
 const NAV_LINKS = {
   journey: "../journey/journey.html",
