@@ -95,6 +95,12 @@ CREATE TABLE IF NOT EXISTS vocabulary (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Card pictures. "theme" is the name of a ready-made picture chosen by the
+-- AI lookup; "art_svg" is a picture Claude drew for the word (SVG shapes).
+ALTER TABLE vocabulary
+  ADD COLUMN IF NOT EXISTS theme TEXT,
+  ADD COLUMN IF NOT EXISTS art_svg TEXT;
+
 -- A word can only appear once per player and language. The first version
 -- of the table made it once per language across ALL players, which would
 -- stop two players from capturing the same word. Replace that rule.
