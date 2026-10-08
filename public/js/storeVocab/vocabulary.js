@@ -43,9 +43,25 @@ async function saveEntry(userId, entry) {
       context_sentence: entry.contextSentence || null,
       source: entry.source || "text",
       rarity: entry.rarity || "common",
+      theme: entry.theme || null,
       evolution_stage: 0,
       usage_count: 0,
     })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Stores a picture drawn by Claude (SVG shapes) on one card. It replaces
+// any picture the card had before, including a ready-made theme.
+async function updateArtById(userId, vocabId, artSvg) {
+  const { data, error } = await supabase
+    .from("vocabulary")
+    .update({ art_svg: artSvg })
+    .eq("vocab_id", vocabId)
+    .eq("user_id", userId)
     .select()
     .single();
 
