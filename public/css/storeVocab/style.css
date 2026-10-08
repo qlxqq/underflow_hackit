@@ -1,17 +1,6 @@
 /* Capture page styles. Tokens and shared components come from
    css/shared/base.css. */
 
-/* ---- login gate ---- */
-.auth-screen { padding: 32px 20px 40px; }
-.auth-title { margin: 0 0 20px; font-size: 28px; font-weight: 800; line-height: 1.2; }
-.auth-screen .status-message { margin: 0 0 16px; }
-.auth-card {
-  display: flex; flex-direction: column; gap: 12px;
-  margin-bottom: 16px; padding: 20px;
-  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg);
-}
-.auth-card h2 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
-
 /* ---- shared screen layout ---- */
 .screen { min-height: 100vh; min-height: 100dvh; padding-bottom: calc(var(--nav-h) + 32px); }
 
