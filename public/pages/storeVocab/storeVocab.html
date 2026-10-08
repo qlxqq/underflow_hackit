@@ -16,7 +16,7 @@
   <div class="app">
 
     <section id="auth-section" class="auth-screen">
-      <h1 class="auth-title">Mother Tongue Word Bank</h1>
+      <h1 class="auth-title" data-brand-name>App name</h1>
       <div id="auth-status" class="status-message" role="status" aria-live="polite"></div>
 
       <form id="signup-form" class="auth-card">
@@ -53,6 +53,13 @@
           </label>
         </header>
 
+        <div id="street-strip" class="street-strip" aria-hidden="true"></div>
+
+        <div class="capture-intro">
+          <h2 class="intro-title">Collect words from daily life</h2>
+          <p class="intro-sub">Snap a sign or paste some text. Each word becomes a card.</p>
+        </div>
+
         <form id="capture-form" class="capture-form">
           <label class="photo-tile" for="capture-image">
             <input class="visually-hidden" type="file" id="capture-image" accept="image/*" capture="environment" />
@@ -78,10 +85,9 @@
           <h1 class="top-title">Words found</h1>
         </header>
 
-        <div class="source-card">
-          <div class="source-label">From your text</div>
-          <div id="source-text" class="source-text"></div>
-        </div>
+        <div id="found-strip" class="street-strip short" aria-hidden="true"></div>
+
+        <div id="found-summary" class="found-summary" hidden></div>
 
         <div id="preview-list" class="found-list"></div>
 
@@ -96,6 +102,7 @@
           <h1 class="top-title">Collection</h1>
           <button type="button" id="sign-out" class="icon-btn muted" aria-label="Sign out"></button>
         </header>
+        <div id="collection-stats" class="collection-stats" hidden></div>
         <div id="card-grid" class="card-grid"></div>
       </section>
 
@@ -115,6 +122,7 @@
   <script src="../../js/storeVocab/supabaseClient.js"></script>
   <script src="../../js/shared/icons.js"></script>
   <script src="../../js/shared/bottomNav.js"></script>
+  <script src="../../js/shared/brand.js"></script>
   <script src="../../js/storeVocab/zhFrequency.js"></script>
   <script src="../../js/storeVocab/msFrequency.js"></script>
   <script src="../../js/storeVocab/taFrequency.js"></script>
@@ -127,6 +135,7 @@
   <script src="../../js/storeVocab/meaningLookup.js"></script>
   <script src="../../js/storeVocab/vocabulary.js"></script>
   <script src="../../js/storeVocab/cardArt.js"></script>
+  <script src="../../js/storeVocab/decor.js"></script>
   <script src="../../js/storeVocab/cards.js"></script>
   <script src="../../js/storeVocab/script.js"></script>
 </body>

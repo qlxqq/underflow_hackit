@@ -17,12 +17,15 @@ const textInput = $("capture-text");
 const languageSelect = $("capture-language");
 const imageInput = $("capture-image");
 const previewList = $("preview-list");
-const sourceText = $("source-text");
 const cardGrid = $("card-grid");
 const statusMessage = $("status-message");
 const previewButton = captureForm.querySelector("button[type=submit]");
 const saveButton = $("save-selected");
 const foundBack = $("found-back");
+const foundSummary = $("found-summary");
+const collectionStats = $("collection-stats");
+const streetStrip = $("street-strip");
+const foundStrip = $("found-strip");
 
 let currentUser = null;
 let currentPreviewWords = [];
@@ -66,11 +69,34 @@ function showView(name) {
   window.scrollTo(0, 0);
 }
 
+// The capture and found views take the colour of the chosen language, the
+// same green / sand / blue the Journey language cards use.
+function setLanguageTint(code) {
+  views.capture.dataset.lang = code;
+  views.found.dataset.lang = code;
+  streetStrip.innerHTML = getStreetStrip(code);
+  foundStrip.innerHTML = getStreetStrip(code);
+}
+
 // ---- collection ----
+function renderCollectionStats(entries) {
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const mastered = entries.filter((e) => e.evolution_stage >= 2).length;
+  const recent = entries.filter((e) => new Date(e.created_at).getTime() >= weekAgo).length;
+  collectionStats.hidden = entries.length === 0;
+  collectionStats.innerHTML = `
+    <div class="stat-tile stat-words"><strong>${entries.length}</strong><span>${entries.length === 1 ? "Word" : "Words"}</span></div>
+    <div class="stat-tile stat-mastered"><strong>${mastered}</strong><span>Mastered</span></div>
+    <div class="stat-tile stat-recent" title="Words added in the last 7 days"><strong>${recent}</strong><span>This week</span></div>
+  `;
+}
+
 async function loadCardGrid() {
   try {
     const entries = await getAllVocabulary(currentUser.id);
     renderCardGrid(entries, cardGrid, handleDelete, handlePractice);
+    renderCollectionStats(entries);
+    backfillArt(entries);
   } catch (err) {
     console.error("Failed to load word bank:", err);
     showStatus("Could not load your word bank. Check your connection and try again.", "error");
@@ -101,8 +127,49 @@ async function handlePractice(vocabId, currentUsageCount, currentStage) {
   }
 }
 
+// ---- pictures drawn by Claude ----
+// Words that none of the ready-made pictures fit get a picture drawn for
+// them. This runs in the background: the cards show their usual picture
+// first and switch when the drawing is ready.
+const artTried = new Set(); // cards already tried this visit, so a failure is not retried in a loop
+
+async function drawMissingArt(rows) {
+  if (!currentUser || rows.length === 0) return;
+  let drawn = 0;
+  let failed = 0;
+  await Promise.allSettled(
+    rows.map(async (row) => {
+      artTried.add(row.vocab_id);
+      const svg = await requestWordArt({ word: row.word, englishMeaning: row.english_meaning, language: row.language });
+      if (!svg || !currentUser) { failed++; return; }
+      try {
+        await updateArtById(currentUser.id, row.vocab_id, svg);
+        drawn++;
+      } catch (err) {
+        console.error(`Could not save the picture for "${row.word}":`, err);
+        failed++;
+      }
+    }),
+  );
+  if (drawn > 0 && currentUser && !views.collection.hidden) await loadCardGrid();
+  if (failed > 0 && drawn === 0) {
+    showStatus(`Could not draw ${failed === 1 ? "a picture" : failed + " pictures"} right now. They will be tried again next time.`, "error");
+  }
+}
+
+// Any card that ended up with only the plain signboard (words saved before
+// pictures were drawn, a drawing that failed, or the page closed too early)
+// gets one drawn when the collection is shown. A few at a time.
+function backfillArt(entries) {
+  const todo = entries
+    .filter((e) => !e.art_svg && pickTheme(e) === "generic" && !artTried.has(e.vocab_id))
+    .slice(0, 4);
+  if (todo.length > 0) drawMissingArt(todo);
+}
+
 // ---- capture -> words found ----
 async function buildPreview(text, language) {
+  setLanguageTint(language);
   const rawWords = await segmentText(text, language);
   const words = filterFillerWords(rawWords, language);
   const existing = new Set(
@@ -120,10 +187,10 @@ async function buildPreview(text, language) {
     alreadySaved: existing.has(word.toLowerCase()),
     romanization: meanings[word]?.romanization || "",
     englishMeaning: meanings[word]?.englishMeaning || "",
+    theme: meanings[word]?.theme || "", // a ready-made picture, or "none"
   }));
   currentContextSentence = text;
 
-  sourceText.textContent = text;
   renderPreview();
   showView("found");
 }
@@ -132,10 +199,45 @@ function updateSaveButton() {
   const count = previewList.querySelectorAll("input[type=checkbox]:checked:not(:disabled)").length;
   saveButton.textContent = count === 0 ? "Select words to add" : `Add ${count} word${count === 1 ? "" : "s"} to collection`;
   saveButton.disabled = count === 0 || isSaving;
+  updateSelectAll();
+}
+
+// "Select all" / "Clear all": acts on every word that is not already saved.
+function selectableBoxes() {
+  return [...previewList.querySelectorAll("input[type=checkbox]:not(:disabled)")];
+}
+
+function updateSelectAll() {
+  const button = $("select-all");
+  if (!button) return;
+  const boxes = selectableBoxes();
+  button.hidden = boxes.length === 0;
+  button.textContent = boxes.every((box) => box.checked) ? "Clear all" : "Select all";
+}
+
+foundSummary.addEventListener("click", (e) => {
+  if (!e.target.closest("#select-all")) return;
+  const boxes = selectableBoxes();
+  const checkAll = !boxes.every((box) => box.checked);
+  boxes.forEach((box) => (box.checked = checkAll));
+  updateSaveButton();
+});
+
+function renderFoundSummary() {
+  const total = currentPreviewWords.length;
+  const saved = currentPreviewWords.filter((w) => w.alreadySaved).length;
+  foundSummary.hidden = total === 0;
+  foundSummary.innerHTML = `
+    <span class="sum-chip"><strong>${total}</strong> found</span>
+    <span class="sum-chip sum-new"><strong>${total - saved}</strong> new</span>
+    ${saved > 0 ? `<span class="sum-chip sum-saved"><strong>${saved}</strong> in collection</span>` : ""}
+    <button type="button" id="select-all" class="select-all-btn">Select all</button>
+  `;
 }
 
 function renderPreview() {
   previewList.innerHTML = "";
+  renderFoundSummary();
 
   if (currentPreviewWords.length === 0) {
     previewList.innerHTML = `<p class="empty-state">No words found. Try different text.</p>`;
@@ -146,23 +248,30 @@ function renderPreview() {
   currentPreviewWords.forEach((item, index) => {
     const word = escapeHtml(item.word);
     const row = document.createElement("div");
-    row.className = "found-row";
+    const saved = item.alreadySaved;
+    const noRomanization = item.language === "ms"; // Malay has none
+    row.className = `found-row${saved ? " is-saved" : ""}`;
     row.innerHTML = `
       <label class="check-wrap">
-        <input type="checkbox" data-index="${index}" aria-label="Add ${word}" ${item.alreadySaved ? "disabled" : "checked"} />
+        <input type="checkbox" data-index="${index}" aria-label="Add ${word}" ${saved ? "checked disabled" : ""} />
       </label>
       <div class="found-main">
         <div class="found-head">
           <span class="found-word">${word}</span>
-          <span class="found-tag rarity-${item.rarity}">${item.rarity}</span>
-          ${item.alreadySaved ? '<span class="found-tag in-collection">In collection</span>' : ""}
+          ${saved ? '<span class="found-saved-note">Already in your collection</span>' : ""}
         </div>
         ${
-          item.alreadySaved
+          saved
             ? ""
-            : `<div class="found-fields">
-          <input type="text" class="field-inline meaning-input" data-index="${index}" aria-label="English meaning of ${word}" placeholder="English meaning" value="${escapeHtml(item.englishMeaning)}" />
-          <input type="text" class="field-inline romanization-input" data-index="${index}" aria-label="Romanization of ${word}" placeholder="Romanization" value="${escapeHtml(item.romanization)}" />
+            : `<div class="found-fields${noRomanization ? " single" : ""}">
+          <label class="found-field"><span class="field-cap" aria-hidden="true">Meaning</span>
+            <input type="text" class="field-inline meaning-input" data-index="${index}" aria-label="English meaning of ${word}" placeholder="Add meaning" value="${escapeHtml(item.englishMeaning)}" /></label>
+          ${
+            noRomanization
+              ? ""
+              : `<label class="found-field"><span class="field-cap" aria-hidden="true">Romanization</span>
+            <input type="text" class="field-inline romanization-input" data-index="${index}" aria-label="Romanization of ${word}" placeholder="Add reading" value="${escapeHtml(item.romanization)}" /></label>`
+          }
         </div>`
         }
       </div>
@@ -251,11 +360,12 @@ saveButton.addEventListener("click", async () => {
 
   let savedCount = 0;
   let skippedCount = 0;
+  const needArt = []; // saved words that need a picture drawn
 
   for (const checkbox of checked) {
     const item = currentPreviewWords[checkbox.dataset.index];
     try {
-      await saveEntry(currentUser.id, {
+      const row = await saveEntry(currentUser.id, {
         word: item.word,
         language: item.language,
         contextSentence: currentContextSentence,
@@ -263,7 +373,9 @@ saveButton.addEventListener("click", async () => {
         rarity: item.rarity,
         romanization: item.romanization,
         englishMeaning: item.englishMeaning,
+        theme: item.theme === "none" ? null : item.theme,
       });
+      if (item.theme === "none") needArt.push(row);
       savedCount++;
     } catch (err) {
       // Most likely the unique constraint rejecting a duplicate that
@@ -285,6 +397,15 @@ saveButton.addEventListener("click", async () => {
   } else {
     showStatus(`Added ${savedCount}, but ${skippedCount} could not be added (likely already in your collection).`, "error");
   }
+
+  drawMissingArt(needArt); // not awaited: pictures appear when ready
+});
+
+// The empty collection has a button that goes to Capture.
+cardGrid.addEventListener("click", (e) => {
+  if (!e.target.closest("[data-go-capture]")) return;
+  history.replaceState(null, "", "#capture");
+  showView("capture");
 });
 
 // ---- bottom nav: Capture and Collection switch views in place ----
@@ -349,7 +470,9 @@ async function enterApp() {
 }
 
 // ---- one-time setup: icons that live in static markup, then the nav ----
-$("photo-icon").innerHTML = icon("camera", 24);
+$("photo-icon").innerHTML = icon("camera", 26);
+languageSelect.addEventListener("change", () => setLanguageTint(languageSelect.value));
+setLanguageTint(languageSelect.value);
 $("found-back").innerHTML = icon("chevLeft", 22);
 $("found-note-icon").innerHTML = icon("info", 18);
 signOutButton.innerHTML = icon("logout", 22);
