@@ -22,6 +22,9 @@ async function signOut() {
 
 async function getCurrentUser() {
   const { data, error } = await supabase.auth.getUser();
+  // Supabase reports "nobody is logged in" as an error. That is a normal
+  // answer for us, not a failure.
+  if (error && error.name === "AuthSessionMissingError") return null;
   if (error) throw error;
   return data.user;
 }
