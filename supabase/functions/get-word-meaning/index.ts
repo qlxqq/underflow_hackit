@@ -8,6 +8,7 @@
 //      -> { meanings: { word: { englishMeaning, romanization, theme } } }
 //      "theme" is the name of one of the app's ready-made card pictures, or
 //      "none" when none of them fits the word.
+//   3. OCR: { mode: "ocr", image (base64), mediaType, language } -> { text }
 //   2. Art: { mode: "art", word, englishMeaning, language, note }
 //      -> { svg }   a small flat illustration drawn by Claude, cleaned up so
 //      it can only contain simple shapes.
@@ -22,7 +23,10 @@ const CORS_HEADERS = {
 // Change these two lines to use a different model. A bigger model usually
 // draws better pictures but costs more per picture.
 const TEXT_MODEL = "claude-haiku-4-5-20251001";
-const ART_MODEL = "claude-sonnet-5-5";
+const ART_MODEL = "claude-haiku-4-5-20251001";
+// Reading text from photos needs the most accurate eyes, so this one uses a
+// bigger model. It is only called once per photo.
+const OCR_MODEL = "claude-sonnet-5-5";
 
 // Must match THEMES in public/js/storeVocab/cardArt.js (everything except
 // "generic", which is only the plain fallback picture).
@@ -63,6 +67,38 @@ Example of the style (a heart):
 
 Example of the style (a coffee cup):
 <ellipse cx="34" cy="58" rx="25" ry="5.5" fill="#d8cdb8"/><path d="M13 28h40v12a20 16 0 0 1-40 0z" fill="#ffffff" stroke="#e1d5bd" stroke-width="2"/><ellipse cx="33" cy="28" rx="20" ry="5.5" fill="#6b3f1d"/><path d="M53 33a8.5 8.5 0 0 1 0 17" fill="none" stroke="#e1d5bd" stroke-width="5" stroke-linecap="round"/><path d="M24 20q-4-6 0-12M34 20q-4-6 0-12M44 20q-4-6 0-12" fill="none" stroke="#c4cedb" stroke-width="3" stroke-linecap="round"/>`;
+
+const OCR_LANGUAGE_NAMES: Record<string, string> = {
+  zh: "Simplified Chinese (Mandarin)",
+  ms: "Malay",
+  ta: "Tamil",
+};
+
+function ocrSystemPrompt(language: string) {
+  const name = OCR_LANGUAGE_NAMES[language] ?? "the requested language";
+  return `You read text from photos of school textbooks and notes. This is a transcription job, not a writing job.
+Copy out ONLY the ${name} text that is clearly visible in the photo, exactly as printed.
+Rules:
+- Never guess, complete or invent text. If a character or word is blurry or cut off, skip it.
+- Ignore pinyin or other romanization, English text, page numbers, exercise numbers, pictures and decorations.
+- Keep the original reading order. Put each line or sentence on its own line.
+- Do not translate, explain or add comments.
+- If there is no clear ${name} text, reply with nothing at all (an empty reply).
+Reply with the transcribed text only.`;
+}
+
+async function readTextFromPhoto(image: string, mediaType: string, language: string) {
+  const text = await callClaude(
+    OCR_MODEL,
+    ocrSystemPrompt(language),
+    [
+      { type: "image", source: { type: "base64", media_type: mediaType, data: image } },
+      { type: "text", text: "Transcribe the text in this photo." },
+    ],
+    1500,
+  );
+  return text.trim();
+}
 
 // <sanitizer>
 // Whatever Claude draws is rebuilt from scratch: only the shapes and
@@ -133,7 +169,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function callClaude(model: string, system: string, userContent: string, maxTokens: number) {
+async function callClaude(model: string, system: string, userContent: string | unknown[], maxTokens: number) {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -213,6 +249,18 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
+
+    // ---- job 3: read the text in a photo ----
+    if (body.mode === "ocr") {
+      const image = String(body.image ?? "");
+      const mediaType = String(body.mediaType ?? "image/jpeg");
+      const language = String(body.language ?? "").slice(0, 5);
+      if (!image || image.length > 6_000_000) return json({ error: "Photo missing or too large." }, 400);
+      if (!["image/jpeg", "image/png", "image/webp"].includes(mediaType)) {
+        return json({ error: "Unsupported photo type." }, 400);
+      }
+      return json({ text: await readTextFromPhoto(image, mediaType, language) });
+    }
 
     // ---- job 2: draw a picture for one word ----
     if (body.mode === "art") {
