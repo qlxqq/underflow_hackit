@@ -1,14 +1,13 @@
-// Capture page: login gate, then three views - Capture, Words found, and
-// Collection - switched by showView(). Every data call passes the logged-in
-// user's id, since vocabulary is scoped per user.
+// Capture page: three views - Capture, Words found, and Collection -
+// switched by showView(). Login lives on the Journey page; anyone who is not
+// logged in is sent there. Every data call passes the logged-in user's id,
+// since vocabulary is scoped per user.
 
 const $ = (id) => document.getElementById(id);
 
-const authSection = $("auth-section");
+const JOURNEY_PAGE = "../journey/journey.html";
+
 const appSection = $("app-section");
-const signupForm = $("signup-form");
-const loginForm = $("login-form");
-const authStatus = $("auth-status");
 const signOutButton = $("sign-out");
 
 const views = { capture: $("capture-view"), found: $("found-view"), collection: $("collection-view") };
@@ -34,11 +33,6 @@ let isSaving = false;
 let statusTimer = null;
 
 // ---- small helpers ----
-function showAuthError(message) {
-  authStatus.textContent = message;
-  authStatus.className = "status-message status-error";
-}
-
 function showStatus(message, type = "info") {
   clearTimeout(statusTimer);
   statusMessage.textContent = message;
@@ -425,40 +419,20 @@ $("bottom-nav").addEventListener("click", async (e) => {
 });
 
 // ---- auth ----
-signupForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  try {
-    await signUp($("signup-email").value.trim(), $("signup-password").value);
-    authStatus.textContent = "Account created. If email confirmation is on, confirm it first, then log in.";
-    authStatus.className = "status-message status-success";
-  } catch (err) {
-    console.error("Sign up failed:", err);
-    showAuthError(err.message || "Could not sign up.");
-  }
-});
-
-loginForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  try {
-    await signIn($("login-email").value.trim(), $("login-password").value);
-    await enterApp();
-  } catch (err) {
-    console.error("Login failed:", err);
-    showAuthError(err.message || "Could not log in.");
-  }
-});
-
+// Login and sign-up live on the Journey page. Anyone who is not logged in is
+// sent there.
 signOutButton.addEventListener("click", async () => {
   await signOut();
   currentUser = null;
-  appSection.hidden = true;
-  authSection.hidden = false;
+  location.href = JOURNEY_PAGE;
 });
 
 async function enterApp() {
   currentUser = await getCurrentUser();
-  if (!currentUser) return;
-  authSection.hidden = true;
+  if (!currentUser) {
+    location.replace(JOURNEY_PAGE);
+    return;
+  }
   appSection.hidden = false;
 
   if (location.hash === "#collection") {
