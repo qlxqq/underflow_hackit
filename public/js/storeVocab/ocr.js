@@ -86,14 +86,20 @@ async function readWithTesseract(canvas, language) {
   }
 }
 
+// Tells the page how the last photo was read, so a wrong result can be
+// traced: "Claude", or "Tesseract (backup)" plus the reason Claude failed.
+window.lastOcrInfo = "";
+
 async function extractTextFromImage(imageFile, language) {
   const canvas = await photoToCanvas(imageFile);
 
   let text;
   try {
     text = await readWithClaude(canvas, language);
+    window.lastOcrInfo = "Read by Claude.";
   } catch (err) {
     console.error("Claude photo reading failed, using Tesseract instead:", err);
+    window.lastOcrInfo = "Read by backup (Tesseract) because: " + (err && err.message ? err.message : err);
     text = await readWithTesseract(canvas, language);
   }
 

@@ -1,13 +1,14 @@
-// Capture page: three views - Capture, Words found, and Collection -
-// switched by showView(). Login lives on the Journey page; anyone who is not
-// logged in is sent there. Every data call passes the logged-in user's id,
-// since vocabulary is scoped per user.
+// Capture page: login gate, then three views - Capture, Words found, and
+// Collection - switched by showView(). Every data call passes the logged-in
+// user's id, since vocabulary is scoped per user.
 
 const $ = (id) => document.getElementById(id);
 
-const JOURNEY_PAGE = "../journey/journey.html";
-
+const authSection = $("auth-section");
 const appSection = $("app-section");
+const signupForm = $("signup-form");
+const loginForm = $("login-form");
+const authStatus = $("auth-status");
 const signOutButton = $("sign-out");
 
 const views = { capture: $("capture-view"), found: $("found-view"), collection: $("collection-view") };
@@ -33,6 +34,11 @@ let isSaving = false;
 let statusTimer = null;
 
 // ---- small helpers ----
+function showAuthError(message) {
+  authStatus.textContent = message;
+  authStatus.className = "status-message status-error";
+}
+
 function showStatus(message, type = "info") {
   clearTimeout(statusTimer);
   statusMessage.textContent = message;
@@ -327,7 +333,7 @@ imageInput.addEventListener("change", async (e) => {
     }
     textInput.value = extractedText;
     await buildPreview(extractedText, languageSelect.value);
-    clearStatus();
+    showStatus(window.lastOcrInfo || "", "info");
   } catch (err) {
     console.error("Failed to process image:", err);
     showStatus("Could not read that photo. Try a clearer one.", "error");
@@ -418,28 +424,41 @@ $("bottom-nav").addEventListener("click", async (e) => {
   }
 });
 
-// ---- login: handled on the Journey page ----
-signOutButton.addEventListener("click", async () => {
+// ---- auth ----
+signupForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
   try {
-    await signOut();
+    await signUp($("signup-email").value.trim(), $("signup-password").value);
+    authStatus.textContent = "Account created. If email confirmation is on, confirm it first, then log in.";
+    authStatus.className = "status-message status-success";
   } catch (err) {
-    console.error("Sign out failed:", err);
+    console.error("Sign up failed:", err);
+    showAuthError(err.message || "Could not sign up.");
   }
+});
+
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    await signIn($("login-email").value.trim(), $("login-password").value);
+    await enterApp();
+  } catch (err) {
+    console.error("Login failed:", err);
+    showAuthError(err.message || "Could not log in.");
+  }
+});
+
+signOutButton.addEventListener("click", async () => {
+  await signOut();
   currentUser = null;
-  location.href = JOURNEY_PAGE;
+  appSection.hidden = true;
+  authSection.hidden = false;
 });
 
 async function enterApp() {
-  try {
-    currentUser = await getCurrentUser();
-  } catch (err) {
-    console.error("Could not check who is logged in:", err);
-  }
-  // Not logged in: go to the Journey page, which has the login screen.
-  if (!currentUser) {
-    location.replace(JOURNEY_PAGE);
-    return;
-  }
+  currentUser = await getCurrentUser();
+  if (!currentUser) return;
+  authSection.hidden = true;
   appSection.hidden = false;
 
   if (location.hash === "#collection") {
