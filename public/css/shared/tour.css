@@ -1,0 +1,133 @@
+/* Guided tour (js/shared/tour.js) and the capture tips card.
+   Shared by the Journey and Capture pages. Uses the tokens in base.css. */
+
+/* ---- capture tips card ---- */
+.tips-card {
+  margin: 18px 0 8px;
+  padding: 12px 14px;
+  background: var(--amber-bg, #fff4de);
+  border: 1px solid var(--amber-bd, #f2d9a6);
+  border-radius: var(--radius-md, 16px);
+  color: var(--ink, #18233a);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.tips-card summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 800;
+  color: var(--amber-txt, #9a5b00);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tips-card summary::-webkit-details-marker { display: none; }
+.tips-card summary::after { content: "Hide"; font-size: 12px; font-weight: 700; opacity: 0.8; }
+.tips-card:not([open]) summary::after { content: "Show"; }
+.tips-card ul { margin: 8px 0 0; padding-left: 18px; }
+.tips-card li { margin: 3px 0; }
+
+/* ---- "?" guide button in the top bars ---- */
+.tour-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--amber-bg, #fff4de);
+  border: 1px solid var(--amber-bd, #f2d9a6);
+  color: var(--amber-txt, #9a5b00);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+}
+.tour-help { cursor: pointer; }
+.tour-top-actions { display: flex; align-items: center; gap: 10px; }
+
+/* ---- tour layer ---- */
+.tour-shield {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  touch-action: none;
+}
+.tour-spot {
+  position: fixed;
+  z-index: 2001;
+  border-radius: 14px;
+  box-shadow: 0 0 0 9999px rgba(14, 22, 40, 0.66), 0 0 0 3px var(--amber, #f2a93b);
+  pointer-events: none;
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+.tour-card,
+.tour-modal-card {
+  position: fixed;
+  z-index: 2002;
+  background: var(--white, #fff);
+  color: var(--ink, #18233a);
+  border-radius: var(--radius-lg, 20px);
+  box-shadow: 0 12px 40px rgba(14, 22, 40, 0.35);
+  font-family: var(--font-ui, system-ui, sans-serif);
+  padding: 16px 18px 14px;
+}
+.tour-card { width: min(340px, calc(100vw - 24px)); }
+.tour-step-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted, #5b6783);
+  margin-bottom: 4px;
+}
+.tour-title { margin: 0 0 6px; font-size: 18px; font-weight: 800; }
+.tour-text { margin: 0 0 14px; font-size: 14.5px; line-height: 1.5; color: var(--muted, #5b6783); }
+.tour-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour-link {
+  border: 0;
+  background: none;
+  padding: 8px 4px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted, #5b6783);
+  cursor: pointer;
+}
+.tour-buttons { display: flex; gap: 8px; }
+.tour-btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 18px;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 800;
+  cursor: pointer;
+  background: var(--amber, #f2a93b);
+  color: var(--ink, #18233a);
+}
+.tour-btn.secondary {
+  background: var(--bg, #f4f7fa);
+  border: 1px solid var(--line, #dce3ec);
+}
+
+/* welcome pop-up */
+.tour-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(14, 22, 40, 0.66);
+}
+.tour-modal-card {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(340px, calc(100vw - 32px));
+  text-align: center;
+  padding: 24px 20px 18px;
+}
+.tour-modal-card .tour-title { font-size: 20px; }
+.tour-modal-card .tour-actions { flex-direction: column; align-items: stretch; }
+.tour-modal-card .tour-btn { width: 100%; padding: 12px 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot { transition: none; }
+}
