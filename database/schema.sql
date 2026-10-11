@@ -131,3 +131,46 @@ CREATE POLICY "Users can update their own vocabulary" ON vocabulary
 
 CREATE POLICY "Users can delete their own vocabulary" ON vocabulary
   FOR DELETE USING (auth.uid() = user_id);
+
+
+-- ------------------------------------------------------------
+-- album_cards: the island album cards a player has earned from
+-- mini-games (Hawker Centre, Family, ...). Kept apart from
+-- "vocabulary" (captured words), so a word can be both a captured
+-- card and an album card. Album cards cannot be captured.
+--
+-- A player can read, add and update their own rows. There is
+-- deliberately NO delete policy: album cards cannot be removed,
+-- only captured words can.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS album_cards (
+    card_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    album_id VARCHAR(40) NOT NULL,
+    language VARCHAR(10) NOT NULL,
+    word VARCHAR(255) NOT NULL,
+    source VARCHAR(40) NOT NULL DEFAULT 'island',
+    evolution_stage SMALLINT NOT NULL DEFAULT 0,
+    usage_count INTEGER NOT NULL DEFAULT 0,
+    earned_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- One copy of each card per player, album and language.
+ALTER TABLE album_cards DROP CONSTRAINT IF EXISTS unique_album_card;
+ALTER TABLE album_cards
+  ADD CONSTRAINT unique_album_card UNIQUE (user_id, album_id, language, word);
+
+ALTER TABLE album_cards ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own album cards" ON album_cards;
+DROP POLICY IF EXISTS "Users can insert their own album cards" ON album_cards;
+DROP POLICY IF EXISTS "Users can update their own album cards" ON album_cards;
+
+CREATE POLICY "Users can view their own album cards" ON album_cards
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own album cards" ON album_cards
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own album cards" ON album_cards
+  FOR UPDATE USING (auth.uid() = user_id);
