@@ -16,7 +16,7 @@ const textInput = $("capture-text");
 const languageSelect = $("capture-language");
 const imageInput = $("capture-image");
 const previewList = $("preview-list");
-const cardGrid = $("card-grid");
+const albumView = $("album-view");
 const statusMessage = $("status-message");
 const previewButton = captureForm.querySelector("button[type=submit]");
 const saveButton = $("save-selected");
@@ -30,6 +30,8 @@ let currentUser = null;
 let currentPreviewWords = [];
 let currentContextSentence = "";
 let isSaving = false;
+const MAX_WORDS_PER_CAPTURE = 30; // keeps each capture to a number of cards worth choosing from
+let hiddenWordCount = 0; // words found beyond the limit, not shown
 let statusTimer = null;
 
 // ---- small helpers ----
@@ -85,15 +87,58 @@ function renderCollectionStats(entries) {
   `;
 }
 
+// The Mother Tongue the player chose on the Journey page. The Collection
+// only shows albums for this language.
+function getMotherTongue() {
+  try {
+    const code = localStorage.getItem(`journeyLanguage:${currentUser.id}`);
+    if (code && LANGUAGE_NAMES[code]) return code;
+  } catch (err) {
+    // storage blocked: fall back to the capture language
+  }
+  return languageSelect.value;
+}
+
 async function loadCardGrid() {
   try {
-    const entries = await getAllVocabulary(currentUser.id);
-    renderCardGrid(entries, cardGrid, handleDelete, handlePractice);
-    renderCollectionStats(entries);
-    backfillArt(entries);
+    const language = getMotherTongue();
+    const captured = await getAllVocabulary(currentUser.id, language);
+    let albumRows = [];
+    try {
+      albumRows = await getAlbumCards(currentUser.id, language);
+    } catch (err) {
+      console.error("Could not load island album cards (is the album_cards table created?):", err);
+    }
+    renderAlbums({ captured, albumRows, language });
+    renderCollectionStats([...captured, ...albumRows.map((r) => ({ evolution_stage: r.evolution_stage, created_at: r.earned_at }))]);
+    backfillArt(captured);
   } catch (err) {
     console.error("Failed to load word bank:", err);
     showStatus("Could not load your word bank. Check your connection and try again.", "error");
+  }
+}
+
+// Island album cards level up the same way, but are kept in their own table.
+async function handleAlbumPractice(cardId, currentUsageCount, currentStage) {
+  try {
+    const updated = await incrementAlbumCardUsage(currentUser.id, cardId, currentUsageCount, currentStage);
+    showStatus(updated.evolution_stage > currentStage ? "Card evolved!" : "Practised.", "success");
+    await loadCardGrid();
+  } catch (err) {
+    console.error("Failed to record practice:", err);
+    showStatus("Could not record that practice attempt.", "error");
+  }
+}
+
+// Only used when the page is opened with ?dev=1, so island cards can be
+// tried out before the island and its mini-games exist.
+async function handleDevAward(albumId, word) {
+  try {
+    await awardAlbumCard(currentUser.id, albumId, getMotherTongue(), word, "dev");
+    await loadCardGrid();
+  } catch (err) {
+    console.error("Could not award that card:", err);
+    showStatus("Could not award that card.", "error");
   }
 }
 
@@ -165,7 +210,9 @@ function backfillArt(entries) {
 async function buildPreview(text, language) {
   setLanguageTint(language);
   const rawWords = await segmentText(text, language);
-  const words = filterFillerWords(rawWords, language);
+  const allWords = filterFillerWords(rawWords, language);
+  const words = allWords.slice(0, MAX_WORDS_PER_CAPTURE);
+  hiddenWordCount = allWords.length - words.length;
   const existing = new Set(
     (await findExistingWords(currentUser.id, language, words)).map((w) => w.toLowerCase()),
   );
@@ -225,6 +272,7 @@ function renderFoundSummary() {
     <span class="sum-chip"><strong>${total}</strong> found</span>
     <span class="sum-chip sum-new"><strong>${total - saved}</strong> new</span>
     ${saved > 0 ? `<span class="sum-chip sum-saved"><strong>${saved}</strong> in collection</span>` : ""}
+    ${hiddenWordCount > 0 ? `<span class="sum-chip" title="Capture a smaller area to see the rest"><strong>${hiddenWordCount}</strong> more not shown</span>` : ""}
     <button type="button" id="select-all" class="select-all-btn">Select all</button>
   `;
 }
@@ -387,19 +435,15 @@ saveButton.addEventListener("click", async () => {
   await loadCardGrid();
 
   if (skippedCount === 0) {
-    showStatus(`Added ${savedCount} word${savedCount === 1 ? "" : "s"} to your collection.`, "success");
+    // The Collection only shows the player's Mother Tongue.
+    const savedLanguage = currentPreviewWords[0] && currentPreviewWords[0].language;
+    const otherLanguage = savedLanguage && savedLanguage !== getMotherTongue() ? ` They are in your ${LANGUAGE_NAMES[savedLanguage]} collection: change your Mother Tongue on the Journey page to see them.` : "";
+    showStatus(`Added ${savedCount} word${savedCount === 1 ? "" : "s"} to your collection.${otherLanguage}`, "success");
   } else {
     showStatus(`Added ${savedCount}, but ${skippedCount} could not be added (likely already in your collection).`, "error");
   }
 
   drawMissingArt(needArt); // not awaited: pictures appear when ready
-});
-
-// The empty collection has a button that goes to Capture.
-cardGrid.addEventListener("click", (e) => {
-  if (!e.target.closest("[data-go-capture]")) return;
-  history.replaceState(null, "", "#capture");
-  showView("capture");
 });
 
 // ---- bottom nav: Capture and Collection switch views in place ----
@@ -434,6 +478,10 @@ async function enterApp() {
     return;
   }
   appSection.hidden = false;
+  // Start the capture language on the player's Mother Tongue.
+  const motherTongue = getMotherTongue();
+  languageSelect.value = motherTongue;
+  setLanguageTint(motherTongue);
 
   if (location.hash === "#collection") {
     showView("collection");
@@ -444,6 +492,16 @@ async function enterApp() {
 }
 
 // ---- one-time setup: icons that live in static markup, then the nav ----
+initAlbums(albumView, {
+  onDelete: handleDelete,
+  onPractice: handlePractice,
+  onPracticeAlbum: handleAlbumPractice,
+  onDevAward: handleDevAward,
+  onCapture: () => {
+    history.replaceState(null, "", "#capture");
+    showView("capture");
+  },
+});
 $("photo-icon").innerHTML = icon("camera", 26);
 languageSelect.addEventListener("change", () => setLanguageTint(languageSelect.value));
 setLanguageTint(languageSelect.value);
