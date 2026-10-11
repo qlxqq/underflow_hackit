@@ -1,0 +1,239 @@
+/* The Collection screen: album shelf, Captured Words (filters, search,
+   categories) and island albums. Uses the tokens in css/shared/base.css. */
+
+.album-view { padding: 14px 20px calc(var(--nav-h, 72px) + 28px); }
+.album-view .card-grid { padding: 12px 0 0; }
+
+/* ---- shelf ---- */
+.album-list { display: flex; flex-direction: column; gap: 10px; }
+.album-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 22px 2px 10px;
+  font-size: 16px;
+  font-weight: 800;
+}
+.album-section span { font-size: 13px; font-weight: 700; color: var(--muted, #5b6783); }
+.album-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--white, #fff);
+  border: 1px solid var(--line, #dce3ec);
+  border-radius: var(--radius-md, 16px);
+  font: inherit;
+  text-align: left;
+  color: var(--ink, #18233a);
+  cursor: pointer;
+}
+.album-cover {
+  flex: none;
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  background: var(--bg, #f4f7fa);
+  padding: 4px;
+}
+.album-cover svg { width: 100%; height: 100%; display: block; }
+.album-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.album-name { font-size: 16px; font-weight: 800; }
+.album-count { font-size: 13px; color: var(--muted, #5b6783); }
+.album-bar {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--lock-bg, #e3e8ef);
+  overflow: hidden;
+}
+.album-bar i { display: block; height: 100%; border-radius: 999px; background: var(--teal, #17a596); }
+.album-note { margin: 14px 2px 0; font-size: 12.5px; color: var(--muted, #5b6783); line-height: 1.45; }
+
+/* a finished album */
+.album-badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #6b4300;
+  background: linear-gradient(110deg, #ffe08a, #f2a93b 45%, #ffe9a8 60%, #f2a93b);
+  background-size: 200% 100%;
+  animation: album-shine 3.5s linear infinite;
+}
+.album-tile.is-complete { border-color: var(--amber, #f2a93b); background: var(--amber-bg, #fff4de); }
+.album-tile.is-complete .album-bar i { background: var(--amber, #f2a93b); }
+@keyframes album-shine { to { background-position: -200% 0; } }
+
+/* ---- inside an album ---- */
+.album-detail-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.album-title { margin: 0; font-size: 20px; font-weight: 800; }
+.album-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 0;
+  background: none;
+  padding: 6px 6px 6px 0;
+  font: inherit;
+  font-weight: 800;
+  color: var(--ink, #18233a);
+  cursor: pointer;
+}
+.album-done,
+.album-how {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm, 12px);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.album-done {
+  background: var(--amber-bg, #fff4de);
+  border: 1px solid var(--amber-bd, #f2d9a6);
+  color: var(--amber-txt, #9a5b00);
+  font-weight: 800;
+}
+.album-how { background: var(--bg, #f4f7fa); border: 1px solid var(--line, #dce3ec); color: var(--muted, #5b6783); }
+
+/* an island card not earned yet */
+.slot-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 220px;
+  padding: 12px;
+  border: 2px dashed var(--line, #dce3ec);
+  border-radius: var(--radius-md, 16px);
+  background: var(--bg, #f4f7fa);
+  color: var(--lock-ic, #6e7d96);
+  font: inherit;
+  text-align: center;
+}
+button.slot-card { cursor: pointer; }
+.slot-q { font-size: 38px; font-weight: 800; line-height: 1; }
+.slot-hint { font-size: 15px; font-weight: 700; line-height: 1.25; color: var(--ink, #18233a); }
+.slot-how { font-size: 12px; line-height: 1.3; }
+
+/* ---- Captured Words: search, filter, categories ---- */
+.cap-toolbar { display: flex; gap: 8px; margin-top: 14px; }
+.cap-search { flex: 1; min-width: 0; }
+.cap-search input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--line, #dce3ec);
+  border-radius: 12px;
+  background: var(--white, #fff);
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink, #18233a);
+}
+.cap-filter-btn {
+  position: relative;
+  flex: none;
+  padding: 0 16px;
+  border: 1px solid var(--line, #dce3ec);
+  border-radius: 12px;
+  background: var(--white, #fff);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--ink, #18233a);
+  cursor: pointer;
+}
+.cap-filter-btn[aria-expanded="true"] { background: var(--ink, #18233a); color: #fff; border-color: var(--ink, #18233a); }
+.cap-badge {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--amber, #f2a93b);
+  color: var(--ink, #18233a);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+.cap-panel {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--white, #fff);
+  border: 1px solid var(--line, #dce3ec);
+  border-radius: var(--radius-md, 16px);
+}
+.cap-row { margin-bottom: 12px; }
+.cap-label { display: block; margin-bottom: 6px; font-size: 12.5px; font-weight: 800; color: var(--muted, #5b6783); }
+.cap-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.cap-reset,
+.cap-reset-link {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--teal, #17a596);
+  cursor: pointer;
+}
+.cap-chips { display: flex; gap: 6px; margin: 12px -20px 0; padding: 2px 20px 6px; overflow-x: auto; scrollbar-width: none; }
+.cap-chips::-webkit-scrollbar { display: none; }
+.cap-chip {
+  flex: none;
+  padding: 7px 12px;
+  border: 1px solid var(--line, #dce3ec);
+  border-radius: 999px;
+  background: var(--white, #fff);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--muted, #5b6783);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cap-chip span { opacity: 0.7; font-weight: 600; }
+.cap-chip[aria-pressed="true"] { background: var(--ink, #18233a); border-color: var(--ink, #18233a); color: #fff; }
+.cap-summary { margin: 4px 2px 0; font-size: 12.5px; color: var(--muted, #5b6783); }
+.cap-group { margin-top: 18px; }
+.cap-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 2px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink, #18233a);
+  cursor: pointer;
+}
+.cap-group-title { font-size: 17px; font-weight: 800; }
+.cap-group-count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--lock-bg, #e3e8ef);
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--muted, #5b6783);
+}
+.cap-caret {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--muted, #5b6783);
+  border-bottom: 2px solid var(--muted, #5b6783);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.cap-group-head[aria-expanded="false"] .cap-caret { transform: rotate(-45deg); }
+.cap-none { margin: 24px 0; text-align: center; color: var(--muted, #5b6783); }
+
+@media (prefers-reduced-motion: reduce) {
+  .album-badge { animation: none; }
+  .cap-caret { transition: none; }
+}
