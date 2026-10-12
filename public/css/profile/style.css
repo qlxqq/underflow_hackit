@@ -1,0 +1,249 @@
+/* Profile page: picture, level, badges and favourite cards.
+   Uses the tokens in css/shared/base.css. */
+
+.pf-screen { min-height: 100vh; min-height: 100dvh; padding-bottom: calc(var(--nav-h) + 32px); background: var(--bg); }
+.pf-screen[hidden] { display: none; }
+
+/* ---- hero ---- */
+.pf-hero { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 20px 6px; }
+.pf-avatar {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  padding: 0;
+  border: 3px solid var(--white);
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: 0 0 0 1px var(--line);
+  cursor: pointer;
+}
+.pf-avatar > span:first-child { display: block; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; }
+.pf-avatar svg { display: block; width: 100%; height: 100%; }
+.pf-avatar-edit {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--white);
+  border: 3px solid var(--bg);
+}
+.pf-name { margin: 6px 0 0; font-size: 24px; font-weight: 800; overflow-wrap: anywhere; text-align: center; }
+.pf-link {
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  font: 800 14px var(--font-ui);
+  color: var(--amber-txt, #9a5b00);
+  cursor: pointer;
+}
+
+/* ---- stats ---- */
+.pf-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 14px 20px 0;
+}
+.pf-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 6px 12px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+.pf-stat-top { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; }
+.pf-stat strong { font-size: 22px; font-weight: 800; line-height: 1; }
+.pf-stat span { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.pf-xp { margin: 10px 20px 0; }
+.pf-xp-bar { display: block; height: 8px; border-radius: 999px; background: var(--lock-bg); overflow: hidden; }
+.pf-xp-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #17a596, #2f6fd6); }
+.pf-xp-text { margin: 6px 2px 0; font-size: 12.5px; font-weight: 700; color: var(--muted); text-align: center; }
+
+/* ---- sections ---- */
+.pf-section { margin: 26px 20px 0; }
+.pf-section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+.pf-section-head h2 { margin: 0; font-size: 18px; font-weight: 800; }
+.pf-meta { font-size: 13px; font-weight: 700; color: var(--muted); }
+
+/* ---- badges ---- */
+.pf-badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pf-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px 10px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+.pf-badge svg { width: 62px; height: 72px; display: block; }
+.pf-badge span { font-size: 12.5px; font-weight: 800; line-height: 1.2; }
+.pf-badge.is-locked svg { filter: grayscale(1); opacity: 0.3; }
+.pf-badge.is-locked span { color: var(--muted); font-weight: 700; }
+.pf-empty { grid-column: 1 / -1; margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.45; }
+
+/* ---- favourite cards ---- */
+.pf-favs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pf-card {
+  --rc: #8a97ab;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px 10px;
+  background: var(--white);
+  border: 2px solid var(--rc);
+  border-radius: var(--radius-md);
+  text-align: center;
+  font: inherit;
+  color: var(--ink);
+}
+.pf-card-art { width: 100%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 12px; background: color-mix(in srgb, var(--rc) 12%, white); }
+.pf-card-art svg { width: 78%; height: 78%; display: block; }
+.pf-card-word { margin-top: 4px; font: 700 20px var(--font-cjk); line-height: 1.15; overflow-wrap: anywhere; }
+.pf-card-word.long { font-size: 15px; }
+.pf-card-sub { font-size: 11.5px; color: var(--muted); line-height: 1.2; }
+.pf-card-rar { margin-top: 2px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--rc); }
+.pf-slot-empty {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  padding: 8px;
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-md);
+  background: none;
+  font: 700 13px var(--font-ui);
+  color: var(--muted);
+  text-align: center;
+  cursor: pointer;
+}
+.pf-slot-empty b { display: block; font-size: 26px; line-height: 1; margin-bottom: 4px; }
+
+.pf-footer { margin: 28px 20px 0; }
+.pf-footer-sticky {
+  position: sticky;
+  bottom: calc(var(--nav-h) + 10px);
+  margin: 16px 20px 0;
+}
+
+/* ---- choose a picture ---- */
+.av-preview { display: grid; place-items: center; padding: 24px 0 8px; }
+.av-preview svg { display: block; width: 120px; height: 120px; border-radius: 50%; }
+.av-preview > div { width: 120px; height: 120px; border-radius: 50%; overflow: hidden; border: 3px solid var(--white); box-shadow: 0 0 0 1px var(--line); }
+.av-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 18px 20px 0; }
+.av-option {
+  position: relative;
+  padding: 0;
+  aspect-ratio: 1;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.av-option > span:first-child { display: block; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; }
+.av-option svg { display: block; width: 100%; height: 100%; }
+.av-option[aria-checked="true"] { border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-bg); }
+.av-check {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+.av-option[aria-checked="true"] .av-check { display: grid; }
+
+/* ---- choose favourite cards ---- */
+.pf-lead { margin: 16px 20px 0; color: var(--muted); font-size: 14px; font-weight: 600; }
+.pf-search { margin: 12px 20px 0; }
+.fv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 14px 20px 0; }
+.fv-grid > .pf-empty { text-align: center; }
+.fv-pick { cursor: pointer; }
+.fv-pick .pf-card { width: 100%; }
+.fv-pick { padding: 0; border: 0; background: none; font: inherit; text-align: center; position: relative; }
+.fv-pick[aria-pressed="true"] .pf-card { box-shadow: 0 0 0 4px var(--amber-bg), 0 0 0 6px var(--amber); }
+.fv-tick {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 15px;
+  z-index: 1;
+}
+.fv-pick[aria-pressed="true"] .fv-tick { display: grid; }
+.fv-pick:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.pf-card-btn { display: block; width: 100%; padding: 0; border: 0; background: none; font: inherit; cursor: pointer; text-align: center; }
+.pf-card-btn .pf-card { width: 100%; }
+
+/* A mastered card gets the same rainbow foil border as in the Collection.
+   The rarity colour stays visible as the thin inner line. */
+.pf-card.is-mastered {
+  border: 3px solid transparent;
+  padding: 7px 5px 9px;
+  background:
+    linear-gradient(var(--white), var(--white)) padding-box,
+    linear-gradient(115deg, #ff5f6d, #ffc371, #f7f06d, #5fe3a1, #5fb6ff, #a77bff, #ff5fb2, #ff5f6d) border-box;
+  background-size: 100% 100%, 300% 300%;
+  box-shadow: inset 0 0 0 2px var(--rc);
+  animation: pf-foil 7s linear infinite;
+}
+@keyframes pf-foil { from { background-position: 0 0, 0% 50%; } to { background-position: 0 0, 300% 50%; } }
+.pf-card.is-mastered .pf-card-art { position: relative; overflow: hidden; }
+.pf-card.is-mastered .pf-card-art::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.7) 50%, transparent 62%);
+  transform: translateX(-130%); animation: pf-sheen 4s ease-in-out infinite;
+}
+@keyframes pf-sheen { 0%, 55% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
+.pf-card.is-mastered .art-main { filter: drop-shadow(0 2px 2px rgba(24, 35, 58, 0.28)); }
+.pf-card.is-mastered .rays { transform-origin: 36px 36px; animation: pf-spin 30s linear infinite; }
+@keyframes pf-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .pf-card.is-mastered, .pf-card.is-mastered .pf-card-art::after, .pf-card.is-mastered .rays { animation: none; }
+}
+
+/* ---- chosen cards at the top of the picker ---- */
+.fv-chosen { margin: 16px 20px 0; padding: 12px; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.fv-chosen:empty { display: none; }
+.fv-chosen-title { margin: 0 0 10px; font-size: 14px; font-weight: 800; }
+.fv-chosen-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.fv-chosen-item { display: flex; flex-direction: column; gap: 6px; }
+.fv-chosen-item .pf-card { padding: 5px 4px 7px; }
+.fv-chosen-item .pf-card-word { font-size: 16px; }
+.fv-chosen-item .pf-card-word.long { font-size: 13px; }
+.fv-chosen-item .pf-card-sub, .fv-chosen-item .pf-card-rar { display: none; }
+.fv-remove {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--white);
+  font: 800 13px var(--font-ui);
+  color: var(--danger);
+  cursor: pointer;
+}

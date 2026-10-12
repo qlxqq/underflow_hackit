@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="../../manifest.webmanifest" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="apple-touch-icon" href="../../icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Mother Tongue" />
+  <title>Profile - Underflow Hackit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@500;700&family=Noto+Sans+Tamil:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../css/shared/base.css" />
+  <link rel="stylesheet" href="../../css/profile/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+</head>
+<body>
+  <div class="app">
+    <div id="app-section" hidden>
+
+      <!-- Profile -->
+      <section id="profile-view" class="pf-screen" hidden>
+        <header class="top-bar has-back">
+          <a id="pf-back" class="icon-btn" href="../journey/journey.html" aria-label="Back to Journey"></a>
+          <h1 class="top-title">Profile</h1>
+        </header>
+
+        <div id="status-message" class="status-message" role="status" aria-live="polite"></div>
+
+        <div class="pf-hero">
+          <button type="button" id="pf-avatar-btn" class="pf-avatar" aria-label="Change your picture">
+            <span id="pf-avatar"></span>
+            <span class="pf-avatar-edit" id="pf-edit-icon" aria-hidden="true"></span>
+          </button>
+          <h2 id="pf-name" class="pf-name"></h2>
+          <button type="button" id="pf-change-pic" class="pf-link">Change picture</button>
+        </div>
+
+        <div id="pf-stats" class="pf-stats"></div>
+
+        <section class="pf-section">
+          <div class="pf-section-head">
+            <h2>Badges</h2>
+            <span id="pf-badge-count" class="pf-meta"></span>
+          </div>
+          <div id="pf-badges" class="pf-badges"></div>
+        </section>
+
+        <section class="pf-section">
+          <div class="pf-section-head">
+            <h2>Favourite cards</h2>
+            <button type="button" id="pf-edit-favs" class="pf-link">Edit</button>
+          </div>
+          <div id="pf-favs" class="pf-favs"></div>
+        </section>
+
+        <div class="pf-footer">
+          <button type="button" id="pf-signout" class="btn btn-outline btn-block">Sign out</button>
+        </div>
+      </section>
+
+      <!-- Choose a picture -->
+      <section id="avatar-view" class="pf-screen" hidden>
+        <header class="top-bar has-back">
+          <button type="button" id="avatar-back" class="icon-btn" aria-label="Back to profile"></button>
+          <h1 class="top-title">Choose a picture</h1>
+        </header>
+        <div class="av-preview" id="av-preview"></div>
+        <div id="av-grid" class="av-grid" role="radiogroup" aria-label="Profile picture"></div>
+        <div class="pf-footer">
+          <button type="button" id="avatar-done" class="btn btn-primary btn-block">Done</button>
+        </div>
+      </section>
+
+      <!-- Choose favourite cards -->
+      <section id="favs-view" class="pf-screen" hidden>
+        <header class="top-bar has-back">
+          <button type="button" id="favs-back" class="icon-btn" aria-label="Back to profile"></button>
+          <h1 class="top-title">Favourite cards</h1>
+        </header>
+        <p class="pf-lead">Pick up to 3 cards to show off on your profile.</p>
+        <div id="favs-chosen" class="fv-chosen"></div>
+        <div class="pf-search">
+          <label class="visually-hidden" for="favs-search">Search cards</label>
+          <input id="favs-search" class="field" type="search" placeholder="Search words, pinyin or meanings" autocomplete="off" />
+        </div>
+        <div id="favs-grid" class="fv-grid"></div>
+        <div class="pf-footer pf-footer-sticky">
+          <button type="button" id="favs-save" class="btn btn-primary btn-block">Save</button>
+        </div>
+      </section>
+
+      <nav id="bottom-nav" data-active=""></nav>
+    </div>
+  </div>
+
+  <script src="../../js/shared/supabaseClient.js"></script>
+  <script src="../../js/shared/icons.js"></script>
+  <script src="../../js/shared/avatars.js"></script>
+  <script src="../../js/shared/bottomNav.js"></script>
+  <script src="../../js/storeVocab/zhFrequency.js"></script>
+  <script src="../../js/storeVocab/msFrequency.js"></script>
+  <script src="../../js/storeVocab/taFrequency.js"></script>
+  <script src="../../js/storeVocab/rarity.js"></script>
+  <script src="../../js/shared/auth.js"></script>
+  <script src="../../js/storeVocab/vocabulary.js"></script>
+  <script src="../../js/storeVocab/cardArt.js"></script>
+  <script src="../../js/storeVocab/decor.js"></script>
+  <script src="../../js/storeVocab/cards.js"></script>
+  <script src="../../js/journey/zoneWords.js"></script>
+  <script src="../../js/shared/albumCards.js"></script>
+  <script src="../../js/storeVocab/albums.js"></script>
+  <script src="../../js/journey/streak.js"></script>
+  <script src="../../js/journey/profile.js"></script>
+  <script src="../../js/shared/rewards.js"></script>
+  <script src="../../js/storeVocab/quests.js"></script>
+  <script src="../../js/profile/script.js"></script>
+</body>
+</html>
