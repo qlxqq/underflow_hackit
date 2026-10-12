@@ -16,12 +16,13 @@
   <link rel="stylesheet" href="../../css/shared/base.css" />
   <link rel="stylesheet" href="../../css/shared/tour.css" />
   <link rel="stylesheet" href="../../css/journey/style.css" />
+  <link rel="stylesheet" href="../../css/storeVocab/rewards.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
 </head>
 <body>
   <div class="app">
 
-    <section id="auth-section" class="auth-screen">
+    <section id="auth-section" class="auth-screen" hidden>
       <div class="scene scene-login">
         <div id="auth-hero-art" class="scene-art"></div>
         <div class="brand">
@@ -109,29 +110,13 @@
         <div class="stats">
           <button type="button" id="change-language" class="stat-chip" aria-label="Switch Mother Tongue"></button>
           <div id="streak-chip" class="stat-chip stat-streak" role="img" hidden></div>
-          <!-- The XP bar will sit here, next to the streak. -->
+          <button type="button" id="level-chip" class="stat-chip stat-level" hidden></button>
         </div>
         <button type="button" id="open-profile" class="avatar-btn" aria-label="Your profile and picture"></button>
       </header>
+      <div id="journey-quests" class="quests-panel" aria-label="Daily quests" hidden></div>
       <div id="map" class="map"></div>
     </section>
-
-    <div id="profile-sheet" class="sheet-backdrop" hidden>
-      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="profile-title">
-        <div class="sheet-handle"></div>
-        <div class="sheet-head">
-          <div id="profile-avatar-large" class="profile-avatar-large"></div>
-          <div class="sheet-titles">
-            <div id="profile-title" class="sheet-title">Your profile</div>
-            <div id="profile-streak-line" class="sheet-sub"></div>
-          </div>
-          <button type="button" id="profile-close" class="icon-btn muted" aria-label="Close"></button>
-        </div>
-        <h2 class="sheet-label">Choose your picture</h2>
-        <div id="avatar-grid" class="avatar-grid" role="radiogroup" aria-label="Profile picture"></div>
-        <button type="button" id="sign-out" class="btn btn-outline btn-block">Sign out</button>
-      </div>
-    </div>
 
     <div id="status-message" class="status-message toast" role="status" aria-live="polite"></div>
 
@@ -154,6 +139,8 @@
   <script src="../../js/shared/auth.js"></script>
   <script src="../../js/journey/progress.js"></script>
   <script src="../../js/journey/streak.js"></script>
+  <script src="../../js/shared/rewards.js"></script>
+  <script src="../../js/storeVocab/quests.js"></script>
   <script src="../../js/journey/profile.js"></script>
   <script src="../../js/journey/script.js"></script>
   <script src="../../js/shared/tour.js"></script>

@@ -11,7 +11,6 @@ const journeySection = $("journey-section");
 const signupForm = $("signup-form");
 const loginForm = $("login-form");
 const authStatus = $("auth-status");
-const signOutButton = $("sign-out");
 const changeLanguageButton = $("change-language");
 const mapEl = $("map");
 const tabLogin = $("tab-login");
@@ -21,9 +20,6 @@ const authSubheading = $("auth-subheading");
 const statusMessage = $("status-message");
 const streakChip = $("streak-chip");
 const openProfileButton = $("open-profile");
-const profileSheet = $("profile-sheet");
-const profileClose = $("profile-close");
-const avatarGrid = $("avatar-grid");
 
 const LANGUAGES = {
   zh: { glyph: "中文", name: "Chinese" },
@@ -92,63 +88,13 @@ async function loadProfileAndStreak() {
   }
   renderStreak();
   renderAvatar();
+  refreshJourneyRewards(() => (currentUser ? currentUser.id : null));
 }
 
-// ---- profile sheet: pick a picture, sign out ----
-function renderAvatarGrid() {
-  const current = currentProfile ? currentProfile.avatar : DEFAULT_AVATAR;
-  avatarGrid.innerHTML = AVATARS.map((a) =>
-    `<button type="button" class="avatar-option" role="radio" aria-checked="${a.id === current}" aria-label="${a.label}" data-avatar="${a.id}">${avatarSvg(a.id, 72)}</button>`,
-  ).join("");
-}
-
-function openProfileSheet() {
-  const current = currentProfile ? currentProfile.avatar : DEFAULT_AVATAR;
-  $("profile-avatar-large").innerHTML = avatarSvg(current, 64);
-  $("profile-title").textContent = currentProfile && currentProfile.username ? currentProfile.username : "Your profile";
-  const n = currentProfile && currentProfile.hasExtras ? currentProfile.currentStreak : null;
-  $("profile-streak-line").textContent = n === null ? "" : n === 1 ? "1 day streak" : `${n} day streak`;
-  renderAvatarGrid();
-  profileSheet.hidden = false;
-  profileClose.focus();
-}
-
-function closeProfileSheet() {
-  profileSheet.hidden = true;
-  openProfileButton.focus();
-}
-
-openProfileButton.addEventListener("click", openProfileSheet);
-profileClose.addEventListener("click", closeProfileSheet);
-profileSheet.addEventListener("click", (e) => {
-  if (e.target === profileSheet) closeProfileSheet();
-});
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !profileSheet.hidden) closeProfileSheet();
-});
-
-avatarGrid.addEventListener("click", async (e) => {
-  const option = e.target.closest("[data-avatar]");
-  if (!option || !currentProfile) return;
-  const chosen = option.dataset.avatar;
-  const previous = currentProfile.avatar;
-  if (chosen === previous) return;
-
-  // Show the new picture straight away; put the old one back if saving fails.
-  currentProfile.avatar = chosen;
-  renderAvatar();
-  renderAvatarGrid();
-  $("profile-avatar-large").innerHTML = avatarSvg(chosen, 64);
-  try {
-    await saveAvatar(currentUser.id, chosen);
-  } catch (err) {
-    console.error("Could not save picture:", err);
-    currentProfile.avatar = previous;
-    renderAvatar();
-    renderAvatarGrid();
-    $("profile-avatar-large").innerHTML = avatarSvg(previous, 64);
-    showToast("Couldn't save your picture. Try again.");
-  }
+// ---- profile: the picture button opens the Profile page ----
+const PROFILE_PAGE = "../profile/profile.html";
+openProfileButton.addEventListener("click", () => {
+  location.href = PROFILE_PAGE;
 });
 
 // The first incomplete level - everything up to it is open, the rest locked.
@@ -312,41 +258,45 @@ loginForm.addEventListener("submit", async (e) => {
   }
 });
 
-signOutButton.addEventListener("click", async () => {
-  await signOut();
-  currentUser = null;
-  currentLanguage = null;
-  currentProfile = null;
-  profileSheet.hidden = true;
-  mapEl.innerHTML = "";
-  journeyCurrentLevel = null;
-  streakChip.hidden = true;
-  openProfileButton.innerHTML = "";
-  showScreen("auth");
-});
-
 changeLanguageButton.addEventListener("click", () => showScreen("language"));
 
 document.querySelectorAll(".language-choice").forEach((button) => {
   button.addEventListener("click", () => startJourneyFor(button.dataset.lang));
 });
 
+// The saved login is read from this device first (no waiting on the
+// network), so a returning player goes straight to the map instead of seeing
+// the login screen for a moment. Every screen starts hidden (see the HTML).
+async function findSignedInUser() {
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data && data.session && data.session.user) return data.session.user;
+  } catch (err) {
+    // fall through to the normal check
+  }
+  return getCurrentUser();
+}
+
 async function enterApp() {
-  currentUser = await getCurrentUser();
+  currentUser = await findSignedInUser();
   if (!currentUser) {
     showScreen("auth");
     return;
   }
-  await loadProfileAndStreak();
-  // Go straight to the map in the language this player last chose; otherwise ask.
+  // Open the map straight away in the language this player last chose
+  // (otherwise ask), and load the profile and streak alongside it.
   const saved = readSavedLanguage(getStorage(), currentUser.id, Object.keys(LANGUAGES));
-  if (saved) await startJourneyFor(saved);
-  else showScreen("language");
+  const profileLoading = loadProfileAndStreak();
+  if (saved) {
+    await Promise.all([startJourneyFor(saved), profileLoading]);
+  } else {
+    await profileLoading;
+    showScreen("language");
+  }
 }
 
 $("auth-hero-art").innerHTML = buildLoginScene();
 $("auth-footer-art").innerHTML = buildFooterScene();
 $("language-hero-art").innerHTML = buildLanguageScene();
-profileClose.innerHTML = icon("close", 20);
 renderBottomNav();
 enterApp();
