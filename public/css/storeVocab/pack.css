@@ -1,0 +1,247 @@
+/* Pack-opening reveal. Uses the tokens in css/shared/base.css. */
+
+.pack-open { overflow: hidden; }
+.pack-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  background: rgba(14, 22, 40, 0.92);
+  color: #fff;
+  overflow: hidden;
+}
+.pack-glow {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 380px;
+  height: 380px;
+  margin: -190px 0 0 -190px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--pack-color, #17a596) 0%, transparent 68%);
+  opacity: 0.18;
+  transition: opacity 0.4s, transform 0.4s;
+  pointer-events: none;
+}
+.pack-glow.flash { opacity: 0.55; transform: scale(1.15); }
+.pack-overlay.is-big .pack-glow.flash { opacity: 0.85; transform: scale(1.5); }
+.pack-skip {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pack-body {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.pack-count { margin: 0; font-size: 14px; font-weight: 700; opacity: 0.8; }
+.pack-card {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  perspective: 1000px;
+  cursor: pointer;
+  position: relative;
+}
+.pack-flip {
+  display: grid;
+  transition: transform 0.7s cubic-bezier(0.3, 0.7, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.pack-card.is-flipped .pack-flip { transform: rotateY(180deg); }
+.pack-face {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 20px;
+  min-height: 360px;
+}
+.pack-back {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(145deg, #17a596, #2f6fd6);
+  border: 4px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  animation: pack-wobble 2.2s ease-in-out infinite;
+}
+.pack-back-mark { font-size: 84px; font-weight: 800; line-height: 1; }
+.pack-back-text { font-size: 15px; font-weight: 700; letter-spacing: 0.04em; opacity: 0.9; }
+.pack-front { transform: rotateY(180deg); text-align: left; color: var(--ink, #18233a); }
+.pack-front .card { margin: 0; }
+.pack-card.is-flipped .pack-back { animation: none; }
+.pack-rarity {
+  margin: 0;
+  min-height: 24px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pack-next {
+  padding: 12px 26px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #18233a;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.pack-next[hidden] { display: none; }
+.pack-spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffd166;
+  animation: pack-spark 0.9s ease-out forwards;
+  pointer-events: none;
+}
+.pack-summary { width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.pack-summary-title { margin: 0; font-size: 26px; }
+.pack-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.pack-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 2px solid var(--chip);
+  font-size: 13px;
+  font-weight: 800;
+}
+.pack-lines { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 15px; font-weight: 700; }
+.pack-done { margin-top: 6px; }
+
+@keyframes pack-wobble {
+  0%, 100% { transform: rotate(-1.5deg); }
+  50% { transform: rotate(1.5deg); }
+}
+@keyframes pack-spark {
+  from { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.2); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pack-back { animation: none; }
+  .pack-flip { transition: none; animation: none !important; }
+}
+
+.pack-card:focus-visible { outline: none; }
+.pack-card:focus-visible .pack-back { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.6), 0 12px 30px rgba(0, 0, 0, 0.4); }
+
+/* a tap that does not open the card yet */
+.pack-card.is-shaking .pack-flip { animation: pack-shake 0.35s ease; }
+@keyframes pack-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(calc(var(--shake, 4px) * -1)) rotate(-2deg); }
+  40% { transform: translateX(var(--shake, 4px)) rotate(2deg); }
+  60% { transform: translateX(calc(var(--shake, 4px) * -0.6)) rotate(-1deg); }
+  80% { transform: translateX(calc(var(--shake, 4px) * 0.6)) rotate(1deg); }
+}
+.pack-card.is-flipped .pack-flip { animation: none; }
+
+/* ---------- the sealed pack ---------- */
+.pack-sealed {
+  position: relative;
+  width: 230px;
+  height: 320px;
+  margin: 8px 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  outline: none;
+}
+.pack-sealed.is-dragging { cursor: grabbing; }
+.pack-sealed.is-poked { animation: pack-poke 0.5s ease; }
+.pack-foil {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background:
+    linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.35) 45%, transparent 60%),
+    linear-gradient(150deg, #17a596, #2f6fd6);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.35);
+}
+.pack-bottom {
+  top: 54px;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: transform 0.4s, opacity 0.4s;
+}
+.pack-top {
+  top: 0;
+  height: 66px;
+  transition: transform 0.25s ease, opacity 0.5s ease;
+}
+.pack-sealed.is-dragging .pack-top,
+.pack-sealed.is-torn .pack-top { transition: opacity 0.5s ease, transform 0.6s ease-in; }
+.pack-sealed.is-dragging .pack-top { transition: none; }
+.pack-seam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  border-bottom: 3px dashed rgba(255, 255, 255, 0.85);
+}
+.pack-sealed::after {
+  /* a hint arrow that shows where to swipe */
+  content: "\2192";
+  position: absolute;
+  left: 50%;
+  top: 22px;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+  animation: pack-nudge 1.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.pack-sealed.is-dragging::after,
+.pack-sealed.is-torn::after { display: none; }
+.pack-sealed.is-torn .pack-bottom { transform: scale(1.08); opacity: 0; transition-delay: 0.25s; }
+.pack-label { font-size: 34px; font-weight: 800; line-height: 1.05; text-align: center; letter-spacing: 0.06em; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); }
+.pack-num { padding: 4px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.25); font-size: 13px; font-weight: 800; }
+.pack-hint { margin: 0; min-height: 22px; font-size: 15px; font-weight: 700; text-align: center; opacity: 0.9; }
+.pack-sealed:focus-visible .pack-bottom { box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.35), 0 0 0 4px rgba(255, 255, 255, 0.7); }
+
+@keyframes pack-poke {
+  0%, 100% { transform: rotate(0) scale(1); }
+  20% { transform: rotate(-4deg) scale(1.04); }
+  45% { transform: rotate(4deg) scale(1.06); }
+  70% { transform: rotate(-2deg) scale(1.02); }
+}
+@keyframes pack-nudge {
+  0%, 100% { transform: translateX(-60%); opacity: 0.5; }
+  50% { transform: translateX(10%); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pack-sealed.is-poked, .pack-sealed::after { animation: none; }
+}
