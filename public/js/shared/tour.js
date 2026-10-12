@@ -5,9 +5,9 @@
 //   Yes starts the tour; No thanks ends it. Either answer is remembered
 //   (on the account, and in this browser) so it is never asked again.
 // - "Skip tour" ends it at any step.
-// - It can be replayed any time with the "?" button in the top bar of the
-//   Journey, Capture and Collection pages. From Capture and Collection it
-//   takes the user back to the Journey page and starts from the top.
+// - The "?" button in the top bar of the Journey, Capture and Collection
+//   pages explains only the page the user is on, then closes. The tour
+//   through every page is for first-time users only.
 //
 // Needs: supabase (supabaseClient.js) and getCurrentUser (auth.js).
 // It starts itself - no other file needs to call it.
@@ -16,17 +16,18 @@
   const DONE_KEY = "tour_done_";
   const CONTINUE_KEY = "tour_continue";
   const CAPTURE_PAGE = "../storeVocab/storeVocab.html#capture";
-  const JOURNEY_PAGE = "../journey/journey.html";
 
   const STEPS = {
     journey: [
       { target: "#change-language", title: "Pick your Mother Tongue", text: "Switch between Chinese, Malay and Tamil any time." },
       { target: "#streak-chip", title: "Your streak", text: "Practise every day to keep your streak going." },
+      { target: "#level-chip", title: "Your level", text: "Earn XP by capturing words and finishing quests. XP fills this ring and raises your level. Your coins are shown next to it." },
+      { target: "#journey-quests", title: "Daily quests", text: "Small goals that reset every day, like capturing 3 words. Tap to open the list, and press Claim when one is done to earn XP and coins." },
       { target: "#map", title: "Your journey", text: "Follow the path through each zone to practise its words, one step at a time." },
       { target: ".nav-capture", title: "Capture words", text: "Snap a sign, a menu or a textbook page. Every word it finds can become a collectible card. This is the heart of the app." },
       { target: '[data-nav="collection"]', title: "Your collection", text: "All your cards live here. Practise a word to make its card evolve." },
-      { target: "#open-profile", title: "Your profile", text: "Change your picture or sign out." },
-      { target: ".tour-help", title: "App guide", text: "Tap the ? at the top of any page to see this tour again." },
+      { target: "#open-profile", title: "Your profile", text: "Tap your picture to see your level, badges and favourite cards, change your picture, or sign out." },
+      { target: ".tour-help", title: "App guide", text: "Tap the ? at the top of any page for a short guide to that page." },
     ],
     capture: [
       { target: ".photo-tile", title: "Take a photo", text: "Point your camera at a sign, menu or page. The words on it are read for you." },
@@ -123,11 +124,12 @@
   }
 
   // ---------- tour steps ----------
-  function startTour(page) {
+  // single = true: just this page (the "?" button); the tour does not move on.
+  function startTour(page, { single = false } = {}) {
     removeLayer();
     const steps = STEPS[page].filter((s) => isVisible(q(s.target)));
     if (steps.length === 0) return;
-    session = { page, steps, index: 0 };
+    session = { page, steps, index: 0, single };
 
     layer = el("div", "tour-layer");
     layer.appendChild(el("div", "tour-shield"));
@@ -147,9 +149,9 @@
     if (!isVisible(target)) return next();
 
     const last = index === session.steps.length - 1;
-    const nextLabel = { journey: "Next: Capture", capture: "Next: Collection", collection: "Done" }[session.page];
+    const nextLabel = session.single ? "Done" : { journey: "Next: Capture", capture: "Next: Collection", collection: "Done" }[session.page];
     const primary = last ? nextLabel : "Next";
-    const skipLabel = last && session.page !== "collection" ? "Finish" : "Skip tour";
+    const skipLabel = session.single ? "Close" : last && session.page !== "collection" ? "Finish" : "Skip tour";
 
     const card = layer.querySelector(".tour-card");
     card.setAttribute("role", "dialog");
@@ -170,6 +172,7 @@
     if (back) back.addEventListener("click", () => showStep(index - 1));
     card.querySelector("[data-next]").addEventListener("click", () => {
       if (!last) return showStep(index + 1);
+      if (session.single) return endTour();
       if (session.page === "journey") {
         try { sessionStorage.setItem(CONTINUE_KEY, "capture"); } catch (err) { /* then the tour just ends */ }
         removeLayer();
@@ -249,32 +252,25 @@
     observer.observe(node, { attributes: true, attributeFilter: ["hidden"] });
   }
 
-  // Starts the whole tour from the top, wherever the user is.
-  function startFullGuide() {
-    if (q("#journey-section")) return startTour("journey");
-    try { sessionStorage.setItem(CONTINUE_KEY, "journey"); } catch (err) { /* ignore */ }
-    location.href = JOURNEY_PAGE;
-  }
-
   // "?" button in the top bar of the Journey, Capture and Collection pages.
   // It sits just before whatever is already on the right of the bar.
   const HELP_BARS = [
-    { bar: "#journey-section .top-bar", trailing: "#open-profile" },
-    { bar: "#capture-view .top-bar", trailing: ".lang-select" },
-    { bar: "#collection-view .top-bar", trailing: "#sign-out" },
+    { page: "journey", bar: "#journey-section .top-bar", trailing: "#open-profile" },
+    { page: "capture", bar: "#capture-view .top-bar", trailing: ".lang-select" },
+    { page: "collection", bar: "#collection-view .top-bar", trailing: "#sign-out" },
   ];
 
   function addHelpButtons() {
-    HELP_BARS.forEach(({ bar: barSelector, trailing: trailingSelector }) => {
+    HELP_BARS.forEach(({ page, bar: barSelector, trailing: trailingSelector }) => {
       const bar = q(barSelector);
       if (!bar || bar.querySelector(".tour-help")) return;
       const trailing = bar.querySelector(trailingSelector);
       const wrap = el("div", "tour-top-actions");
       const button = el("button", "tour-help", "?");
       button.type = "button";
-      button.setAttribute("aria-label", "App guide");
-      button.title = "App guide";
-      button.addEventListener("click", startFullGuide);
+      button.setAttribute("aria-label", "Guide for this page");
+      button.title = "Guide for this page";
+      button.addEventListener("click", () => startTour(page, { single: true }));
       wrap.appendChild(button);
       if (trailing) wrap.appendChild(trailing);
       bar.appendChild(wrap);
@@ -285,14 +281,6 @@
     const user = await getUser();
     if (!user) return;
     addHelpButtons();
-
-    // Sent here by the "?" button on another page: start straight away.
-    let restart = false;
-    try {
-      restart = sessionStorage.getItem(CONTINUE_KEY) === "journey";
-      if (restart) sessionStorage.removeItem(CONTINUE_KEY);
-    } catch (err) { /* ignore */ }
-    if (restart) return setTimeout(() => startTour("journey"), 900);
 
     if (isDone(user)) return;
     setTimeout(() => showWelcome(user), 900);
