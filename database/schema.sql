@@ -1,176 +1,151 @@
 -- ============================================================
 -- Whole database for the app (Supabase / Postgres).
--- Run in the Supabase SQL Editor. Safe to run more than once, on a
--- brand-new project or on the live one: it creates what is missing,
--- adds missing columns, and replaces the access rules with the
--- current ones.
+-- Paste into the Supabase SQL Editor and run.
+--
+-- This is the clean version: every column lives in its table.
+-- On a NEW project, run it as is.
+-- On your LIVE project the tables already exist with these columns
+-- (earlier runs added them), so re-running is harmless: tables and
+-- columns are skipped, and the rules and the function are replaced.
 -- ============================================================
 
-
--- ------------------------------------------------------------
--- profiles: one row per player. Holds the public username, the
--- profile picture and the daily-login streak.
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS profiles (
-    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- ---------- profiles: one row per player ----------
+create table if not exists profiles (
+  user_id          uuid primary key references auth.users(id) on delete cascade,
+  username         varchar(50) unique not null,
+  avatar           text    not null default 'merlion',
+  current_streak   integer not null default 0,
+  longest_streak   integer not null default 0,
+  last_active_date date,
+  xp               integer not null default 0,
+  coins            integer not null default 0,
+  favourite_cards  jsonb   not null default '[]'::jsonb,   -- up to 3
+  created_at       timestamptz not null default now()
 );
+alter table profiles enable row level security;
+drop policy if exists "Anyone can view profiles" on profiles;
+drop policy if exists "Users can insert their own profile" on profiles;
+drop policy if exists "Users can update their own profile" on profiles;
+create policy "Anyone can view profiles" on profiles for select using (true);
+create policy "Users can insert their own profile" on profiles for insert with check (auth.uid() = user_id);
+-- NOTE: players can edit their own row, so xp/coins/streak can be faked.
+-- Before a leaderboard, move updates into server-side functions.
+create policy "Users can update their own profile" on profiles for update using (auth.uid() = user_id);
 
--- Added after the first version of the table (picture and streak).
-ALTER TABLE profiles
-  ADD COLUMN IF NOT EXISTS avatar TEXT NOT NULL DEFAULT 'merlion',
-  ADD COLUMN IF NOT EXISTS current_streak INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS longest_streak INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS last_active_date DATE;
-
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Anyone can view profiles" ON profiles;
-DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
-DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
-
-CREATE POLICY "Anyone can view profiles" ON profiles
-  FOR SELECT USING (true);
-
-CREATE POLICY "Users can insert their own profile" ON profiles
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- NOTE: this lets a player edit their own streak, so it can be faked.
--- Fine for now; before streaks or XP feed a leaderboard, move the
--- update into a server-side function.
-CREATE POLICY "Users can update their own profile" ON profiles
-  FOR UPDATE USING (auth.uid() = user_id);
-
-
--- ------------------------------------------------------------
--- journey_progress: one row per player, per language, per level.
--- A level is complete once slot_1_completed is true (each level is
--- one mini-game). slot_2 and slot_3 are unused leftovers from an
--- earlier three-slot design.
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS journey_progress (
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    language VARCHAR(10) NOT NULL,
-    level_number INTEGER NOT NULL DEFAULT 1,
-    slot_1_completed BOOLEAN NOT NULL DEFAULT false,
-    slot_2_completed BOOLEAN NOT NULL DEFAULT false,
-    slot_3_completed BOOLEAN NOT NULL DEFAULT false,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (user_id, language, level_number)
+-- ---------- journey_progress: one row per player, language, level ----------
+-- A level is complete once slot_1_completed is true (one mini-game per level).
+-- slot_2/slot_3 are still read by progress.js, so they stay.
+create table if not exists journey_progress (
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  language         varchar(10) not null,
+  level_number     integer not null default 1,
+  slot_1_completed boolean not null default false,
+  slot_2_completed boolean not null default false,
+  slot_3_completed boolean not null default false,
+  updated_at       timestamptz not null default now(),
+  primary key (user_id, language, level_number)
 );
+alter table journey_progress enable row level security;
+drop policy if exists "Users can view their own progress" on journey_progress;
+drop policy if exists "Users can insert their own progress" on journey_progress;
+drop policy if exists "Users can update their own progress" on journey_progress;
+create policy "Users can view their own progress" on journey_progress for select using (auth.uid() = user_id);
+create policy "Users can insert their own progress" on journey_progress for insert with check (auth.uid() = user_id);
+create policy "Users can update their own progress" on journey_progress for update using (auth.uid() = user_id);
 
-ALTER TABLE journey_progress ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Users can view their own progress" ON journey_progress;
-DROP POLICY IF EXISTS "Users can insert their own progress" ON journey_progress;
-DROP POLICY IF EXISTS "Users can update their own progress" ON journey_progress;
-
-CREATE POLICY "Users can view their own progress" ON journey_progress
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own progress" ON journey_progress
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own progress" ON journey_progress
-  FOR UPDATE USING (auth.uid() = user_id);
-
-
--- ------------------------------------------------------------
--- vocabulary: the words each player has captured. Private to the
--- player, like the card collection it represents.
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS vocabulary (
-    vocab_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    word VARCHAR(255) NOT NULL,
-    language VARCHAR(10) NOT NULL,
-    romanization VARCHAR(255),
-    english_meaning VARCHAR(500),
-    context_sentence VARCHAR(1000),
-    source VARCHAR(20) NOT NULL DEFAULT 'text',
-    rarity VARCHAR(20) DEFAULT 'common',
-    evolution_stage SMALLINT DEFAULT 0,
-    usage_count INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- ---------- vocabulary: words a player captured (private) ----------
+create table if not exists vocabulary (
+  vocab_id         bigint generated always as identity primary key,
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  word             varchar(255) not null,
+  language         varchar(10)  not null,
+  romanization     varchar(255),
+  english_meaning  varchar(500),
+  context_sentence varchar(1000),
+  source           varchar(20) not null default 'text',
+  rarity           varchar(20) default 'common',
+  evolution_stage  smallint default 0,
+  usage_count      integer default 0,
+  theme            text,   -- ready-made picture picked by the AI lookup
+  art_svg          text,   -- picture Claude drew for the word
+  created_at       timestamptz not null default now(),
+  constraint unique_user_word_language unique (user_id, word, language)
 );
+alter table vocabulary enable row level security;
+drop policy if exists "Users can view their own vocabulary" on vocabulary;
+drop policy if exists "Users can insert their own vocabulary" on vocabulary;
+drop policy if exists "Users can update their own vocabulary" on vocabulary;
+drop policy if exists "Users can delete their own vocabulary" on vocabulary;
+create policy "Users can view their own vocabulary" on vocabulary for select using (auth.uid() = user_id);
+create policy "Users can insert their own vocabulary" on vocabulary for insert with check (auth.uid() = user_id);
+create policy "Users can update their own vocabulary" on vocabulary for update using (auth.uid() = user_id);
+create policy "Users can delete their own vocabulary" on vocabulary for delete using (auth.uid() = user_id);
 
--- Card pictures. "theme" is the name of a ready-made picture chosen by the
--- AI lookup; "art_svg" is a picture Claude drew for the word (SVG shapes).
-ALTER TABLE vocabulary
-  ADD COLUMN IF NOT EXISTS theme TEXT,
-  ADD COLUMN IF NOT EXISTS art_svg TEXT;
-
--- A word can only appear once per player and language. The first version
--- of the table made it once per language across ALL players, which would
--- stop two players from capturing the same word. Replace that rule.
-ALTER TABLE vocabulary DROP CONSTRAINT IF EXISTS unique_word_language;
-ALTER TABLE vocabulary DROP CONSTRAINT IF EXISTS unique_user_word_language;
-ALTER TABLE vocabulary
-  ADD CONSTRAINT unique_user_word_language UNIQUE (user_id, word, language);
-
-ALTER TABLE vocabulary ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Allow public read" ON vocabulary;
-DROP POLICY IF EXISTS "Allow public insert" ON vocabulary;
-DROP POLICY IF EXISTS "Allow public update" ON vocabulary;
-DROP POLICY IF EXISTS "Allow public delete" ON vocabulary;
-DROP POLICY IF EXISTS "Users can view their own vocabulary" ON vocabulary;
-DROP POLICY IF EXISTS "Users can insert their own vocabulary" ON vocabulary;
-DROP POLICY IF EXISTS "Users can update their own vocabulary" ON vocabulary;
-DROP POLICY IF EXISTS "Users can delete their own vocabulary" ON vocabulary;
-
-CREATE POLICY "Users can view their own vocabulary" ON vocabulary
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own vocabulary" ON vocabulary
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own vocabulary" ON vocabulary
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own vocabulary" ON vocabulary
-  FOR DELETE USING (auth.uid() = user_id);
-
-
--- ------------------------------------------------------------
--- album_cards: the island album cards a player has earned from
--- mini-games (Hawker Centre, Family, ...). Kept apart from
--- "vocabulary" (captured words), so a word can be both a captured
--- card and an album card. Album cards cannot be captured.
---
--- A player can read, add and update their own rows. There is
--- deliberately NO delete policy: album cards cannot be removed,
--- only captured words can.
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS album_cards (
-    card_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    album_id VARCHAR(40) NOT NULL,
-    language VARCHAR(10) NOT NULL,
-    word VARCHAR(255) NOT NULL,
-    source VARCHAR(40) NOT NULL DEFAULT 'island',
-    evolution_stage SMALLINT NOT NULL DEFAULT 0,
-    usage_count INTEGER NOT NULL DEFAULT 0,
-    earned_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- ---------- album_cards: island cards won from mini-games ----------
+-- No delete policy on purpose: album cards cannot be removed.
+create table if not exists album_cards (
+  card_id         bigint generated always as identity primary key,
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  album_id        varchar(40)  not null,
+  language        varchar(10)  not null,
+  word            varchar(255) not null,
+  source          varchar(40)  not null default 'island',
+  evolution_stage smallint not null default 0,
+  usage_count     integer  not null default 0,
+  earned_at       timestamptz not null default now(),
+  constraint unique_album_card unique (user_id, album_id, language, word)
 );
+alter table album_cards enable row level security;
+drop policy if exists "Users can view their own album cards" on album_cards;
+drop policy if exists "Users can insert their own album cards" on album_cards;
+drop policy if exists "Users can update their own album cards" on album_cards;
+create policy "Users can view their own album cards" on album_cards for select using (auth.uid() = user_id);
+create policy "Users can insert their own album cards" on album_cards for insert with check (auth.uid() = user_id);
+create policy "Users can update their own album cards" on album_cards for update using (auth.uid() = user_id);
 
--- One copy of each card per player, album and language.
-ALTER TABLE album_cards DROP CONSTRAINT IF EXISTS unique_album_card;
-ALTER TABLE album_cards
-  ADD CONSTRAINT unique_album_card UNIQUE (user_id, album_id, language, word);
+-- ---------- daily_quests: one row per quest per day ----------
+create table if not exists daily_quests (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  quest_date date not null,
+  quest_id   text not null,
+  progress   integer not null default 0,
+  claimed    boolean not null default false,
+  primary key (user_id, quest_date, quest_id)
+);
+alter table daily_quests enable row level security;
+drop policy if exists "quests select own" on daily_quests;
+drop policy if exists "quests insert own" on daily_quests;
+drop policy if exists "quests update own" on daily_quests;
+create policy "quests select own" on daily_quests for select to authenticated using (auth.uid() = user_id);
+create policy "quests insert own" on daily_quests for insert to authenticated with check (auth.uid() = user_id);
+create policy "quests update own" on daily_quests for update to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-ALTER TABLE album_cards ENABLE ROW LEVEL SECURITY;
+-- ---------- user_badges: visible to all signed-in players ----------
+create table if not exists user_badges (
+  user_id   uuid not null references auth.users(id) on delete cascade,
+  badge_id  text not null,
+  earned_at timestamptz not null default now(),
+  primary key (user_id, badge_id)
+);
+alter table user_badges enable row level security;
+drop policy if exists "badges readable" on user_badges;
+drop policy if exists "badges insert own" on user_badges;
+create policy "badges readable" on user_badges for select to authenticated using (true);
+create policy "badges insert own" on user_badges for insert to authenticated with check (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Users can view their own album cards" ON album_cards;
-DROP POLICY IF EXISTS "Users can insert their own album cards" ON album_cards;
-DROP POLICY IF EXISTS "Users can update their own album cards" ON album_cards;
-
-CREATE POLICY "Users can view their own album cards" ON album_cards
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own album cards" ON album_cards
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own album cards" ON album_cards
-  FOR UPDATE USING (auth.uid() = user_id);
+-- ---------- add_rewards: give the signed-in player XP and coins ----------
+-- Each call is capped at 500 of each.
+create or replace function add_rewards(p_xp integer, p_coins integer)
+returns table (new_xp integer, new_coins integer)
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+  return query
+  update profiles p
+     set xp    = p.xp    + least(greatest(p_xp, 0), 500),
+         coins = p.coins + least(greatest(p_coins, 0), 500)
+   where p.user_id = auth.uid()
+  returning p.xp, p.coins;
+end $$;
+revoke all on function add_rewards(integer, integer) from public;
+grant execute on function add_rewards(integer, integer) to authenticated;
