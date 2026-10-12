@@ -28,29 +28,15 @@ async function loadProfile(userId) {
   };
 }
 
-// Counts today as a visit and saves the new streak if it changed.
+// Opening the app no longer grows the streak (capturing a word or winning a
+// mini-game does, see recordStreakActivity in shared/rewards.js). This only
+// shows 0 when the player has missed a day, so the chip is not out of date.
 async function recordDailyVisit(userId, profile) {
-  if (!profile || !profile.hasExtras) return profile;
-
-  const result = calculateStreak({
-    lastActiveDate: profile.lastActiveDate,
-    today: localDateString(),
-    currentStreak: profile.currentStreak,
-    longestStreak: profile.longestStreak,
-  });
-
-  if (result.changed) {
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        current_streak: result.currentStreak,
-        longest_streak: result.longestStreak,
-        last_active_date: result.lastActiveDate,
-      })
-      .eq("user_id", userId);
-    if (error) throw error;
+  if (!profile || !profile.hasExtras || !profile.lastActiveDate) return profile;
+  if (daysBetween(profile.lastActiveDate, localDateString()) > 1) {
+    return { ...profile, currentStreak: 0 };
   }
-  return { ...profile, currentStreak: result.currentStreak, longestStreak: result.longestStreak, lastActiveDate: result.lastActiveDate };
+  return profile;
 }
 
 async function saveAvatar(userId, avatarId) {

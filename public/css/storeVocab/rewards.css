@@ -1,0 +1,108 @@
+/* Rewards: celebration pop-up, quests card and quests screen.
+   Uses the tokens in css/shared/base.css. */
+
+/* ---------- celebration pop-up ---------- */
+.cele-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(14, 22, 40, 0.75);
+  overflow: hidden;
+}
+.cele-card {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  padding: 26px 22px 22px;
+  border-radius: 22px;
+  background: var(--white, #fff);
+  color: var(--ink, #18233a);
+  text-align: center;
+  animation: cele-pop 0.45s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.cele-badge svg { width: 110px; height: 110px; }
+.cele-title { margin: 8px 0 4px; font-size: 24px; }
+.cele-text { margin: 0 0 12px; color: var(--muted, #5b6783); line-height: 1.4; }
+.cele-lines { margin: 0 0 18px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-weight: 800; }
+.cele-lines li { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.cele-confetti { position: absolute; inset: 0; pointer-events: none; }
+.cele-confetti i {
+  position: absolute;
+  top: -12px;
+  left: var(--x);
+  width: 9px;
+  height: 14px;
+  background: var(--c);
+  animation: cele-fall 2.6s linear var(--d) infinite;
+}
+@keyframes cele-pop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes cele-fall {
+  to { transform: translateY(110vh) rotate(540deg); }
+}
+
+/* ---------- daily quests panel (Capture page) ---------- */
+.quests-panel {
+  margin: 14px 20px 0;
+  background: var(--white, #fff);
+  border: 1px solid var(--line, #dce3ec);
+  border-radius: var(--radius-md, 16px);
+  overflow: hidden;
+}
+.quests-panel:empty { display: none; }
+.quests-panel.has-ready { border-color: #f2a93b; }
+.qp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--ink, #18233a);
+  cursor: pointer;
+}
+.qp-badge { flex: none; display: grid; place-items: center; }
+.qp-head-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.qp-head-text strong { font-size: 15px; }
+.qp-head-text span { font-size: 12.5px; color: var(--muted, #5b6783); }
+.quests-panel.has-ready .qp-head-text span { color: #b36b00; font-weight: 800; }
+.qp-coins { flex: none; display: flex; align-items: center; gap: 4px; font-size: 14px; }
+.qp-count { flex: none; padding: 3px 9px; border-radius: 999px; background: var(--bg, #f4f7fa); font-size: 12.5px; font-weight: 800; }
+.qp-body { padding: 0 14px 12px; }
+.quests-panel.is-collapsed .qp-body { display: none; }
+.qp-xpbar { display: block; height: 6px; margin-bottom: 8px; border-radius: 999px; background: var(--lock-bg, #e3e8ef); overflow: hidden; }
+.qp-xpbar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #17a596, #2f6fd6); }
+.qp-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.qp-row { display: flex; align-items: center; gap: 12px; }
+.qp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.qp-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.qp-name { font-size: 14px; }
+.qp-reward { font-size: 12px; color: var(--muted, #5b6783); white-space: nowrap; }
+.qp-bar { display: block; height: 6px; border-radius: 999px; background: var(--lock-bg, #e3e8ef); overflow: hidden; }
+.qp-bar i { display: block; height: 100%; border-radius: 999px; background: var(--teal, #17a596); }
+.qp-action { flex: none; min-width: 64px; text-align: right; }
+.qp-state { font-size: 13px; font-weight: 800; color: var(--muted, #5b6783); }
+.qp-state.is-claimed { color: var(--teal, #17a596); }
+.qp-row.is-claimed .qp-name { text-decoration: line-through; opacity: 0.6; }
+.qp-foot { margin: 10px 0 0; font-size: 12px; color: var(--muted, #5b6783); }
+.coin-ic { vertical-align: -3px; }
+
+.btn-sm { padding: 8px 14px; font-size: 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cele-card, .cele-confetti i { animation: none; }
+}
+
+/* ---------- Journey page: level badge and quests panel ---------- */
+.stat-level { padding: 0 5px; width: 44px; justify-content: center; cursor: pointer; }
+.stat-level[hidden] { display: none; }
+.stat-coins { padding: 0 12px; gap: 5px; }
+.stat-coins[hidden] { display: none; }
+#journey-quests.quests-panel { margin: 4px 16px 10px; }
+#journey-quests[hidden] { display: none; }
