@@ -6,7 +6,7 @@ const path = require("path");
 
 function load() {
   const ctx = vm.createContext({ console });
-  const code = fs.readFileSync(path.join(__dirname, "..", "..", "public", "js", "journey", "streak.js"), "utf8");
+  const code = fs.readFileSync(path.join(__dirname, "..", "..", "public", "js", "shared", "streak.js"), "utf8");
   vm.runInContext(code, ctx, { filename: "streak.js" });
   return ctx;
 }

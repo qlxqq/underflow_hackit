@@ -28,7 +28,7 @@ const ART_MODEL = "claude-haiku-4-5-20251001";
 // bigger model. It is only called once per photo.
 const OCR_MODEL = "claude-sonnet-5-5";
 
-// Must match THEMES in public/js/storeVocab/cardArt.js (everything except
+// Must match THEMES in public/js/cards/cardArt.js (everything except
 // "generic", which is only the plain fallback picture).
 const THEME_NAMES = [
   "food", "drink", "stall", "bus", "taxi", "train", "card", "home", "lift", "park",

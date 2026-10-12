@@ -7,7 +7,7 @@ const path = require("path");
 
 function load() {
   const context = vm.createContext({ console });
-  ["js/journey/zoneWords.js", "js/journey/levels.js"].forEach((file) => {
+  ["js/cards/data/zoneWords.js", "js/journey/levels.js"].forEach((file) => {
     const code = fs.readFileSync(path.join(__dirname, "..", "..", "public", file), "utf8");
     vm.runInContext(code, context, { filename: file });
   });

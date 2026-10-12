@@ -16,10 +16,10 @@ function loadInSharedContext(files) {
 }
 
 const FILES = [
-  "js/storeVocab/zhFrequency.js",
-  "js/storeVocab/msFrequency.js",
-  "js/storeVocab/taFrequency.js",
-  "js/storeVocab/rarity.js",
+  "js/cards/data/zhFrequency.js",
+  "js/cards/data/msFrequency.js",
+  "js/cards/data/taFrequency.js",
+  "js/cards/rarity.js",
 ];
 
 describe("rarity scoring", () => {
