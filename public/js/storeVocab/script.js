@@ -33,6 +33,21 @@ let isSaving = false;
 const MAX_WORDS_PER_CAPTURE = 30; // keeps each capture to a number of cards worth choosing from
 let hiddenWordCount = 0; // words found beyond the limit, not shown
 let statusTimer = null;
+// The pack-opening reveal is for island cards. Captured words go straight
+// into the collection (there can be a lot of them). To try a pack with
+// captured words, open the page with ?pack=1 on the end of the address. That
+// is remembered on this device until you open it with ?pack=0.
+const packParam = new URLSearchParams(location.search).get("pack");
+if (packParam === "1" || packParam === "0") {
+  try { localStorage.setItem("packOnCapture", packParam); } catch (err) { /* ignore */ }
+}
+const PACK_ON_CAPTURE = (() => {
+  try {
+    return localStorage.getItem("packOnCapture") === "1";
+  } catch (err) {
+    return packParam === "1";
+  }
+})();
 
 // ---- small helpers ----
 function showStatus(message, type = "info") {
@@ -74,6 +89,39 @@ function setLanguageTint(code) {
   foundStrip.innerHTML = getStreetStrip(code);
 }
 
+// ---- rewards: XP, coins, quests, streak ----
+// None of this may ever stop a capture from being saved, so every call is
+// wrapped: if the rewards tables are missing the app still works.
+async function safely(label, fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    console.error(`${label} failed (is database/rewards.sql run?):`, err);
+    return null;
+  }
+}
+
+// Counts towards today's quests (shown on the Journey page).
+async function questEvent(event, amount = 1) {
+  await safely("Quest progress", () => recordQuestEvent(currentUser.id, event, amount));
+}
+
+// XP for newly won cards, by rarity. Also counts towards the daily streak
+// and (for captured words) the "capture 3 words" quest. Returns the lines
+// for the pack summary ("+35 XP", "Level up!").
+async function rewardCards(rows, { fromCapture = true } = {}) {
+  const lines = [];
+  const xp = rows.reduce((sum, r) => sum + (RARITY_XP[r.rarity] || RARITY_XP.common), 0);
+  const reward = await safely("Rewards", () => grantRewards(currentUser.id, { xp, coins: 0 }));
+  if (reward) {
+    lines.push(`+${xp} XP`);
+    if (reward.levelUps > 0) lines.push(`Level up! You are now level ${reward.level} (+${reward.levelUps * LEVEL_UP_COINS} coins)`);
+  }
+  await safely("Streak", () => recordStreakActivity(currentUser.id));
+  if (fromCapture) await questEvent("capture_word", rows.length);
+  return lines;
+}
+
 // ---- collection ----
 function renderCollectionStats(entries) {
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -110,6 +158,12 @@ async function loadCardGrid() {
       console.error("Could not load island album cards (is the album_cards table created?):", err);
     }
     renderAlbums({ captured, albumRows, language });
+    // Rewards must never stop the collection from showing, so a problem here is only logged.
+    try {
+      if (typeof checkAlbumBadges === "function") checkAlbumBadges(currentUser.id, albumRows, language); // not awaited: the pop-up appears on top
+    } catch (err) {
+      console.error("Album reward check failed:", err);
+    }
     renderCollectionStats([...captured, ...albumRows.map((r) => ({ evolution_stage: r.evolution_stage, created_at: r.earned_at }))]);
     backfillArt(captured);
   } catch (err) {
@@ -123,6 +177,7 @@ async function handleAlbumPractice(cardId, currentUsageCount, currentStage) {
   try {
     const updated = await incrementAlbumCardUsage(currentUser.id, cardId, currentUsageCount, currentStage);
     showStatus(updated.evolution_stage > currentStage ? "Card evolved!" : "Practised.", "success");
+    questEvent("practise_card");
     await loadCardGrid();
   } catch (err) {
     console.error("Failed to record practice:", err);
@@ -134,7 +189,13 @@ async function handleAlbumPractice(cardId, currentUsageCount, currentStage) {
 // tried out before the island and its mini-games exist.
 async function handleDevAward(albumId, word) {
   try {
-    await awardAlbumCard(currentUser.id, albumId, getMotherTongue(), word, "dev");
+    const language = getMotherTongue();
+    const { isNew, row } = await awardAlbumCard(currentUser.id, albumId, language, word, "dev");
+    if (isNew) {
+      const card = albumCardPreview(albumId, word, language, row);
+      const lines = await rewardCards([card || { rarity: "common" }], { fromCapture: false });
+      if (card) await openPack([card], { summaryLines: lines });
+    }
     await loadCardGrid();
   } catch (err) {
     console.error("Could not award that card:", err);
@@ -159,6 +220,7 @@ async function handlePractice(vocabId, currentUsageCount, currentStage) {
   try {
     const updated = await incrementUsage(currentUser.id, vocabId, currentUsageCount, currentStage);
     showStatus(updated.evolution_stage > currentStage ? `"${updated.word}" evolved!` : `Practised "${updated.word}".`, "success");
+    questEvent("practise_card");
     await loadCardGrid();
   } catch (err) {
     console.error("Failed to record practice:", err);
@@ -207,10 +269,23 @@ function backfillArt(entries) {
 }
 
 // ---- capture -> words found ----
+// Only words written in the chosen language's own script are kept: Chinese
+// mode keeps Chinese characters only, Tamil mode keeps Tamil only. Malay is
+// written in the same letters as English, so it cannot be told apart this way.
+const SCRIPT_ONLY = {
+  zh: /^\p{Script=Han}+$/u,
+  ta: /^\p{Script=Tamil}+$/u,
+};
+
+function keepOwnScript(words, language) {
+  const pattern = SCRIPT_ONLY[language];
+  return pattern ? words.filter((w) => pattern.test(w)) : words;
+}
+
 async function buildPreview(text, language) {
   setLanguageTint(language);
   const rawWords = await segmentText(text, language);
-  const allWords = filterFillerWords(rawWords, language);
+  const allWords = keepOwnScript(filterFillerWords(rawWords, language), language);
   const words = allWords.slice(0, MAX_WORDS_PER_CAPTURE);
   hiddenWordCount = allWords.length - words.length;
   const existing = new Set(
@@ -282,7 +357,7 @@ function renderPreview() {
   renderFoundSummary();
 
   if (currentPreviewWords.length === 0) {
-    previewList.innerHTML = `<p class="empty-state">No words found. Try different text.</p>`;
+    previewList.innerHTML = `<p class="empty-state">No ${LANGUAGE_NAMES[languageSelect.value] || ""} words found. Check the language at the top of the Capture page, or try different text.</p>`;
     updateSaveButton();
     return;
   }
@@ -374,6 +449,7 @@ imageInput.addEventListener("change", async (e) => {
       return;
     }
     textInput.value = extractedText;
+    questEvent("photo_scan");
     await buildPreview(extractedText, languageSelect.value);
     showStatus(window.lastOcrInfo || "", "info");
   } catch (err) {
@@ -403,6 +479,7 @@ saveButton.addEventListener("click", async () => {
   let savedCount = 0;
   let skippedCount = 0;
   const needArt = []; // saved words that need a picture drawn
+  const savedRows = [];
 
   for (const checkbox of checked) {
     const item = currentPreviewWords[checkbox.dataset.index];
@@ -418,6 +495,7 @@ saveButton.addEventListener("click", async () => {
         theme: item.theme === "none" ? null : item.theme,
       });
       if (item.theme === "none") needArt.push(row);
+      savedRows.push(row);
       savedCount++;
     } catch (err) {
       // Most likely the unique constraint rejecting a duplicate that
@@ -432,7 +510,13 @@ saveButton.addEventListener("click", async () => {
   textInput.value = "";
   history.replaceState(null, "", "#collection");
   showView("collection");
-  await loadCardGrid();
+  const loadingGrid = loadCardGrid();
+  if (savedRows.length > 0) {
+    const lines = await rewardCards(savedRows);
+    if (PACK_ON_CAPTURE) await openPack(savedRows, { summaryLines: lines });
+    else if (lines.length) showStatus(lines.join(" · "), "success");
+  }
+  await loadingGrid;
 
   if (skippedCount === 0) {
     // The Collection only shows the player's Mother Tongue.
@@ -478,6 +562,7 @@ async function enterApp() {
     return;
   }
   appSection.hidden = false;
+  if (PACK_ON_CAPTURE) showStatus("Pack test is on for captured words. Open the page with ?pack=0 on the end to turn it off.", "info");
   // Start the capture language on the player's Mother Tongue.
   const motherTongue = getMotherTongue();
   languageSelect.value = motherTongue;
@@ -502,6 +587,17 @@ initAlbums(albumView, {
     showView("capture");
   },
 });
+// The tips card is open the first time. Once the player hides it, it stays
+// hidden (on this device) until they tap Show.
+const tipsCard = document.querySelector(".tips-card");
+if (tipsCard) {
+  try {
+    if (localStorage.getItem("tipsHidden") === "1") tipsCard.open = false;
+  } catch (err) { /* storage blocked: stays open */ }
+  tipsCard.addEventListener("toggle", () => {
+    try { localStorage.setItem("tipsHidden", tipsCard.open ? "0" : "1"); } catch (err) { /* ignore */ }
+  });
+}
 $("photo-icon").innerHTML = icon("camera", 26);
 languageSelect.addEventListener("change", () => setLanguageTint(languageSelect.value));
 setLanguageTint(languageSelect.value);

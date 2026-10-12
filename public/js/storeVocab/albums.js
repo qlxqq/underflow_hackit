@@ -144,6 +144,16 @@ function albumCardEntry(album, slot, language) {
   };
 }
 
+// A card for the pack-opening reveal, built from a freshly awarded row.
+function albumCardPreview(albumId, word, language, row) {
+  const album = ALBUMS.find((a) => a.id === albumId);
+  const slot = buildIslandAlbums(row ? [row] : [], language)
+    .filter((a) => a.id === albumId)
+    .flatMap((a) => a.slots)
+    .find((s) => s.word === word && s.row);
+  return slot && album ? albumCardEntry(album, slot, language) : null;
+}
+
 // ---------- captured words: categories, filters, sorting ----------
 const CATEGORY_OF_THEME = {
   food: "Food & Drink", drink: "Food & Drink", stall: "Food & Drink", fruit: "Food & Drink", cake: "Food & Drink", chilli: "Food & Drink",
@@ -203,14 +213,24 @@ function sortEntries(list, sort) {
   return copy;
 }
 
+// Search ignores tone marks and spaces, so "xuexiao" and "xue xiao" both
+// find 学校 (xuéxiào).
+function searchKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
+
 // Cards after the search, rarity and level filters (not the category chip).
 function filterBase(entries) {
-  const term = capUi.search.trim().toLowerCase();
+  const term = searchKey(capUi.search);
   return entries.filter((e) => {
     if (capUi.rarities.size && !capUi.rarities.has(e.rarity)) return false;
     if (capUi.stages.size && !capUi.stages.has(Math.min(e.evolution_stage || 0, 2))) return false;
     if (!term) return true;
-    return [e.word, e.romanization, e.english_meaning].some((v) => String(v || "").toLowerCase().includes(term));
+    return [e.word, e.romanization, e.english_meaning].some((v) => searchKey(v).includes(term));
   });
 }
 
@@ -402,7 +422,7 @@ function capturedSkeleton(data) {
     ${data.captured.length === 0 ? "" : `
     <div class="cap-toolbar">
       <label class="cap-search"><span class="visually-hidden">Search cards</span>
-        <input type="search" data-cap-search placeholder="Search words or meanings" value="${escapeHtml(capUi.search)}" autocomplete="off" />
+        <input type="search" data-cap-search placeholder="Search words, pinyin or meanings" value="${escapeHtml(capUi.search)}" autocomplete="off" />
       </label>
       <button type="button" class="cap-filter-btn" data-cap-filter aria-expanded="false">Filter<span class="cap-badge" hidden></span></button>
     </div>
