@@ -127,7 +127,16 @@ if (window.MutationObserver) {
     .observe(questsPanel, { attributes: true, attributeFilter: ["class"] });
 }
 
-// ---- coins in the top bar: the island's coins, spent at the Island Shop ----
+// ---- coins in the top bar: the profile's coins (shared with quests), spent at the Island Shop ----
+// Quests can pay coins too, so re-read the balance when the quests list redraws
+// and when the player comes back to this tab.
+let coinSyncTimer = null;
+const syncCoinsSoon = () => {
+  clearTimeout(coinSyncTimer);
+  coinSyncTimer = setTimeout(() => { if (typeof IslandState !== "undefined") IslandState.syncCoins(); }, 800);
+};
+if (window.MutationObserver) new MutationObserver(syncCoinsSoon).observe(questsPanel, { childList: true, subtree: true });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncCoinsSoon(); });
 function showIslandCoins(n) {
   const svg = typeof coinSvg === "function" ? coinSvg(20) : "";
   coinsChip.innerHTML = `${svg}<span class="coin-num">${n}</span>`;

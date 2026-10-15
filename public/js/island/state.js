@@ -16,6 +16,8 @@ const IslandState = {
   avatar: null,            // { gender: "boy"|"girl", outfit } - null until chosen
   where: "home",           // which island the player is on now
   listeners: [],
+  inflight: 0,             // coin payments sent to Supabase and not answered yet
+  lastServerCoins: null,
   testing: false,          // ?reveal / ?unlock / ?coins / ?dev: nothing is saved
 
   // Loads the saved game (call after IslandSave.init()).
@@ -34,6 +36,8 @@ const IslandState = {
       this.zonesRevealed = new Set(blob.zones || []);
       this.avatar = blob.avatar && blob.avatar.gender ? blob.avatar : null;
     }
+    // Logged in: coins are the profile's coins (the same balance as quests and the rest of the app).
+    await this.syncCoins(true);
     // The player always arrives on their home island (?start=mystery is for testing).
     this.where = params.get("start") === "mystery" ? "mystery" : "home";
     if (params.get("reveal") === "all") ISLAND_ZONES.forEach((z) => this.zonesRevealed.add(z.id));
@@ -55,14 +59,61 @@ const IslandState = {
   onChange(fn) { this.listeners.push(fn); },
   emit() { this.listeners.forEach((fn) => { try { fn(this); } catch (err) { console.error(err); } }); },
 
-  addCoins(n) { this.coins += Math.max(0, Math.round(n)); this.save(); this.emit(); return this.coins; },
-  spend(n) {
+  // ---- coins ----
+  // Logged in: the balance lives in profiles.coins and changes only through the
+  // island_earn / island_spend functions (database/island_coins.sql). The screen
+  // updates straight away and the server answer then replaces the number.
+  // Guests and ?testing links: local only, as before.
+  useServer() { return !this.testing && !!IslandSave.userId && IslandSave.hasCloud(); },
+
+  // Reads the profile's coins. `force` also applies it while a payment is pending.
+  async syncCoins(force) {
+    if (!this.useServer() || (this.inflight > 0 && !force)) return;
+    try {
+      const { data, error } = await supabase.from("profiles").select("coins").eq("user_id", IslandSave.userId).maybeSingle();
+      if (error || !data) return;
+      const coins = Math.max(0, Number(data.coins) || 0);
+      if (coins !== this.coins) { this.coins = coins; this.save(); this.emit(); }
+    } catch (err) { console.warn("Island: could not read coins, using the saved number.", err && err.message); }
+  },
+
+  async pay(fn, n, undo) {
+    if (!this.useServer()) return;
+    this.inflight++;
+    let failed = false;
+    try {
+      const { data, error } = await supabase.rpc(fn, { p_amount: n });
+      if (error) throw error;
+      this.lastServerCoins = Number(Array.isArray(data) ? data[0] : data);
+    } catch (err) {
+      failed = true;
+      console.warn(`Island: ${fn} was refused.`, err && err.message);
+      if (undo) undo();
+    }
+    this.inflight--;
+    if (this.inflight > 0) return;
+    if (failed || !Number.isFinite(this.lastServerCoins)) { await this.syncCoins(true); return; }
+    if (this.lastServerCoins !== this.coins) { this.coins = Math.max(0, this.lastServerCoins); this.save(); this.emit(); }
+  },
+
+  addCoins(n) {
+    n = Math.max(0, Math.round(n));
+    if (!n) return this.coins;
+    this.coins += n; this.save(); this.emit();
+    this.pay("island_earn", n);
+    return this.coins;
+  },
+  spend(n, undo) {
     if (this.coins < n) return false;
-    this.coins -= n; this.save(); this.emit(); return true;
+    this.coins -= n; this.save(); this.emit();
+    this.pay("island_spend", n, undo);
+    return true;
   },
   owns(id) { return this.owned.has(id); },
   buy(item) {
-    if (this.owned.has(item.id) || !this.spend(item.price)) return false;
+    if (this.owned.has(item.id)) return false;
+    // if the server refuses the payment the item is taken back
+    if (!this.spend(item.price, () => { this.owned.delete(item.id); this.save(); this.emit(); })) return false;
     this.owned.add(item.id); this.save(); this.emit(); return true;
   },
   npcDone(id) { return this.npcsDone.has(id); },
