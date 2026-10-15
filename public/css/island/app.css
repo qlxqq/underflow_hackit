@@ -1,0 +1,178 @@
+/* The island page's own styles for the pieces it takes over from the old Journey
+   page: login and language screens, the top bar, the quests drop-down, the toast.
+   Copied from css/journey/style.css so this page does not depend on the MRT map's
+   stylesheet. Tokens and shared components come from css/shared/base.css. */
+
+/* ---- scenes: short illustrated strips at the top of the login and language screens ---- */
+.scene { position: relative; overflow: hidden; line-height: 0; }
+.scene-art { height: 100%; line-height: 0; }
+.scene-svg { display: block; width: 100%; height: 100%; }
+
+/* ---- login + sign up ---- */
+.auth-screen { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: var(--bg); }
+.scene-login { flex-shrink: 0; height: 260px; height: clamp(200px, 31dvh, 260px); background: #86c9ee; }
+.scene-login .brand {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 30px 24px 0; line-height: normal;
+}
+.brand-name { margin: 0; font: 800 32px/1.1 var(--font-ui); letter-spacing: -0.4px; color: var(--ink); }
+.brand-tagline { margin: 8px 0 0; max-width: 290px; font: 500 14px/1.45 var(--font-ui); color: #35546a; }
+
+.auth-panel {
+  position: relative; flex: 1; margin-top: -20px; padding: 24px 20px 28px;
+  background: var(--bg); border-radius: 24px 24px 0 0;
+}
+.auth-panel .status-message { margin: 0 0 16px; }
+
+/* the box: a white card with a soft lift */
+.auth-box {
+  padding: 0 20px 22px; overflow: hidden;
+  background: var(--white); border: 1px solid #dce6f0; border-radius: 20px;
+  box-shadow: 0 10px 28px rgba(24, 35, 58, 0.07);
+}
+.auth-tabs { display: flex; margin: 0 -20px 20px; border-bottom: 1px solid #e3ebf3; background: #f6f9fc; }
+.auth-tab {
+  flex: 1; min-height: 50px; margin-bottom: -1px; padding: 0;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  font: 700 15px var(--font-ui); color: var(--muted); cursor: pointer;
+}
+.auth-tab[aria-selected="true"] { color: var(--ink); background: var(--white); border-bottom-color: var(--amber); }
+
+.auth-intro { margin-bottom: 18px; }
+.auth-heading { margin: 0 0 4px; font: 800 21px/1.25 var(--font-ui); }
+.auth-subheading { margin: 0; font: 500 14px/1.45 var(--font-ui); color: var(--muted); }
+
+.auth-card { display: flex; flex-direction: column; gap: 12px; }
+.auth-card .field { background: #f6f9fc; border-color: #dce6f0; }
+.auth-card .field:focus { background: var(--white); outline: 2px solid var(--amber); outline-offset: 1px; }
+.btn-auth { margin-top: 4px; min-height: 52px; border-radius: 14px; font-size: 16px; }
+
+/* the three Mother Tongues, quietly, under the box */
+.auth-languages {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin: 24px 0 0; font: 600 13px var(--font-ui); color: var(--muted);
+}
+.auth-languages span + span::before {
+  content: ""; display: inline-block; width: 4px; height: 4px; margin-right: 14px;
+  border-radius: 50%; background: #b7c2d3; vertical-align: middle;
+}
+
+/* a pale silhouette of the estate along the bottom */
+.scene-footer { flex-shrink: 0; height: 84px; height: clamp(52px, 9dvh, 84px); }
+
+/* ---- language choice ---- */
+.language-screen { min-height: 100vh; min-height: 100dvh; background: var(--bg); }
+.scene-language { height: 170px; height: clamp(120px, 21dvh, 170px); background: #8bbdeb; }
+.language-body { padding: 24px 20px 40px; }
+.language-title { margin: 0 0 8px; font-size: 28px; font-weight: 800; line-height: 1.2; }
+.language-hint { margin: 0 0 20px; font-weight: 500; font-size: 14px; line-height: 1.45; color: var(--muted); }
+
+.language-grid { display: grid; gap: 12px; }
+.language-choice {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  width: 100%; min-height: 96px; padding: 0 18px 0 24px; text-align: left;
+  background: var(--tint); border: 1px solid var(--tint-bd); border-radius: var(--radius-lg);
+  color: var(--ink); cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+.language-choice::before {
+  content: ""; position: absolute; right: -30px; top: -36px;
+  width: 132px; height: 132px; border-radius: 50%;
+  background: var(--blob); opacity: 0.75;
+}
+.language-choice:hover { border-color: var(--chev); }
+.language-choice:active { transform: scale(0.99); }
+.language-choice[data-lang="zh"] { --tint: #eef7f0; --tint-bd: #cfe4d3; --blob: #d4e9d6; --chev: #2d6a45; }
+.language-choice[data-lang="ms"] { --tint: #fcf6ea; --tint-bd: #efdcb8; --blob: #f3e4c8; --chev: #9a5b00; }
+.language-choice[data-lang="ta"] { --tint: #eef6fb; --tint-bd: #c4dfef; --blob: #bfe1f2; --chev: #1f5f85; }
+
+.language-text { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.language-native { font: 700 28px/1.25 var(--font-ui); }
+.language-english { font: 600 14px var(--font-ui); color: #3f4c66; }
+
+.language-arrow {
+  position: relative; z-index: 1; flex-shrink: 0;
+  width: 40px; height: 40px; border-radius: 50%; background: var(--white);
+}
+.language-arrow::before {
+  content: ""; position: absolute; left: 14px; top: 15px;
+  width: 9px; height: 9px;
+  border-top: 2.5px solid var(--chev); border-right: 2.5px solid var(--chev);
+  transform: rotate(45deg);
+}
+
+/* ---- journey top bar: language, streak, profile picture ---- */
+.journey-bar { padding: 0 16px; }
+.stats { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.stat-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 44px; padding: 0 14px; border-radius: 22px;
+  background: var(--white); border: 1px solid var(--line);
+  font: 800 15px var(--font-ui); color: var(--ink);
+}
+button.stat-chip { cursor: pointer; }
+.stat-chip .chip-glyph { font-family: var(--font-cjk); font-weight: 700; }
+.stat-chip .icon { color: var(--muted); }
+.stat-streak { color: #c25b0a; }
+.stat-streak .icon { color: inherit; }
+
+.avatar-btn {
+  flex-shrink: 0; width: 44px; height: 44px; padding: 0; overflow: hidden;
+  border-radius: 50%; border: 2px solid var(--white); background: var(--white);
+  box-shadow: 0 0 0 1px var(--line); cursor: pointer;
+}
+.avatar-btn svg { display: block; width: 100%; height: 100%; }
+
+.avatar-btn {
+  flex-shrink: 0; width: 44px; height: 44px; padding: 0; overflow: hidden;
+  border-radius: 50%; border: 2px solid var(--white); background: var(--white);
+  box-shadow: 0 0 0 1px var(--line); cursor: pointer;
+}
+.avatar-btn svg { display: block; width: 100%; height: 100%; }
+
+/* ---- toast (floats above the bottom nav) ---- */
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--nav-h) + 16px);
+  transform: translateX(-50%); z-index: 30;
+  width: calc(100% - 40px); max-width: 390px; margin: 0;
+  box-shadow: 0 6px 20px rgba(24, 35, 58, 0.18);
+}
+
+/* ---- the island screen: top bar, then the island filling the rest above the bottom nav ---- */
+.island-screen {
+  position: relative; display: flex; flex-direction: column;
+  height: 100vh; height: 100dvh; overflow: hidden;
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  background: #c3dcea;
+}
+.island-screen .top-bar { flex: none; background: var(--white, #fff); }
+.island-wrap { position: relative; flex: 1; min-height: 0; width: 100%; overflow: hidden; background: #c3dcea; }
+.island-soon { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 32px; text-align: center; background: var(--bg); }
+.island-soon h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.island-soon p { margin: 0; color: var(--muted); font-weight: 600; line-height: 1.4; }
+
+.island-screen .stat-chip { padding: 0 11px; }
+.island-screen .stat-level { position: relative; padding: 0 5px; }
+.stat-coins { gap: 6px; }
+
+/* ---- daily quests: a drop-down from the level badge ---- */
+.island-screen #journey-quests.quests-panel {
+  position: absolute; z-index: 40; margin: 0; left: 12px; right: 12px;
+  top: calc(var(--bar-h, 72px) + 4px); max-height: calc(100% - var(--bar-h, 72px) - var(--nav-h) - 24px); overflow-y: auto;
+  box-shadow: 0 14px 34px rgba(24, 35, 58, 0.28);
+}
+.island-screen #journey-quests.is-collapsed { display: none; }
+
+/* a yellow ! on the level badge when a quest reward is waiting */
+.stat-level.has-ready::after {
+  content: "!"; position: absolute; top: -4px; right: -4px; z-index: 2;
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: #f2a93b; color: #fff; border: 2px solid var(--white);
+  font: 800 12px/1 var(--font-ui); box-shadow: 0 1px 4px rgba(24, 35, 58, 0.3);
+  animation: ready-pulse 1.6s ease-in-out infinite;
+}
+@keyframes ready-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@media (prefers-reduced-motion: reduce) { .stat-level.has-ready::after { animation: none; } }
