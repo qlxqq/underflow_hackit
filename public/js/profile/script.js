@@ -4,7 +4,7 @@
 
 const $ = (id) => document.getElementById(id);
 
-const JOURNEY_PAGE = "../journey/journey.html";
+const JOURNEY_PAGE = "../island/island.html";
 const MAX_FAVOURITES = 3;
 const MAX_PICK_LIST = 80; // keeps the picker light; search finds the rest
 const RARITY_COLORS = { common: "#8a97ab", uncommon: "#3aa675", rare: "#2f6fd6", epic: "#8a4fd3", legendary: "#f2a93b" };

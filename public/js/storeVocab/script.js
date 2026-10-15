@@ -5,7 +5,7 @@
 
 const $ = (id) => document.getElementById(id);
 
-const JOURNEY_PAGE = "../journey/journey.html";
+const JOURNEY_PAGE = "../island/island.html";
 
 const appSection = $("app-section");
 const signOutButton = $("sign-out");
