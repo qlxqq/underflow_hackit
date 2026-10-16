@@ -63,12 +63,34 @@ function renderLanguageChip() {
 }
 
 // ---- top bar: streak and profile picture ----
+// The streak grows once a day, when the player does something: finishes a level
+// or an NPC challenge here, or captures a word (the Capture page). Just opening
+// the app does not count. A streak that was not kept up yesterday shows as 0.
+function shownStreak(profile) {
+  const last = profile.lastActiveDate;
+  if (!last || typeof daysBetween !== "function") return profile.currentStreak;
+  return daysBetween(last, localDateString()) > 1 ? 0 : profile.currentStreak;
+}
+
+async function countStreak() {
+  if (!currentUser || typeof recordStreakActivity !== "function") return;
+  try {
+    const result = await recordStreakActivity(currentUser.id);
+    if (!result || !currentProfile) return;
+    currentProfile = { ...currentProfile, currentStreak: result.currentStreak, longestStreak: result.longestStreak, lastActiveDate: result.lastActiveDate };
+    renderStreak();
+    if (result.changed) showToast(result.currentStreak === 1 ? "Day 1 of your streak!" : `${result.currentStreak} day streak!`);
+  } catch (err) {
+    console.error("Could not update the streak:", err);
+  }
+}
+
 function renderStreak() {
   if (!currentProfile || !currentProfile.hasExtras) {
     streakChip.hidden = true;
     return;
   }
-  const n = currentProfile.currentStreak;
+  const n = shownStreak(currentProfile);
   streakChip.innerHTML = `${flameSvg(n > 0)}<span class="streak-num">${n}</span>`;
   streakChip.setAttribute("aria-label", n === 1 ? "1 day streak" : `${n} day streak`);
   streakChip.hidden = false;
@@ -85,8 +107,7 @@ function refreshQuests() {
 
 async function loadProfileAndStreak() {
   try {
-    const loaded = await loadProfile(currentUser.id);
-    currentProfile = await recordDailyVisit(currentUser.id, loaded);
+    currentProfile = await loadProfile(currentUser.id); // opening the app no longer counts: see countStreak()
   } catch (err) {
     // The profile is a nice-to-have: never block the island on it.
     console.error("Could not load profile:", err);
@@ -153,7 +174,10 @@ async function mountIsland(language) {
   if (playable) {
     await IslandApp.mount(mapEl, {
       // Finished a level, an NPC challenge, bought something...: refresh the quests above the island.
-      onEvent: (type) => { if (["level", "npc", "purchase"].includes(type)) refreshQuests(); },
+      onEvent: (type) => {
+        if (["level", "npc", "purchase", "practice"].includes(type)) refreshQuests();
+        if (["level", "npc", "practice"].includes(type)) countStreak(); // a mini-game or NPC challenge was played
+      },
       onCoins: showIslandCoins,
     });
   }

@@ -9,8 +9,6 @@ const ISLAND_MARKUP = `
   <div class="hud">
     <div class="hud-top">
       <div class="hud-left">
-        <div class="zone-pill" id="zone-pill"><span class="zone-dot"></span><span id="zone-pill-text">Mystery Island</span></div>
-        <div class="discover" id="discover">0/3 zones discovered</div>
       </div>
       <div class="hud-right">
       <span id="coin-count" hidden>0</span>

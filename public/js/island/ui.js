@@ -13,11 +13,15 @@ const IslandHooks = {
   onLevelCompleted(level) {},
   // Called when an NPC challenge finishes: { npcId, zone, kind, score, total }.
   onNpcFinished(result) {},
-  // Called the first time a player passes an NPC's challenge: { npcId, zone, kind, cards }.
-  // Give the player their card(s) here (see docs/ISLAND.md). Return true when handled.
+  // Called each time a player passes an NPC's challenge: { npcId, zone, kind, score, total, cards }.
+  // `cards` are the new island cards just saved to the album (done by cards.js). Notification only.
   awardCards(info) { return false; },
   // Called the first time a zone's mist lifts: the zone object.
   onZoneDiscovered(zone) {},
+  // Optional: return a level number if a mini-game has this word, so Practise goes there first (otherwise an NPC).
+  findMiniGame(word, language) { return null; },
+  // Called after a challenge when practice was counted: [{ word, evolved }].
+  onPractice(list) {},
   // Called when the player sails: "home" or "mystery". Optional.
   onSail(target) {},
   // Called when the player buys something at the shop: the item.
@@ -32,7 +36,6 @@ const IslandUI = {
   init() {
     const $ = (id) => document.getElementById(id);
     this.el = {
-      zonePill: $("zone-pill"), zoneText: $("zone-pill-text"), discover: $("discover"),
       banner: $("banner"), act: $("act-btn"), waypoint: $("waypoint"), waypointArrow: $("waypoint-arrow"),
       waypointLabel: $("waypoint-label"), overlay: $("overlay"), sheet: $("sheet"), mapBtn: $("map-btn"), avatarBtn: $("avatar-btn"), boatBtn: $("boat-btn"),
       coins: $("coin-count"), fade: $("fade"), fadeText: $("fade-text"),
@@ -50,15 +53,11 @@ const IslandUI = {
   },
 
   // ---------- heads-up display ----------
-  setZone(name, accent) {
-    this.el.zoneText.textContent = name;
-    this.el.zonePill.style.setProperty("--zone", accent || "#8190a8");
-  },
-  setDiscovered(n, total, done, levels) {
-    this.el.discover.textContent = `${n}/${total} zones · ${done}/${levels} levels`;
-  },
+  // The zone name is no longer kept on screen; scene.js flashes it with banner() when you walk into a zone.
+  setZone() {},
+  setDiscovered() {},
+  setDiscoverText() {},
   setCoins(n) { if (this.el.coins) this.el.coins.textContent = String(n); },
-  setDiscoverText(text) { this.el.discover.textContent = text; },
   setHudLeft(on) { const e = document.querySelector(".hud-left"); if (e) e.style.display = on ? "" : "none"; },
   showMapButton(on) { this.el.mapBtn.hidden = !on; this.el.mapBtn.style.display = on ? "" : "none"; },
   // Fades the screen to a colour with a message, then runs `then`.
@@ -254,11 +253,17 @@ const IslandUI = {
   },
 
   // ---------- NPC challenge ----------
+  // opts: { done, progress(): {album, have, total, owned, of}, onResult(score, total) -> reward (may be a promise) }
   openNpc(npc, onClose, opts = {}) {
     const zone = ISLAND_ZONES.find((z) => z.id === npc.zone);
-    const questions = IslandQuiz.make(npc, zone);
-    const total = questions.length;
-    const kindText = { pinyin: "Pinyin challenge", meaning: "Meaning challenge", listening: "Listening challenge" }[npc.kind] || "Challenge";
+    const focus = opts.focus || null;
+    const steps = IslandQuiz.make(npc, zone, { focus });
+    const right = new Set(); // words answered correctly (for cards)
+    const asked = new Set(); // every word that came up (for practice)
+    const missed = new Set(); // words answered wrong (they come first next time)
+    const total = steps.length;
+    const pass = IslandQuiz.passMark(total);
+    const partText = { pinyin: "Quick check", meaning: "Quick check", reverse: "Quick check", listening: "Listening", hearMeaning: "Listening", cloze: "Fill the gap", translate: "Sentence", match: "Matching" };
     if (!total) {
       this.openSheet(`${this.head(npc.name, zone.accent)}<h2 class="sheet-title">${this.esc(npc.name)}</h2><p class="sheet-sub">I have nothing to ask you yet.</p><button class="btn btn-primary btn-block" data-close type="button">OK</button>`, onClose);
       return;
@@ -267,27 +272,49 @@ const IslandUI = {
     let score = 0;
 
     const intro = () => {
+      const pr = opts.progress ? opts.progress() : null;
+      const left = pr ? pr.roleTotal - pr.roleHave : 0;
+      // one short line about the cards: how many of this character's cards are still to win
+      const cardLine = pr && pr.roleTotal
+        ? `<p class="sheet-sub intro-cards">${left > 0 ? `${left} of ${pr.roleTotal} ${this.esc(pr.label)} cards still to win` : `You have all ${pr.roleTotal} ${this.esc(pr.label)} cards`}</p>`
+        : "";
+      const focusLine = focus ? `<p class="sheet-note">Practising <b lang="zh">${this.esc(focus)}</b>: it is in this challenge.</p>` : "";
       this.openSheet(
         `${this.head(`${npc.role || zone.name}`, zone.accent)}
          <h2 class="sheet-title">${this.esc(npc.name)}</h2>
          <p class="sheet-sub">${this.esc(npc.greeting)}</p>
-         <div class="game-card"><div><strong>${kindText}</strong><p>${total} questions. Get ${IslandQuiz.pass} right to earn coins and a card${opts.done ? " (you have already earned this)" : ""}.</p></div></div>
+         <p class="intro-rule">${total} questions. Get ${pass} right to pass.</p>
+         ${cardLine}
+         ${focusLine}
          <button class="btn btn-primary btn-block" id="npc-go" type="button">Let's go</button>`,
         onClose
       );
       document.getElementById("npc-go").addEventListener("click", ask);
     };
 
+    const goNext = () => { index++; if (index < total) ask(); else finish(); };
+    const nextButton = () => `<button class="btn btn-primary btn-block" id="q-next" type="button" hidden>${index + 1 < total ? "Next" : "See result"}</button>`;
+    const header = (q) => `${this.head(`${npc.name} · ${index + 1} of ${total}`, zone.accent)}<p class="q-part">${partText[q.kind] || "Question"}</p>`;
+
     const ask = () => {
-      const q = questions[index];
-      const listen = q.kind === "listening";
+      const q = steps[index];
+      if (q.word) asked.add(q.word);
+      if (q.kind === "match") { q.words.forEach((w) => asked.add(w)); return askMatch(q); }
+      const listen = !!q.speak;
+      const cloze = q.kind === "cloze";
+      const sentence = !!q.sentence;
+      const stem = listen
+        ? `<button class="btn q-play" id="q-play" type="button">${icon("spark", 22)} Play the word</button><p class="sheet-sub" id="q-nosound" hidden>Sound is not available here. Hint: ${this.esc(q.hint)}</p>`
+        : sentence
+          ? `<p class="q-sentence" id="q-sentence" lang="zh">${this.esc(q.sentence).replace("＿＿", '<span class="q-gap" id="q-gap">＿＿</span>')}</p><p class="q-translation" id="q-translation" hidden></p>`
+          : `<div class="q-word${q.bigIsEnglish ? " is-english" : ""}" ${q.bigIsEnglish ? "" : 'lang="zh"'}>${this.esc(q.big)}</div>`;
       this.el.sheet.innerHTML =
-        `${this.head(`${npc.name} · ${index + 1} of ${total}`, zone.accent)}
+        `${header(q)}
          <p class="sheet-sub">${this.esc(q.prompt)}</p>
-         ${listen ? `<button class="btn q-play" id="q-play" type="button">${icon("spark", 22)} Play the word</button><p class="sheet-sub" id="q-nosound" hidden>Sound is not available here. Hint: ${this.esc(q.hint)}</p>` : `<div class="q-word" lang="zh">${this.esc(q.big)}</div>`}
+         ${stem}
          <div class="q-options">${q.options.map((o) => `<button class="q-opt" type="button" ${o.lang ? 'lang="zh"' : ""} data-opt="${this.esc(o.value)}">${this.esc(o.label)}</button>`).join("")}</div>
          <p class="q-feedback" id="q-feedback" role="status"></p>
-         <button class="btn btn-primary btn-block" id="q-next" type="button" hidden>${index + 1 < total ? "Next" : "See result"}</button>`;
+         ${nextButton()}`;
       if (listen) {
         const play = () => { if (!IslandQuiz.speak(q.speak)) document.getElementById("q-nosound").hidden = false; };
         document.getElementById("q-play").addEventListener("click", play);
@@ -295,27 +322,107 @@ const IslandUI = {
       }
       this.el.sheet.querySelectorAll(".q-opt").forEach((btn) => btn.addEventListener("click", () => {
         const correct = btn.dataset.opt === q.answer;
-        if (correct) score++;
+        if (correct) { score++; if (q.word) right.add(q.word); } else if (q.word) missed.add(q.word);
         this.el.sheet.querySelectorAll(".q-opt").forEach((b) => {
           b.disabled = true;
           if (b.dataset.opt === q.answer) b.classList.add("is-right");
           else if (b === btn) b.classList.add("is-wrong");
         });
+        if (sentence) {
+          const gap = document.getElementById("q-gap");
+          if (gap) { gap.textContent = q.answer; gap.classList.add("is-filled"); }
+          const tr = document.getElementById("q-translation");
+          tr.innerHTML = `${this.esc(q.py)}<br>${this.esc(q.en)}`; tr.hidden = false;
+        }
         document.getElementById("q-feedback").textContent = correct ? "Correct!" : `Not quite. It is ${q.reveal}.`;
         const next = document.getElementById("q-next");
         next.hidden = false;
-        next.addEventListener("click", () => { index++; if (index < total) ask(); else finish(); });
+        next.addEventListener("click", goNext);
       }));
     };
 
-    const finish = () => {
-      const msg = score === total ? "Perfect! Well done." : score >= IslandQuiz.pass ? "Nice work!" : "Good try. Come back and try again.";
-      const reward = (opts.onResult ? opts.onResult(score, total) : null) || { coins: 0, cards: 0 };
+    // Matching round: tap a word, then its meaning.
+    const askMatch = (q) => {
+      const pairs = q.pairs;
+      const meanings = IslandQuiz.shuffle(pairs.map((p, i) => ({ i, text: p.target })));
+      let picked = null;      // { side: "w" | "m", i }
+      let mistakes = 0;
+      let matched = 0;
+      this.el.sheet.innerHTML =
+        `${header(q)}
+         <p class="sheet-sub">${this.esc(q.prompt)}</p>
+         <div class="match-grid">
+           <div class="match-col">${pairs.map((p, i) => `<button class="match-opt" type="button" data-side="w" data-i="${i}" lang="zh"><b>${this.esc(p.word)}</b>${q.side === "pinyin" ? "" : `<small>${this.esc(p.pinyin)}</small>`}</button>`).join("")}</div>
+           <div class="match-col">${meanings.map((m) => `<button class="match-opt" type="button" data-side="m" data-i="${m.i}">${this.esc(m.text)}</button>`).join("")}</div>
+         </div>
+         <p class="q-feedback" id="q-feedback" role="status">Tap a word, then its meaning.</p>
+         ${nextButton()}`;
+      const sheet = this.el.sheet;
+      const btn = (side, i) => sheet.querySelector(`.match-opt[data-side="${side}"][data-i="${i}"]`);
+      sheet.querySelectorAll(".match-opt").forEach((b) => b.addEventListener("click", () => {
+        if (b.disabled) return;
+        const side = b.dataset.side, i = Number(b.dataset.i);
+        if (!picked || picked.side === side) {
+          if (picked) btn(picked.side, picked.i).classList.remove("is-picked");
+          picked = { side, i }; b.classList.add("is-picked");
+          return;
+        }
+        const a = btn(picked.side, picked.i);
+        if (picked.i === i) {
+          [a, b].forEach((x) => { x.classList.remove("is-picked"); x.classList.add("is-right"); x.disabled = true; });
+          matched++;
+          picked = null;
+          if (matched === pairs.length) {
+            const good = mistakes <= q.allowedMistakes;
+            if (good) { score++; q.words.forEach((w) => right.add(w)); }
+            document.getElementById("q-feedback").textContent = mistakes === 0 ? "All matched with no mistakes!" : good ? `All matched (${mistakes} mistake${mistakes > 1 ? "s" : ""}).` : `All matched, but with ${mistakes} mistakes.`;
+            const next = document.getElementById("q-next");
+            next.hidden = false;
+            next.addEventListener("click", goNext);
+          }
+        } else {
+          mistakes++;
+          const wordBtn = picked.side === "w" ? a : b;
+          if (pairs[Number(wordBtn.dataset.i)]) missed.add(pairs[Number(wordBtn.dataset.i)].word);
+          a.classList.remove("is-picked");
+          [a, b].forEach((x) => x.classList.add("is-wrong"));
+          picked = null;
+          setTimeout(() => [a, b].forEach((x) => x.classList.remove("is-wrong")), 500);
+        }
+      }));
+    };
+
+    const finish = async () => {
+      const passed = score >= pass;
+      this.el.sheet.innerHTML = `${this.head(npc.name, zone.accent)}<h2 class="sheet-title">${score} / ${total}</h2><p class="sheet-sub">Collecting your reward...</p>`;
+      let reward = null;
+      try { reward = opts.onResult ? await opts.onResult(score, total, [...right], [...asked], [...missed]) : null; } catch (err) { console.error(err); }
+      reward = reward || { coins: 0, xp: 0, cards: [], dupes: [] };
+      const cards = reward.cards || [];
+      const dupes = reward.dupes || [];
+      const msg = score === total ? "Perfect! Well done." : passed ? "Nice work!" : `Good try. You need ${pass} right to pass. Come back and try again.`;
+      const cardsHtml = cards.length
+        ? `<div class="won-cards">${cards.map((c) => `<div class="won-card${c.kind === "zone" ? " is-zone" : ""}" lang="zh"><b>${this.esc(c.word)}</b><small>${this.esc(c.pinyin)} · ${this.esc(c.meaning)}</small><em>${c.kind === "role" ? `${this.esc(c.role || "Role")} card` : "Bonus zone card"}</em></div>`).join("")}</div>`
+        : "";
+      const albumHtml = reward.album && reward.album.total
+        ? `<p class="sheet-sub">${this.esc(reward.album.name)} album: ${reward.album.have} / ${reward.album.total} cards</p>` : "";
+      const earned = [reward.coins ? `+${reward.coins} coins` : "", reward.xp ? `+${reward.xp} XP` : "", cards.length ? `+${cards.length} card${cards.length > 1 ? "s" : ""}` : ""].filter(Boolean).join(" · ");
+      const dupeHtml = dupes.length && reward.dupePay
+        ? `<p class="sheet-sub">${dupes.length === 1 ? "A card you already own" : `${dupes.length} cards you already own`} turned into +${reward.dupePay.coins} coins and +${reward.dupePay.xp} XP.</p>` : "";
+      const noRole = passed && !cards.some((c) => c.kind === "role")
+        ? `<p class="sheet-sub">${reward.roleLeft > 0 ? "No new role cards this time. Get the words you have not won yet right to win them." : "You already have every role card here."}</p>` : "";
       this.el.sheet.innerHTML =
         `${this.head(npc.name, zone.accent)}
          <h2 class="sheet-title">${score} / ${total}</h2>
          <p class="sheet-sub">${msg}</p>
-         ${reward.coins || reward.cards ? `<p class="reward-line">${reward.coins ? `+${reward.coins} coins` : ""}${reward.coins && reward.cards ? " · " : ""}${reward.cards ? `+${reward.cards} card` : ""}</p>` : opts.done && score >= IslandQuiz.pass ? '<p class="sheet-sub">You have already earned this reward.</p>' : ""}
+         ${earned ? `<p class="reward-line">${earned}</p>` : ""}
+         ${reward.levelUps ? '<p class="album-done">Level up! Check your profile.</p>' : ""}
+         ${cardsHtml}
+         ${dupeHtml}
+         ${noRole}
+         ${passed ? albumHtml : ""}
+         ${(reward.practised || []).length ? `<p class="sheet-sub">Practised: ${reward.practised.map((p) => `<b lang="zh">${this.esc(p.word)}</b>${p.evolved ? " (evolved!)" : ""}`).join(", ")}</p>` : ""}
+         ${reward.masterDone ? '<p class="album-done">Every card in this album is yours! Open Collection for the shiny badge.</p>' : reward.zoneDone ? '<p class="album-done">All zone cards collected! Open Collection to claim your badge.</p>' : ""}
          <button class="btn btn-primary btn-block" data-close type="button">Done</button>`;
     };
 

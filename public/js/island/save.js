@@ -45,14 +45,18 @@ const IslandSave = {
     return {
       coins: row.coins || 0, owned: row.owned || [], npcs: row.npcs_done || [], levels: row.levels_done || [],
       zones: row.zones_revealed || [], avatar: row.avatar && row.avatar.gender ? row.avatar : null,
+      stats: row.stats && typeof row.stats === "object" ? row.stats : {},
       savedAt: Date.parse(row.updated_at) || 0,
     };
   },
   toRow(blob) {
-    return {
+    const row = {
       user_id: this.userId, coins: Math.max(0, Math.round(blob.coins)), owned: blob.owned, npcs_done: blob.npcs,
       levels_done: blob.levels, zones_revealed: blob.zones, avatar: blob.avatar || {},
     };
+    // `stats` needs the column from database/island_progress.sql; without it the rest still saves.
+    if (!this.noStats) row.stats = blob.stats || {};
+    return row;
   },
 
   // Returns the best saved copy (or null for a brand new player).
@@ -96,7 +100,11 @@ const IslandSave = {
     if (!blob || !this.userId || !this.hasCloud()) return;
     this.pending = null;
     try {
-      const { error } = await supabase.from("island_progress").upsert(this.toRow(blob), { onConflict: "user_id" });
+      let { error } = await supabase.from("island_progress").upsert(this.toRow(blob), { onConflict: "user_id" });
+      if (error && !this.noStats && /stats/i.test(error.message || "")) {
+        this.noStats = true; // the column is not there yet: save without it
+        ({ error } = await supabase.from("island_progress").upsert(this.toRow(blob), { onConflict: "user_id" }));
+      }
       if (error) throw error;
       this.status = "synced";
     } catch (err) {

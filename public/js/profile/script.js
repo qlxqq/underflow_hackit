@@ -154,7 +154,7 @@ function renderBadges() {
   const html = albums
     .map((album) => {
       const got = earnedBadges.has(`album:${album.id}:${language}`);
-      return `<div class="pf-badge${got ? "" : " is-locked"}" title="${escapeHtml(album.name)}${got ? "" : " (not earned yet)"}">${albumBadgeSvg(album)}<span>${escapeHtml(album.name)}</span></div>`;
+      return `<div class="pf-badge${got ? "" : " is-locked"}" title="${escapeHtml(album.name)}${got ? "" : " (not earned yet)"}">${albumBadgeSvg(album, earnedBadges.has(`album-master:${album.id}:${language}`))}<span>${escapeHtml(album.name)}</span></div>`;
     })
     .join("");
   $("pf-badges").innerHTML =

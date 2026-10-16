@@ -3,7 +3,7 @@
 // then creates the Phaser game.
 //
 //   IslandApp.mount(rootElement, {
-//     onEvent(type, detail)  // "level" | "npc" | "purchase" | "zone": something happened
+//     onEvent(type, detail)  // "level" | "npc" | "purchase" | "zone" | "practice": something happened
 //     onCoins(n)             // the island's coin balance (shown in the page's top bar)
 //     onTap()                // the player touched the island (close any drop-downs)
 //   });
@@ -24,12 +24,15 @@ const IslandApp = {
     };
     wrap("onLevelCompleted", "level");
     wrap("onNpcFinished", "npc");
+    wrap("onPractice", "practice");
     wrap("onPurchase", "purchase");
     wrap("onZoneDiscovered", "zone");
     if (opts.onTap) root.addEventListener("pointerdown", () => opts.onTap(), true);
 
     await IslandSave.init();   // who is logged in (if anyone)
     await IslandState.load();  // their saved game
+    await IslandCards.load();  // the island album cards they own
+    await IslandCaptured.load(); // their captured words (they join the challenges)
     if (opts.onCoins) { const sendCoins = () => opts.onCoins(IslandState.coins); IslandState.onChange(sendCoins); sendCoins(); }
     IslandControls.init();
     IslandUI.init();

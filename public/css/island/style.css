@@ -96,7 +96,8 @@
   background: rgba(14, 22, 40, 0.5);
 }
 .sheet {
-  width: 100%; max-height: 88%; overflow-y: auto; padding: 16px 20px 22px;
+  width: 100%; max-height: 88%; overflow-y: auto;
+  padding: 16px 20px 40px; /* the extra space sits under the Capture button, which rises above the nav bar */
   background: var(--white); border-radius: 24px 24px 0 0; animation: sheet-up 0.22s ease both;
 }
 @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -190,3 +191,35 @@
 
 .q-mark { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #7a5cc4; color: #fff; font-size: 12px; }
 .hud-right { margin-left: auto; }
+
+/* ---- longer NPC challenges: sentence gap, matching round, cards won ---- */
+.q-part { margin: 0 0 2px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.q-sentence { margin: 6px 0 4px; text-align: center; font-family: var(--font-cjk); font-size: 26px; font-weight: 800; line-height: 1.5; }
+.q-gap { display: inline-block; min-width: 2.4em; border-bottom: 3px solid var(--ink); color: transparent; }
+.q-gap.is-filled { color: var(--green-txt); border-bottom-color: #5bb27f; }
+.q-translation { margin: 0 0 12px; text-align: center; font-size: 14px; color: var(--muted); line-height: 1.45; }
+.match-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.match-col { display: grid; gap: 8px; align-content: start; }
+.match-opt {
+  min-height: 52px; padding: 8px 10px; border: 2px solid var(--line, #e3e8ef); border-radius: 14px; background: #fff;
+  font: inherit; font-weight: 700; font-size: 15px; color: var(--ink); cursor: pointer; text-align: center; line-height: 1.2;
+}
+.match-opt b { display: block; font-family: var(--font-cjk); font-size: 22px; }
+.match-opt small { display: block; font-size: 12px; font-weight: 600; color: var(--muted); }
+.match-opt.is-picked { border-color: #4a6cf0; background: #eef2ff; }
+.match-opt.is-right { background: var(--green-bg); border-color: #5bb27f; color: var(--green-txt); }
+.match-opt.is-wrong { background: var(--danger-bg); border-color: #e08a84; color: var(--danger); }
+.match-opt:disabled { cursor: default; }
+.won-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0 10px; }
+.won-card { padding: 8px 10px; border: 2px solid #f0c36a; border-radius: 14px; background: #fff8e6; text-align: left; }
+.won-card b { display: block; font-family: var(--font-cjk); font-size: 22px; }
+.won-card small { color: var(--muted); font-size: 13px; font-weight: 600; }
+.won-card em { display: block; margin-top: 2px; font-style: normal; font-size: 12px; font-weight: 800; color: #a86a00; text-transform: uppercase; letter-spacing: 0.03em; }
+.won-card.is-zone { border-color: #8fd0c8; background: #eefaf8; }
+.won-card.is-zone em { color: #0d7f73; }
+.intro-rule { margin: 4px 0 14px; font-weight: 800; }
+.intro-rule + .intro-cards { margin-top: -8px; }
+.intro-cards { margin-bottom: 14px; }
+.album-done { margin: 8px 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--green-bg); color: var(--green-txt); font-weight: 800; }
+
+.q-word.is-english { font-family: inherit; font-size: 34px; line-height: 1.2; }

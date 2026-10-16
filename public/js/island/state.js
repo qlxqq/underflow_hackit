@@ -4,8 +4,7 @@
 // Other code (mini-games) can use window.IslandAPI:
 //   IslandAPI.getCoins()   IslandAPI.addCoins(n)
 
-// Coins and cards paid out. Levels pay once; NPC challenges pay once each.
-const ISLAND_REWARDS = { level: 50, npc: 30, cards: 1 };
+// Coin and XP amounts live in economy.js (ISLAND_ECONOMY).
 
 const IslandState = {
   coins: 0,
@@ -14,6 +13,8 @@ const IslandState = {
   levelsDone: new Set(),   // mystery island levels finished (1-9)
   zonesRevealed: new Set(),// zones whose mist has lifted
   avatar: null,            // { gender: "boy"|"girl", outfit } - null until chosen
+  plays: {},               // how many times each challenge was played: { "npc:teacher": 3, "mini:2": 1 }
+  weak: [],                // words answered wrong and not yet right again (asked first next time)
   where: "home",           // which island the player is on now
   listeners: [],
   inflight: 0,             // coin payments sent to Supabase and not answered yet
@@ -35,11 +36,16 @@ const IslandState = {
       this.levelsDone = new Set((blob.levels || []).map(Number));
       this.zonesRevealed = new Set(blob.zones || []);
       this.avatar = blob.avatar && blob.avatar.gender ? blob.avatar : null;
+      const stats = blob.stats || {};
+      this.plays = stats.plays && typeof stats.plays === "object" ? { ...stats.plays } : {};
+      this.weak = Array.isArray(stats.weak) ? stats.weak.slice(0, this.WEAK_MAX) : [];
     }
     // Logged in: coins are the profile's coins (the same balance as quests and the rest of the app).
     await this.syncCoins(true);
     // The player always arrives on their home island (?start=mystery is for testing).
     this.where = params.get("start") === "mystery" ? "mystery" : "home";
+    // Coming from the Collection's Practise button: go straight to the Mystery Island.
+    if (typeof IslandPractice !== "undefined" && IslandPractice.read()) this.where = "mystery";
     if (params.get("reveal") === "all") ISLAND_ZONES.forEach((z) => this.zonesRevealed.add(z.id));
     if (params.get("unlock") === "all") ISLAND_LEVELS.forEach((l) => this.levelsDone.add(l.level));
     const gift = Number(params.get("coins"));
@@ -51,6 +57,7 @@ const IslandState = {
     return {
       coins: this.coins, owned: [...this.owned], npcs: [...this.npcsDone], levels: [...this.levelsDone],
       zones: [...this.zonesRevealed], avatar: this.avatar,
+      stats: { plays: this.plays, weak: this.weak },
     };
   },
 
@@ -116,6 +123,20 @@ const IslandState = {
     if (!this.spend(item.price, () => { this.owned.delete(item.id); this.save(); this.emit(); })) return false;
     this.owned.add(item.id); this.save(); this.emit(); return true;
   },
+  // ---- how often each challenge was played, and the words the player got wrong ----
+  WEAK_MAX: 40,
+  playsOf(key) { return Number(this.plays[key]) || 0; },
+  addPlay(key) { this.plays[key] = this.playsOf(key) + 1; this.save(); return this.plays[key]; },
+  isWeak(word) { return this.weak.includes(word); },
+  // wrong: words answered wrong this time (added to the front); right: words now answered right (removed)
+  updateWeak(wrong, right) {
+    const wrongSet = new Set(wrong || []);
+    const rightSet = new Set(right || []);
+    const kept = this.weak.filter((w) => !rightSet.has(w) && !wrongSet.has(w));
+    this.weak = [...wrongSet, ...kept].slice(0, this.WEAK_MAX);
+    this.save();
+  },
+
   npcDone(id) { return this.npcsDone.has(id); },
   markNpc(id) { this.npcsDone.add(id); this.save(); },
   setAvatar(look) { this.avatar = { gender: look.gender, outfit: look.outfit }; this.save(); this.emit(); },

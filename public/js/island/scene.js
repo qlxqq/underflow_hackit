@@ -52,7 +52,7 @@ class IslandScene extends Phaser.Scene {
 
     IslandControls.onAction = () => this.interact();
     Object.assign(window.IslandAPI, {
-      completeLevel: (n) => this.completeLevel(n),
+      completeLevel: (n, ratio) => this.completeLevel(n, ratio),
       isLevelDone: (n) => this.done.has(n),
       levelsDone: () => [...this.done].sort((a, b) => a - b),
       where: () => "mystery",
@@ -68,6 +68,7 @@ class IslandScene extends Phaser.Scene {
     IslandUI.onBoat = () => this.sailHome();
     this.events.once("shutdown", () => { IslandUI.showBoatButton(false); IslandUI.onBoat = null; });
     IslandState.setWhere("mystery");
+    this.applyPractice();
     this.coinListener = () => this.updateHud();
     IslandState.onChange(this.coinListener);
     this.events.once("shutdown", () => { IslandState.listeners = IslandState.listeners.filter((f) => f !== this.coinListener); });
@@ -161,7 +162,7 @@ class IslandScene extends Phaser.Scene {
       const sprite = this.add.image(n.x, n.y, n.look).setOrigin(0.5, 0.92).setScale(1 / ART_SCALE).setDepth(n.y);
       const bubble = this.add.image(n.x, n.y - 142, "bubble").setScale(1 / ART_SCALE * 1.4).setDepth(9000);
       this.tweens.add({ targets: bubble, y: bubble.y - 10, duration: 700, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
-      bubble.setVisible(!IslandState.npcDone(n.id));
+      bubble.setVisible(!IslandCards.finished(n.id));
       const tag = this.add.text(n.x, n.y + 22, n.name, { fontFamily: 'Manrope, "Noto Sans SC", sans-serif', fontSize: "20px", fontStyle: "800", color: "#18233a", backgroundColor: "rgba(255,255,255,0.88)", padding: { x: 10, y: 4 } })
         .setOrigin(0.5, 0).setResolution(2).setDepth(n.y + 1);
       this.npcUi[n.id] = { sprite, bubble, tag };
@@ -171,16 +172,36 @@ class IslandScene extends Phaser.Scene {
     });
   }
 
-  // Pays out the first time an NPC's challenge is passed. Returns what was won.
-  npcFinished(npc, score, total) {
+  // Called when an NPC challenge ends. Passing pays coins the first time, and
+  // wins up to 2 cards (3 for a perfect score) from the NPC's words until the
+  // player has all five. Returns what was won.
+  async npcFinished(npc, score, total, right = [], asked = [], missed = []) {
     const info = { npcId: npc.id, zone: npc.zone, kind: npc.kind, score, total };
     try { IslandHooks.onNpcFinished(info); } catch (err) { console.error(err); }
-    if (score < IslandQuiz.pass || IslandState.npcDone(npc.id)) return { coins: 0, cards: 0 };
-    IslandState.markNpc(npc.id);
-    IslandState.addCoins(ISLAND_REWARDS.npc);
-    try { IslandHooks.awardCards({ ...info, cards: ISLAND_REWARDS.cards }); } catch (err) { console.error(err); }
-    if (this.npcUi[npc.id]) this.npcUi[npc.id].bubble.setVisible(false);
-    return { coins: ISLAND_REWARDS.npc, cards: ISLAND_REWARDS.cards };
+    const practiced = IslandPractice.pending && IslandPractice.pending.npcId === npc.id;
+    const practised = await IslandPractice.record(npc.id, asked);
+    if (practised.length) { try { IslandHooks.onPractice(practised); } catch (err) { console.error(err); } }
+    if (practiced) { IslandPractice.pending = null; this.waypoint = null; }
+
+    // what this attempt is worth (before it is counted, so the first play pays in full)
+    const pay = IslandEconomy.npcPayout(npc.id, score, total);
+    IslandState.addPlay(`npc:${npc.id}`);
+    // words missed come first next time; words now right stop being priority
+    const missedSet = new Set(missed);
+    IslandState.updateWeak(missed, right.filter((w) => !missedSet.has(w)));
+    if (pay.tier !== "fail" && !IslandState.npcDone(npc.id)) IslandState.markNpc(npc.id);
+
+    // failed: coins and XP only. Passed: role cards for the right words, plus bonus zone cards.
+    const won = await IslandCards.award(npc.id, pay.tier, right);
+    const dupePay = won.dupes.length ? IslandEconomy.duplicatePayout(won.dupes.length) : null;
+    const paid = await IslandEconomy.pay({ coins: pay.coins + (dupePay ? dupePay.coins : 0), xp: pay.xp + (dupePay ? dupePay.xp : 0) });
+    try { IslandHooks.awardCards({ ...info, cards: won.cards }); } catch (err) { console.error(err); }
+    if (this.npcUi[npc.id]) this.npcUi[npc.id].bubble.setVisible(!IslandCards.finished(npc.id));
+    return {
+      tier: pay.tier, coins: paid.coins, xp: paid.xp, levelUps: paid.levelUps,
+      cards: won.cards, dupes: won.dupes, dupePay, album: won.album, zoneDone: won.zoneDone, masterDone: won.masterDone,
+      roleLeft: IslandCards.left(npc.id).length, practised,
+    };
   }
 
   makePlayer() {
@@ -336,7 +357,7 @@ class IslandScene extends Phaser.Scene {
     if (id === this.currentZoneId) return;
     this.currentZoneId = id;
     IslandUI.setZone(inside ? zone.name : "Mystery Island", inside ? zone.accent : "#8190a8");
-    if (inside) IslandUI.banner(zone.name, `Zone ${ISLAND_ZONES.indexOf(zone) + 1}`);
+    if (inside) IslandUI.banner(zone.name);
   }
 
   // ---------- interaction ----------
@@ -371,7 +392,13 @@ class IslandScene extends Phaser.Scene {
     if (it.kind === "level") IslandUI.openLandmark(it.data, after, { done: this.done.has(it.data.level), dev: this.dev, onDevDone: () => this.completeLevel(it.data.level) });
     else if (it.kind === "npc") {
       const npc = it.data;
-      IslandUI.openNpc(npc, after, { done: IslandState.npcDone(npc.id), onResult: (score, total) => this.npcFinished(npc, score, total) });
+      const d = IslandCards.data(npc.id);
+      IslandUI.openNpc(npc, after, {
+        done: IslandState.npcDone(npc.id),
+        focus: IslandPractice.pending && IslandPractice.pending.npcId === npc.id ? IslandPractice.pending.word : null,
+        progress: () => (d ? { label: d.label, roleHave: IslandCards.owned(npc.id), roleTotal: IslandCards.roleList(npc.id).length } : null),
+        onResult: (score, total, right, asked, missed) => this.npcFinished(npc, score, total, right, asked, missed),
+      });
     } else sailTo("home", this.game); // tapping "Take the boat" sails straight away
   }
 
@@ -395,9 +422,35 @@ class IslandScene extends Phaser.Scene {
       waypoint: this.waypoint,
       onPick: (zoneId) => this.setWaypointToZone(zoneId),
       onPickLevel: (n) => this.setWaypointToLevel(n),
-      npcDone: (id) => IslandState.npcDone(id),
+      npcDone: (id) => IslandCards.finished(id),
       onPickNpc: (id) => this.setWaypointToNpc(id),
     }, () => { this.nearby = null; });
+  }
+
+  // Runs fn after the zone banner has gone (only if this scene is still showing).
+  later(fn) { setTimeout(() => { if (this.scene && this.scene.isActive()) fn(); }, 3800); }
+
+  // Came here from the Collection's Practise button: point at where the word is.
+  applyPractice() {
+    const p = IslandPractice.pending;
+    if (!p || p.shown) return;
+    p.shown = true;
+    const target = IslandPractice.find(p.word, p.album);
+    if (!target) {
+      IslandPractice.pending = null;
+      this.later(() => IslandUI.banner(`Nothing to practise ${p.word} with yet`, "Explore the island and talk to the locals"));
+      return;
+    }
+    if (target.level) {
+      this.setWaypointToLevel(target.level);
+      this.later(() => IslandUI.banner(`Practise ${p.word}`, "Follow the arrow to the mini-game"));
+      return;
+    }
+    const npc = ISLAND_NPCS.find((n) => n.id === target.npcId);
+    p.npcId = npc.id;
+    const zone = ISLAND_ZONES.find((z) => z.id === npc.zone);
+    if (this.zoneUnlocked(zone)) this.setWaypointToNpc(npc.id); else this.setWaypointToZone(npc.zone);
+    this.later(() => IslandUI.banner(`Practise ${p.word}`, this.zoneUnlocked(zone) ? `Talk to ${npc.name}. Follow the arrow.` : `${npc.name} is in ${zone.name}. Finish the zone before it to open the gate.`));
   }
 
   setWaypointToNpc(id) {
@@ -448,24 +501,34 @@ class IslandScene extends Phaser.Scene {
     IslandUI.setCoins(IslandState.coins);
   }
 
-  // Called when a mini-game is finished (a mini-game calls IslandAPI.completeLevel(n)).
-  completeLevel(n) {
+  // Called when a mini-game is finished (a mini-game calls IslandAPI.completeLevel(n, ratio)).
+  // ratio (0-1) is how well it went; leave it out for "completed". The first clear opens the way
+  // on; every play pays coins and XP, a little less each time (economy.js).
+  async completeLevel(n, ratio = 1) {
     const l = ISLAND_LEVELS.find((x) => x.level === n);
-    if (!l || this.done.has(n)) return;
-    this.done.add(n);
-    this.save();
-    this.paintLevelState(n);
+    if (!l) return;
+    const first = !this.done.has(n);
+    const pay = IslandEconomy.miniPayout(n, ratio);
+    IslandState.addPlay(`mini:${n}`);
+    if (first) {
+      this.done.add(n);
+      this.save();
+      this.paintLevelState(n);
+    }
     this.updateHud();
-    IslandState.addCoins(ISLAND_REWARDS.level);
+    const paid = await IslandEconomy.pay({ coins: pay.coins, xp: pay.xp });
+    const gain = [paid.coins ? `+${paid.coins} coins` : "", paid.xp ? `+${paid.xp} XP` : ""].filter(Boolean).join(" · ");
     try { IslandHooks.onLevelCompleted(l); } catch (err) { console.error(err); }
     const zone = ISLAND_ZONES.find((z) => z.id === l.zone);
     const before = IslandWorld.locked.size;
     this.refreshLocks(false);
-    if (IslandWorld.locked.size < before) {
+    if (first && IslandWorld.locked.size < before) {
       const next = ISLAND_ZONES[ISLAND_ZONES.indexOf(zone) + 1];
-      IslandUI.banner(`${zone.name} complete`, `+${ISLAND_REWARDS.level} coins · the gate to ${next.name} is open`);
+      IslandUI.banner(`${zone.name} complete`, `${gain} · the gate to ${next.name} is open`);
+    } else if (first) {
+      IslandUI.banner(`${l.name} complete`, `${gain} · ${this.zoneDoneCount(l.zone)}/${this.zoneLevels(l.zone).length} in ${zone.name}`);
     } else {
-      IslandUI.banner(`${l.name} complete`, `+${ISLAND_REWARDS.level} coins · ${this.zoneDoneCount(l.zone)}/${this.zoneLevels(l.zone).length} in ${zone.name}`);
+      IslandUI.banner(`${l.name} played again`, gain || "Nice practice!");
     }
   }
 
