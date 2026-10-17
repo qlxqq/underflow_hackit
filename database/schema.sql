@@ -160,8 +160,11 @@ create table if not exists public.island_progress (
   levels_done     integer[]   not null default '{}',   -- mystery island levels finished (1-9)
   zones_revealed  text[]      not null default '{}',   -- zones whose mist has lifted
   avatar          jsonb       not null default '{}'::jsonb, -- { "gender": "boy"|"girl", "outfit": "sunny" }
+  stats           jsonb       not null default '{}'::jsonb, -- { "plays": { "npc:teacher": 3 }, "weak": ["word"] }
   updated_at      timestamptz not null default now()
 );
+
+alter table public.island_progress add column if not exists stats jsonb not null default '{}'::jsonb;
 
 alter table public.island_progress enable row level security;
 
