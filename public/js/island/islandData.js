@@ -90,7 +90,7 @@ const ISLAND_NPCS = [
   { id: "teacher", zone: "neighbourhood", name: "Ms Chen", role: "Primary school teacher", look: "teacher", kind: "pinyin", x: 1150, y: 1560, greeting: "Class is in session! Read these words for me." },
   { id: "ccAuntie", zone: "neighbourhood", name: "Auntie Mei", role: "Community club volunteer", look: "auntie", kind: "meaning", x: 2430, y: 2120, greeting: "Welcome to the club! Do you know what these words mean?" },
   { id: "officer", zone: "neighbourhood", name: "Officer Lim", role: "Neighbourhood police", look: "officer", kind: "listening", x: 2280, y: 2900, greeting: "Listen carefully. Which word did you hear?" },
-  { id: "stallUncle", zone: "hawker", name: "Uncle Ah Huat", role: "Chicken rice seller", look: "cook", kind: "pinyin", x: 3150, y: 1830, greeting: "Order up! First, read the menu to me." },
+  { id: "stallUncle", zone: "hawker", name: "Uncle Ah Huat", role: "Chicken rice seller", look: "cook", kind: "pinyin", x: 3360, y: 2260, greeting: "Order up! First, read the menu to me." },
   { id: "tehAuntie", zone: "hawker", name: "Auntie Teh", role: "Drinks stall", look: "auntie", kind: "meaning", x: 4400, y: 1500, greeting: "Thirsty? Tell me what these words mean." },
   { id: "fruitSeller", zone: "hawker", name: "Fruit Seller", role: "Fruit stall", look: "vendor", kind: "listening", x: 4250, y: 3310, greeting: "Fresh and sweet! Which word do you hear?" },
   { id: "stationMaster", zone: "transport", name: "Station Master", role: "MRT ticket office", look: "staff", kind: "pinyin", x: 6160, y: 1860, greeting: "Before you board, a quick check of your Chinese." },
