@@ -135,11 +135,34 @@ const IslandCards = {
     }
     const album = this.albumInfo(d.album);
     return {
-      cards: fresh.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, kind: w.kind, role: w.kind === "role" ? d.label : null })),
-      dupes: dupes.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m })),
+      cards: fresh.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, kind: w.kind, album: d.album, role: w.kind === "role" ? d.label : null })),
+      dupes: dupes.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, album: d.album })),
       album,
       zoneDone: before.zoneHave < before.zoneTotal && album.zoneTotal > 0 && album.zoneHave >= album.zoneTotal,
       masterDone: before.have < before.total && album.total > 0 && album.have >= album.total,
+    };
+  },
+
+  // Cards for a mini-game: `words` are zone words of `albumId` the player got right.
+  // New ones are saved (and shown in the Collection); words already owned are returned
+  // as dupes. Used by IslandAPI.awardWords, which also opens the pack.
+  async awardWords(albumId, words) {
+    const zone = new Map(this.zoneList(albumId).map((w) => [w.w, w]));
+    const picked = [...new Set(words || [])].map((w) => zone.get(w)).filter(Boolean);
+    const fresh = picked.filter((w) => !this.have.has(this.key(albumId, w.w)));
+    const dupes = picked.filter((w) => this.have.has(this.key(albumId, w.w)));
+    fresh.forEach((w) => this.have.add(this.key(albumId, w.w)));
+    this.saveLocal();
+    if (fresh.length && this.useCloud()) {
+      try {
+        const rows = fresh.map((w) => ({ user_id: IslandSave.userId, album_id: albumId, language: this.language, word: w.w, source: "island-game" }));
+        const { error } = await supabase.from("album_cards").upsert(rows, { onConflict: "user_id,album_id,language,word", ignoreDuplicates: true });
+        if (error) throw error;
+      } catch (err) { console.warn("Island: could not save cards to Supabase.", err && err.message); }
+    }
+    return {
+      cards: fresh.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, kind: "zone", album: albumId })),
+      dupes: dupes.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, album: albumId })),
     };
   },
 

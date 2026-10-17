@@ -21,7 +21,7 @@ const PACK_TAPS = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 };
 
 // sealed: true shows a sealed pack first. Tap it and it reacts; swipe across
 // it to tear it open. Then the cards come one by one, face down.
-function openPack(cards, { summaryLines = [], sealed = true } = {}) {
+function openPack(cards, { summaryLines = [], sealed = true, title = "" } = {}) {
   return new Promise((resolve) => {
     if (!cards || cards.length === 0) return resolve();
 
@@ -239,7 +239,7 @@ function openPack(cards, { summaryLines = [], sealed = true } = {}) {
       const lines = summaryLines.map((l) => `<li>${escapeHtml(l)}</li>`).join("");
       body.innerHTML = `
         <div class="pack-summary">
-          <h2 class="pack-summary-title">${cards.length} new ${cards.length === 1 ? "card" : "cards"}!</h2>
+          <h2 class="pack-summary-title">${escapeHtml(title) || `${cards.length} new ${cards.length === 1 ? "card" : "cards"}!`}</h2>
           <div class="pack-chips">${chips}</div>
           ${lines ? `<ul class="pack-lines">${lines}</ul>` : ""}
           <button type="button" class="btn btn-primary btn-block pack-done">Done</button>

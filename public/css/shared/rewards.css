@@ -100,9 +100,5 @@
 }
 
 /* ---------- Journey page: level badge and quests panel ---------- */
-.stat-level { padding: 0 5px; width: 44px; justify-content: center; cursor: pointer; }
-.stat-level[hidden] { display: none; }
-.stat-coins { padding: 0 12px; gap: 5px; }
-.stat-coins[hidden] { display: none; }
 #journey-quests.quests-panel { margin: 4px 16px 10px; }
 #journey-quests[hidden] { display: none; }

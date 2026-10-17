@@ -1,0 +1,98 @@
+/* Shared top bar: the same on every page.
+   Three kinds of bar use it:
+     - home bar     <header class="top-bar journey-bar">   language, streak, level, coins, profile picture
+     - title bar    <header class="top-bar">               a title, plus the "?" guide button and one control
+     - back bar     <header class="top-bar has-back">      a back button and a title
+   The markup is written in each page's HTML. JavaScript only fills in numbers and text. */
+
+/* ---- the bar itself ---- */
+.top-bar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  height: var(--bar-h);
+  padding: 0 16px 0 20px;
+  background: var(--white);
+  border-bottom: 1px solid var(--line);
+}
+.top-bar .top-title { margin: 0; font-size: 24px; font-weight: 800; line-height: 1.2; }
+.top-bar.has-back { padding-left: 16px; justify-content: flex-start; }
+.journey-bar { padding: 0 16px; }
+
+/* ---- home bar: stat chips ---- */
+.stats { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.stat-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 44px; padding: 0 11px; border-radius: 22px;
+  background: var(--white); border: 1px solid var(--line);
+  font: 800 15px var(--font-ui); color: var(--ink);
+}
+button.stat-chip { cursor: pointer; }
+.stat-chip .chip-glyph { font-family: var(--font-cjk); font-weight: 700; }
+.stat-chip .icon { color: var(--muted); }
+
+/* streak: a flame that is orange once there is a streak (class is-active), grey before */
+.stat-streak { color: #c25b0a; }
+.stat-streak .icon { color: inherit; }
+.stat-streak .flame-outer { fill: #b8c2cf; }
+.stat-streak .flame-inner { fill: #dde3ea; }
+.stat-streak.is-active .flame-outer { fill: #f2882e; }
+.stat-streak.is-active .flame-inner { fill: #ffd166; }
+
+/* level: a ring that fills with XP. The colour changes with the level (class tier-teal, tier-blue, tier-purple, tier-gold) */
+.stat-level { position: relative; padding: 0 5px; width: 44px; justify-content: center; cursor: pointer; }
+.stat-level .lvl-ring { display: block; }
+.stat-level .tier-stop-a { stop-color: var(--tier-a); }
+.stat-level .tier-stop-b { stop-color: var(--tier-b); }
+.stat-level, .stat-level.tier-teal { --tier-a: #17a596; --tier-b: #3cc7a0; }
+.stat-level.tier-blue { --tier-a: #2f6fd6; --tier-b: #4aa3e8; }
+.stat-level.tier-purple { --tier-a: #8a4fd3; --tier-b: #c05fd0; }
+.stat-level.tier-gold { --tier-a: #f2a93b; --tier-b: #e0463a; }
+/* a yellow ! on the level badge when a quest reward is waiting */
+.stat-level.has-ready::after {
+  content: "!"; position: absolute; top: -4px; right: -4px; z-index: 2;
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: #f2a93b; color: #fff; border: 2px solid var(--white);
+  font: 800 12px/1 var(--font-ui); box-shadow: 0 1px 4px rgba(24, 35, 58, 0.3);
+  animation: ready-pulse 1.6s ease-in-out infinite;
+}
+@keyframes ready-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+@media (prefers-reduced-motion: reduce) { .stat-level.has-ready::after { animation: none; } }
+
+/* coins (the coin picture is drawn in the page; its look is .coin-ic in rewards.css) */
+.stat-coins { gap: 6px; }
+
+/* ---- profile picture button ---- */
+.avatar-btn {
+  flex-shrink: 0; width: 44px; height: 44px; padding: 0; overflow: hidden;
+  border-radius: 50%; border: 2px solid var(--white); background: var(--white);
+  box-shadow: 0 0 0 1px var(--line); cursor: pointer;
+}
+.avatar-btn svg { display: block; width: 100%; height: 100%; }
+
+/* ---- the language, shown as a chip in its colour (Capture page). It is fixed to the player's
+   Mother Tongue, so it is a label and not a menu. ---- */
+.lang-chip {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 22px;
+  border: 1px solid var(--tint-bd); background: var(--tint);
+  font: 700 15px var(--font-ui); color: var(--accent);
+}
+
+/* ---- "?" guide button, with whatever sits on the right of the bar ---- */
+.tour-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--amber-bg, #fff4de);
+  border: 1px solid var(--amber-bd, #f2d9a6);
+  color: var(--amber-txt, #9a5b00);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+}
+.tour-help { cursor: pointer; }
+.tour-top-actions { display: flex; align-items: center; gap: 10px; }

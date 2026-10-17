@@ -36,7 +36,7 @@ const IslandCaptured = {
         .select("vocab_id, word, romanization, english_meaning, theme, usage_count, evolution_stage")
         .eq("user_id", IslandSave.userId).eq("language", this.language).limit(300);
       if (error) throw error;
-      this.rows = (data || []).filter((r) => r.word && r.romanization && r.english_meaning);
+      this.rows = (data || []).filter((r) => r.word && r.english_meaning);
     } catch (err) { console.warn("Island: could not read captured words.", err && err.message); }
   },
 
@@ -50,7 +50,7 @@ const IslandCaptured = {
   // Captured words for one zone, shaped like the authored words (no sentence).
   forZone(zoneId) {
     return this.rows.filter((r) => this.zoneOf(r) === zoneId && !this.isAuthored(r.word)).map((r) => ({
-      w: r.word, p: r.romanization, m: r.english_meaning, captured: true, id: r.vocab_id, usage: r.usage_count || 0, stage: r.evolution_stage || 0,
+      w: r.word, p: r.romanization || "", m: r.english_meaning, captured: true, id: r.vocab_id, usage: r.usage_count || 0, stage: r.evolution_stage || 0,
     }));
   },
   find(word) { return this.rows.find((r) => r.word === word) || null; },

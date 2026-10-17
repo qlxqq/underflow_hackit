@@ -28,15 +28,17 @@ const IslandPack = {
     return albumCardPreview(albumId, word, language, row);
   },
 
-  async show(cards, lines = []) {
-    if (!cards || !cards.length || !this.available()) return;
+  async show(cards, lines = [], dupes = []) {
+    cards = cards || []; dupes = dupes || [];
+    if (!(cards.length + dupes.length) || !this.available()) return;
     try {
       const language = IslandCards.language;
-      const entries = cards
-        .map((c) => this.entry(c.album, c.word, language))
-        .filter(Boolean);
+      const make = (list) => list.map((c) => this.entry(c.album, c.word, language)).filter(Boolean);
+      const entries = [...make(cards), ...make(dupes.filter((d) => d.album))];
       if (!entries.length) return;
-      await openPack(entries, { summaryLines: lines });
+      // cards already owned still come out of the pack (they turn into coins and XP)
+      const title = cards.length ? "" : (entries.length === 1 ? "A card you already own" : "Cards you already own");
+      await openPack(entries, { summaryLines: lines, title });
     } catch (err) {
       console.error("Island: could not open the pack.", err);
       document.body.classList.remove("pack-open");
@@ -48,7 +50,7 @@ const IslandPack = {
 window.IslandAPI = Object.assign(window.IslandAPI || {}, {
   awardWords: async (albumId, words, lines) => {
     const won = await IslandCards.awardWords(albumId, words);
-    await IslandPack.show(won.cards, lines || []);
+    await IslandPack.show(won.cards, lines || [], won.dupes);
     return won;
   },
   showPack: (albumId, words, lines) => IslandPack.show((words || []).map((word) => ({ album: albumId, word })), lines || []),

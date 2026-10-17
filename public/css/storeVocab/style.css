@@ -19,14 +19,6 @@
   box-shadow: 0 6px 20px rgba(24, 35, 58, 0.18);
 }
 
-/* ---- the language, shown as a chip in its colour. It is fixed to the player's
-   Mother Tongue, so it is a label and not a menu. ---- */
-.lang-chip {
-  display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 22px;
-  border: 1px solid var(--tint-bd); background: var(--tint);
-  font: 700 15px var(--font-ui); color: var(--accent);
-}
-
 /* (older) language select, kept in case another page still uses it */
 .lang-select select {
   appearance: none; -webkit-appearance: none;

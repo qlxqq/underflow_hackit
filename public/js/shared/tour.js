@@ -302,28 +302,21 @@
     observer.observe(node, { attributes: true, attributeFilter: ["hidden"] });
   }
 
-  // "?" button in the top bar of the Journey, Capture and Collection pages.
-  // It sits just before whatever is already on the right of the bar.
+  // The "?" button is written in the HTML of the top bar on the Island, Capture and Collection
+  // pages (css/shared/topbar.css); this only makes it start that page's guide.
   const HELP_BARS = [
-    { page: "journey", bar: "#journey-section .top-bar", trailing: "#open-profile" },
-    { page: "capture", bar: "#capture-view .top-bar", trailing: ".lang-select" },
-    { page: "collection", bar: "#collection-view .top-bar", trailing: "#sign-out" },
+    { page: "journey", bar: "#journey-section .top-bar" },
+    { page: "capture", bar: "#capture-view .top-bar" },
+    { page: "collection", bar: "#collection-view .top-bar" },
   ];
 
   function addHelpButtons() {
-    HELP_BARS.forEach(({ page, bar: barSelector, trailing: trailingSelector }) => {
+    HELP_BARS.forEach(({ page, bar: barSelector }) => {
       const bar = q(barSelector);
-      if (!bar || bar.querySelector(".tour-help")) return;
-      const trailing = bar.querySelector(trailingSelector);
-      const wrap = el("div", "tour-top-actions");
-      const button = el("button", "tour-help", "?");
-      button.type = "button";
-      button.setAttribute("aria-label", "Guide for this page");
-      button.title = "Guide for this page";
+      const button = bar && bar.querySelector(".tour-help");
+      if (!button || button.dataset.wired) return;
+      button.dataset.wired = "1";
       button.addEventListener("click", () => startTour(page, { single: true }));
-      wrap.appendChild(button);
-      if (trailing) wrap.appendChild(trailing);
-      bar.appendChild(wrap);
     });
   }
 

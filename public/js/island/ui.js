@@ -401,10 +401,10 @@ const IslandUI = {
       const cards = reward.cards || [];
       const dupes = reward.dupes || [];
       // new cards arrive in a pack the player opens; the result sheet follows
-      if (cards.length && typeof IslandPack !== "undefined") {
+      if ((cards.length || dupes.length) && typeof IslandPack !== "undefined") {
         const packLines = [reward.coins ? `+${reward.coins} coins` : "", reward.xp ? `+${reward.xp} XP` : "",
           dupes.length && reward.dupePay ? `${dupes.length} duplicate${dupes.length > 1 ? "s" : ""} turned into coins and XP` : ""].filter(Boolean);
-        await IslandPack.show(cards, packLines);
+        await IslandPack.show(cards, packLines, dupes);
       }
       const msg = score === total ? "Perfect! Well done." : passed ? "Nice work!" : `Good try. You need ${pass} right to pass. Come back and try again.`;
       const cardsHtml = cards.length

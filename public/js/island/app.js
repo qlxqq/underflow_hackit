@@ -48,7 +48,7 @@ function showScreen(name) {
 
 function renderLanguageChip() {
   const lang = LANGUAGES[currentLanguage];
-  changeLanguageButton.innerHTML = `<span class="chip-glyph">${lang.glyph}</span>${icon("chevDown", 16)}`;
+  changeLanguageButton.querySelector(".chip-glyph").textContent = lang.glyph;
   changeLanguageButton.setAttribute("aria-label", `Switch Mother Tongue. Currently ${lang.name}`);
 }
 
@@ -81,14 +81,15 @@ function renderStreak() {
     return;
   }
   const n = shownStreak(currentProfile);
-  streakChip.innerHTML = `${flameSvg(n > 0)}<span class="streak-num">${n}</span>`;
+  streakChip.querySelector(".streak-num").textContent = String(n);
+  streakChip.classList.toggle("is-active", n > 0);
   streakChip.setAttribute("aria-label", n === 1 ? "1 day streak" : `${n} day streak`);
   streakChip.hidden = false;
 }
 
 function renderAvatar() {
   const id = currentProfile ? currentProfile.avatar : DEFAULT_AVATAR;
-  openProfileButton.innerHTML = avatarSvg(id, 44);
+  setSvg(openProfileButton, avatarSvg(id, 44));
 }
 
 function refreshQuests() {
@@ -149,8 +150,7 @@ const syncCoinsSoon = () => {
 if (window.MutationObserver) new MutationObserver(syncCoinsSoon).observe(questsPanel, { childList: true, subtree: true });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncCoinsSoon(); });
 function showIslandCoins(n) {
-  const svg = typeof coinSvg === "function" ? coinSvg(20) : "";
-  coinsChip.innerHTML = `${svg}<span class="coin-num">${n}</span>`;
+  coinsChip.querySelector(".coin-num").textContent = String(n);
   coinsChip.setAttribute("aria-label", `${n} coins`);
   coinsChip.hidden = false;
 }

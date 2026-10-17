@@ -340,9 +340,6 @@ async function enterApp() {
   renderProfile();
 }
 
-$("pf-back").innerHTML = icon("chevLeft", 22);
-$("avatar-back").innerHTML = icon("chevLeft", 22);
-$("favs-back").innerHTML = icon("chevLeft", 22);
 $("pf-edit-icon").innerHTML = icon("pen", 15);
 renderBottomNav();
 enterApp();
