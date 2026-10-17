@@ -179,4 +179,4 @@ button.stat-chip { cursor: pointer; }
 
 /* Keep the bottom bar (and the Capture button that rises above it) on top of
    pop-ups and the Sailing screen. */
-.bottom-nav { z-index: 45; }
+.bottom-nav { z-index: 55; }

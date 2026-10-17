@@ -439,7 +439,7 @@ class IslandScene extends Phaser.Scene {
     const target = IslandPractice.find(p.word, p.album);
     if (!target) {
       IslandPractice.pending = null;
-      this.later(() => IslandUI.banner(`Nothing to practise ${p.word} with yet`, "Explore the island and talk to the locals"));
+      this.later(() => IslandUI.banner(`No practice for ${p.word} yet`));
       return;
     }
     if (target.level) {

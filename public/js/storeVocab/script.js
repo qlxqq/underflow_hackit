@@ -176,18 +176,20 @@ async function loadCardGrid() {
 }
 
 // Island album cards level up the same way, but are kept in their own table.
-async function handleAlbumPractice(cardId, currentUsageCount, currentStage) {
+async function handleAlbumPractice(cardId) {
   try {
-    const updated = await incrementAlbumCardUsage(currentUser.id, cardId, currentUsageCount, currentStage);
-    showStatus(updated.evolution_stage > currentStage ? "Card evolved!" : "Practised.", "success");
-    questEvent("practise_card");
-    await loadCardGrid();
+    const { data, error } = await supabase.from("album_cards").select("word, album_id, language")
+      .eq("card_id", cardId).eq("user_id", currentUser.id).maybeSingle();
+    if (error || !data) throw error || new Error("card not found");
+    const result = CollectionPractice.check({ word: data.word, album: data.album_id, language: data.language });
+    if (!result.ok) { showStatus(result.reason, "error"); return; }
+    showStatus(`Opening the island to practise ${data.word}...`, "success");
+    CollectionPractice.go(data.word, data.album_id);
   } catch (err) {
-    console.error("Failed to record practice:", err);
-    showStatus("Could not record that practice attempt.", "error");
+    console.error("Could not start practice:", err);
+    showStatus("Could not start practice. Try again.", "error");
   }
 }
-
 // Only used when the page is opened with ?dev=1, so island cards can be
 // tried out before the island and its mini-games exist.
 async function handleDevAward(albumId, word) {
@@ -217,20 +219,22 @@ async function handleDelete(vocabId) {
   }
 }
 
-// TODO: placeholder trigger for incrementUsage until the real composition
-// mini-game exists and calls this after a correct answer.
-async function handlePractice(vocabId, currentUsageCount, currentStage) {
+// Practise sends the player to the island, to the challenge that uses this word
+// (see storeVocab/practiceLink.js). The island counts the practice when the word comes up.
+async function handlePractice(vocabId) {
   try {
-    const updated = await incrementUsage(currentUser.id, vocabId, currentUsageCount, currentStage);
-    showStatus(updated.evolution_stage > currentStage ? `"${updated.word}" evolved!` : `Practised "${updated.word}".`, "success");
-    questEvent("practise_card");
-    await loadCardGrid();
+    const { data, error } = await supabase.from("vocabulary").select("word, language")
+      .eq("vocab_id", vocabId).eq("user_id", currentUser.id).maybeSingle();
+    if (error || !data) throw error || new Error("word not found");
+    const result = CollectionPractice.check({ word: data.word, language: data.language, captured: true });
+    if (!result.ok) { showStatus(result.reason, "error"); return; }
+    showStatus(`Opening the island to practise ${data.word}...`, "success");
+    CollectionPractice.go(data.word, null);
   } catch (err) {
-    console.error("Failed to record practice:", err);
-    showStatus("Could not record that practice attempt.", "error");
+    console.error("Could not start practice:", err);
+    showStatus("Could not start practice. Try again.", "error");
   }
 }
-
 // ---- pictures drawn by Claude ----
 // Words that none of the ready-made pictures fit get a picture drawn for
 // them. This runs in the background: the cards show their usual picture
