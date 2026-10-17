@@ -275,7 +275,7 @@ function paintSchool(ctx, w, h) {
   fillRR(ctx, 20, 148 + 52, w - 40, 5, 2, "rgba(255,255,255,0.5)");
   // entrance
   fillRR(ctx, w / 2 - 70, h - 118, 140, 106, 6, "#59658a"); fillRR(ctx, w / 2 - 58, h - 104, 116, 92, 4, "#2f3a58");
-  fillRR(ctx, w / 2 - 60, h - 132, 120, 24, 6, "#fffdf7"); artText(ctx, "小学", w / 2, h - 120, 20, "#a8402f", 800);
+  fillRR(ctx, w / 2 - 60, h - 132, 120, 24, 6, "#fffdf7"); artText(ctx, sg("小学"), w / 2, h - 120, 20, "#a8402f", 800, (120) - 14);
   ctx.fillStyle = "#c9d3e6"; ctx.fillRect(w / 2 - 2, h - 104, 4, 92);
   fillRR(ctx, w / 2 - 82, h - 24, 164, 12, 3, "#d6d9e2");
   // flag pole and a banner
@@ -304,7 +304,7 @@ function paintCommunityClub(ctx, w, h) {
   ctx.beginPath(); ctx.moveTo(4, 112); ctx.lineTo(60, 40); ctx.lineTo(w - 60, 40); ctx.lineTo(w - 4, 112); ctx.closePath(); ctx.fillStyle = "#5fa59c"; ctx.fill();
   ctx.fillStyle = "rgba(255,255,255,0.14)"; for (let i = 0; i < 6; i++) ctx.fillRect(40 + i * 56, 46, 3, 62);
   ctx.fillStyle = "#3f7f77"; ctx.fillRect(4, 108, w - 8, 10);
-  fillRR(ctx, w / 2 - 82, 56, 164, 36, 8, "#fffdf7"); artText(ctx, "民众俱乐部", w / 2, 74, 24, "#2f7a6c", 800);
+  fillRR(ctx, w / 2 - 82, 56, 164, 36, 8, "#fffdf7"); artText(ctx, sg("民众俱乐部"), w / 2, 74, 24, "#2f7a6c", 800, (164) - 14);
   windowsRow(ctx, 40, 134, 3, 60, 40, 48); windowsRow(ctx, w - 214, 134, 3, 60, 40, 48);
   fillRR(ctx, w / 2 - 54, h - 108, 108, 96, 6, "#59658a"); fillRR(ctx, w / 2 - 44, h - 98, 88, 86, 4, "#2f3a58");
   ctx.fillStyle = "#c9d3e6"; ctx.fillRect(w / 2 - 2, h - 98, 4, 86);
@@ -318,7 +318,7 @@ function paintPolicePost(ctx, w, h) {
   fillRR(ctx, 18, 70, w - 36, h - 82, 8, "#f2f5fa"); fillRR(ctx, w - 58, 70, 40, h - 82, 8, "#d9e0ec");
   fillRR(ctx, 8, 52, w - 16, 28, 8, "#3b6fd0"); fillRR(ctx, 8, 52, w - 16, 8, 4, "#5b8be0");
   fillRR(ctx, w / 2 - 22, 22, 44, 36, 8, "#e0584f"); fillEllipse(ctx, w / 2, 40, 12, 12, "#ffd9d6");   // beacon
-  fillRR(ctx, w / 2 - 70, 90, 140, 28, 6, "#fffdf7"); artText(ctx, "警察岗亭", w / 2, 104, 20, "#2b4fa8", 800);
+  fillRR(ctx, w / 2 - 70, 90, 140, 28, 6, "#fffdf7"); artText(ctx, sg("警察岗亭"), w / 2, 104, 20, "#2b4fa8", 800, (140) - 14);
   fillRR(ctx, 36, 130, 70, 56, 6, "#9fc2e4"); fillRR(ctx, w - 106, 130, 70, 56, 6, "#9fc2e4");
   ctx.fillStyle = "#fff"; ctx.fillRect(70, 130, 2, 56); ctx.fillRect(w - 72, 130, 2, 56);
   fillRR(ctx, w / 2 - 20, h - 76, 40, 66, 5, "#2f3a58");
@@ -329,7 +329,7 @@ function paintClinic(ctx, w, h) {
   groundShadow(ctx, w / 2, h - 8, w * 0.46, 10);
   fillRR(ctx, 18, 56, w - 36, h - 68, 8, "#fbfcfe"); fillRR(ctx, w - 58, 56, 40, h - 68, 8, "#e1e8f0");
   fillRR(ctx, 8, 40, w - 16, 22, 6, "#72c4b8");
-  fillRR(ctx, w / 2 - 70, 70, 140, 34, 8, "#ffffff"); artText(ctx, "诊所", w / 2 + 14, 87, 24, "#2f7a6c", 800);
+  fillRR(ctx, w / 2 - 70, 70, 140, 34, 8, "#ffffff"); artText(ctx, sg("诊所"), w / 2 + 14, 87, 24, "#2f7a6c", 800, 92);
   fillRR(ctx, w / 2 - 64, 76, 22, 22, 4, "#4caf7d"); ctx.fillStyle = "#fff"; ctx.fillRect(w / 2 - 56, 79, 6, 16); ctx.fillRect(w / 2 - 61, 84, 16, 6);
   windowsRow(ctx, 34, 120, 2, 60, 44, 40); windowsRow(ctx, w - 138, 120, 2, 60, 44, 40);
   fillRR(ctx, w / 2 - 28, h - 80, 56, 70, 6, "#9fc2e4"); ctx.fillStyle = "#fff"; ctx.fillRect(w / 2 - 1, h - 80, 2, 70);
@@ -373,7 +373,7 @@ function paintTicketBooth(ctx, w, h) {
   groundShadow(ctx, w / 2, h - 8, w * 0.44, 10);
   fillRR(ctx, 24, 70, w - 48, h - 82, 8, "#f6f8fc"); fillRR(ctx, w - 62, 70, 38, h - 82, 8, "#dde4f0");
   ctx.beginPath(); ctx.moveTo(8, 78); ctx.lineTo(24, 40); ctx.lineTo(w - 24, 40); ctx.lineTo(w - 8, 78); ctx.closePath(); ctx.fillStyle = "#e0842a"; ctx.fill();
-  fillRR(ctx, w / 2 - 56, 86, 112, 26, 6, "#fffdf7"); artText(ctx, "售票处", w / 2, 99, 20, "#b65a14", 800);
+  fillRR(ctx, w / 2 - 56, 86, 112, 26, 6, "#fffdf7"); artText(ctx, sg("售票处"), w / 2, 99, 20, "#b65a14", 800, (112) - 14);
   fillRR(ctx, 44, 124, w - 88, 48, 6, "#9fc2e4"); fillRR(ctx, 44, 160, w - 88, 8, 3, "#b88a64");
   fillRR(ctx, 50, h - 36, 40, 24, 4, "#59658a"); fillRR(ctx, w - 90, h - 36, 40, 24, 4, "#59658a");
 }

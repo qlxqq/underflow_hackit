@@ -25,7 +25,7 @@ const THEME_ZONE = {
 const USAGE_STAGES = [1, 3]; // usage 1 -> Trained, usage 3 -> Mastered (same rule as the Collection)
 
 const IslandCaptured = {
-  language: "zh",
+  get language() { return IslandLang.code; },
   rows: [],
 
   async load() {
@@ -81,7 +81,7 @@ const IslandPractice = {
   find(word, album) {
     const options = [];
     try {
-      const level = IslandHooks.findMiniGame ? IslandHooks.findMiniGame(word, "zh") : null;
+      const level = IslandHooks.findMiniGame ? IslandHooks.findMiniGame(word, IslandLang.code) : null;
       if (level) options.push({ level, plays: IslandState.playsOf(`mini:${level}`), mini: true });
     } catch (err) { console.error(err); }
     const data = typeof ISLAND_NPC_DATA !== "undefined" ? ISLAND_NPC_DATA : {};
@@ -108,8 +108,9 @@ const IslandPractice = {
     const focus = this.pending && this.pending.npcId === npcId ? this.pending.word : null;
     const useCloud = typeof IslandSave !== "undefined" && IslandSave.userId && IslandSave.hasCloud() && !IslandState.testing;
     if (!useCloud) { if (focus && right.includes(focus)) done.push({ word: focus, evolved: false }); return done; }
-    // Every word that came up counts, right or wrong, and whether or not the player came from the
-    // Practise button: captured words, and cards from the albums the player already owns.
+    // Every word that came up counts, whether it was answered right or wrong, and whether or not
+    // the player came here from the Practise button: captured words, and cards from the albums
+    // the player already owns. Cards the player does not own yet are not counted.
     const albumRows = await this.ownedAlbumRows(right.filter((w) => !IslandCaptured.find(w)));
     for (const word of right) {
       const captured = IslandCaptured.find(word);
@@ -132,7 +133,7 @@ const IslandPractice = {
     if (!words.length) return map;
     try {
       const { data } = await supabase.from("album_cards").select("card_id, word, usage_count, evolution_stage")
-        .eq("user_id", IslandSave.userId).eq("language", this.language || "zh").in("word", words);
+        .eq("user_id", IslandSave.userId).eq("language", IslandLang.code).in("word", words);
       (data || []).forEach((r) => map.set(r.word, { card_id: r.card_id, usage_count: r.usage_count, evolution_stage: r.evolution_stage }));
     } catch (err) { console.warn("Island: could not read album cards", err && err.message); }
     return map;
@@ -140,7 +141,7 @@ const IslandPractice = {
 
   async cardRow(word) {
     const { data } = await supabase.from("album_cards").select("card_id, usage_count, evolution_stage")
-      .eq("user_id", IslandSave.userId).eq("language", "zh").eq("word", word).limit(1);
+      .eq("user_id", IslandSave.userId).eq("language", IslandLang.code).eq("word", word).limit(1);
     return data && data[0] ? { card_id: data[0].card_id, usage_count: data[0].usage_count, evolution_stage: data[0].evolution_stage } : null;
   },
 

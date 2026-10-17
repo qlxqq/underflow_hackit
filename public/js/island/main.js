@@ -10,10 +10,15 @@
 
 const IslandApp = {
   started: false,
+  language: null,
 
   async mount(root, opts = {}) {
     if (this.started) return;
     this.started = true;
+    // The island is built for one language per visit; switching language reloads the page (app.js).
+    this.language = opts.language || "zh";
+    IslandLang.set(this.language);
+    buildIslandNpcData(this.language);
     root.classList.add("island-root");
     root.innerHTML = ISLAND_MARKUP;
 
@@ -33,7 +38,7 @@ const IslandApp = {
     // game below, instead of after it.
     const fontsReady = Promise.race([
       Promise.all([
-        document.fonts.load('800 20px "Noto Sans SC"', "岛屿小店鸡饭熟食中心沙爹煎饼烧烤饮料站面杂货店巴刹咖啡店巴士转换站的士站民众俱乐部警察岗亭诊所小学水果售票处"),
+        document.fonts.load(IslandLang.code === "ta" ? '800 20px "Noto Sans Tamil"' : '800 20px "Noto Sans SC"', IslandLang.info.sample || "Level 1"),
         document.fonts.load('800 20px "Manrope"', "Level 1 BLK 88 MRT"),
       ]),
       new Promise((resolve) => setTimeout(resolve, 1500)),

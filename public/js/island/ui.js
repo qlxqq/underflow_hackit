@@ -278,7 +278,7 @@ const IslandUI = {
       const cardLine = pr && pr.roleTotal
         ? `<p class="sheet-sub intro-cards">${left > 0 ? `${left} of ${pr.roleTotal} ${this.esc(pr.label)} cards still to win` : `You have all ${pr.roleTotal} ${this.esc(pr.label)} cards`}</p>`
         : "";
-      const focusLine = focus ? `<p class="sheet-note">Practising <b lang="zh">${this.esc(focus)}</b>: it is in this challenge.</p>` : "";
+      const focusLine = focus ? `<p class="sheet-note">Practising <b lang="${IslandLang.code}">${this.esc(focus)}</b>: it is in this challenge.</p>` : "";
       this.openSheet(
         `${this.head(`${npc.role || zone.name}`, zone.accent)}
          <h2 class="sheet-title">${this.esc(npc.name)}</h2>
@@ -306,13 +306,13 @@ const IslandUI = {
       const stem = listen
         ? `<button class="btn q-play" id="q-play" type="button">${icon("spark", 22)} Play the word</button><p class="sheet-sub" id="q-nosound" hidden>Sound is not available here. Hint: ${this.esc(q.hint)}</p>`
         : sentence
-          ? `<p class="q-sentence" id="q-sentence" lang="zh">${this.esc(q.sentence).replace("＿＿", '<span class="q-gap" id="q-gap">＿＿</span>')}</p><p class="q-translation" id="q-translation" hidden></p>`
-          : `<div class="q-word${q.bigIsEnglish ? " is-english" : ""}" ${q.bigIsEnglish ? "" : 'lang="zh"'}>${this.esc(q.big)}</div>`;
+          ? `<p class="q-sentence" id="q-sentence" lang="${IslandLang.code}">${this.esc(q.sentence).replace("＿＿", '<span class="q-gap" id="q-gap">＿＿</span>')}</p><p class="q-translation" id="q-translation" hidden></p>`
+          : `<div class="q-word${q.bigIsEnglish ? " is-english" : ""}" ${q.bigIsEnglish ? "" : `lang="${IslandLang.code}"`}>${this.esc(q.big)}</div>`;
       this.el.sheet.innerHTML =
         `${header(q)}
          <p class="sheet-sub">${this.esc(q.prompt)}</p>
          ${stem}
-         <div class="q-options">${q.options.map((o) => `<button class="q-opt" type="button" ${o.lang ? 'lang="zh"' : ""} data-opt="${this.esc(o.value)}">${this.esc(o.label)}</button>`).join("")}</div>
+         <div class="q-options">${q.options.map((o) => `<button class="q-opt" type="button" ${o.lang ? `lang="${IslandLang.code}"` : ""} data-opt="${this.esc(o.value)}">${this.esc(o.label)}</button>`).join("")}</div>
          <p class="q-feedback" id="q-feedback" role="status"></p>
          ${nextButton()}`;
       if (listen) {
@@ -332,7 +332,7 @@ const IslandUI = {
           const gap = document.getElementById("q-gap");
           if (gap) { gap.textContent = q.answer; gap.classList.add("is-filled"); }
           const tr = document.getElementById("q-translation");
-          tr.innerHTML = `${this.esc(q.py)}<br>${this.esc(q.en)}`; tr.hidden = false;
+          tr.innerHTML = `${q.py ? `${this.esc(q.py)}<br>` : ""}${this.esc(q.en)}`; tr.hidden = false;
         }
         document.getElementById("q-feedback").textContent = correct ? "Correct!" : `Not quite. It is ${q.reveal}.`;
         const next = document.getElementById("q-next");
@@ -352,7 +352,7 @@ const IslandUI = {
         `${header(q)}
          <p class="sheet-sub">${this.esc(q.prompt)}</p>
          <div class="match-grid">
-           <div class="match-col">${pairs.map((p, i) => `<button class="match-opt" type="button" data-side="w" data-i="${i}" lang="zh"><b>${this.esc(p.word)}</b>${q.side === "pinyin" ? "" : `<small>${this.esc(p.pinyin)}</small>`}</button>`).join("")}</div>
+           <div class="match-col">${pairs.map((p, i) => `<button class="match-opt" type="button" data-side="w" data-i="${i}" lang="${IslandLang.code}"><b>${this.esc(p.word)}</b>${q.side === "pinyin" || !p.pinyin ? "" : `<small>${this.esc(p.pinyin)}</small>`}</button>`).join("")}</div>
            <div class="match-col">${meanings.map((m) => `<button class="match-opt" type="button" data-side="m" data-i="${m.i}">${this.esc(m.text)}</button>`).join("")}</div>
          </div>
          <p class="q-feedback" id="q-feedback" role="status">Tap a word, then its meaning.</p>
@@ -400,15 +400,9 @@ const IslandUI = {
       reward = reward || { coins: 0, xp: 0, cards: [], dupes: [] };
       const cards = reward.cards || [];
       const dupes = reward.dupes || [];
-      // new cards arrive in a pack the player opens; the result sheet follows
-      if (cards.length && typeof IslandPack !== "undefined") {
-        const packLines = [reward.coins ? `+${reward.coins} coins` : "", reward.xp ? `+${reward.xp} XP` : "",
-          dupes.length && reward.dupePay ? `${dupes.length} duplicate${dupes.length > 1 ? "s" : ""} turned into coins and XP` : ""].filter(Boolean);
-        await IslandPack.show(cards, packLines);
-      }
       const msg = score === total ? "Perfect! Well done." : passed ? "Nice work!" : `Good try. You need ${pass} right to pass. Come back and try again.`;
       const cardsHtml = cards.length
-        ? `<div class="won-cards">${cards.map((c) => `<div class="won-card${c.kind === "zone" ? " is-zone" : ""}" lang="zh"><b>${this.esc(c.word)}</b><small>${this.esc(c.pinyin)} · ${this.esc(c.meaning)}</small><em>${c.kind === "role" ? `${this.esc(c.role || "Role")} card` : "Bonus zone card"}</em></div>`).join("")}</div>`
+        ? `<div class="won-cards">${cards.map((c) => `<div class="won-card${c.kind === "zone" ? " is-zone" : ""}" lang="${IslandLang.code}"><b>${this.esc(c.word)}</b><small>${c.pinyin ? `${this.esc(c.pinyin)} · ` : ""}${this.esc(c.meaning)}</small><em>${c.kind === "role" ? `${this.esc(c.role || "Role")} card` : "Bonus zone card"}</em></div>`).join("")}</div>`
         : "";
       const albumHtml = reward.album && reward.album.total
         ? `<p class="sheet-sub">${this.esc(reward.album.name)} album: ${reward.album.have} / ${reward.album.total} cards</p>` : "";
@@ -427,7 +421,7 @@ const IslandUI = {
          ${dupeHtml}
          ${noRole}
          ${passed ? albumHtml : ""}
-         ${(reward.practised || []).length ? `<p class="sheet-sub">Practised: ${reward.practised.map((p) => `<b lang="zh">${this.esc(p.word)}</b>${p.evolved ? " (evolved!)" : ""}`).join(", ")}</p>` : ""}
+         ${(reward.practised || []).length ? `<p class="sheet-sub">Practised: ${reward.practised.map((p) => `<b lang="${IslandLang.code}">${this.esc(p.word)}</b>${p.evolved ? " (evolved!)" : ""}`).join(", ")}</p>` : ""}
          ${reward.masterDone ? '<p class="album-done">Every card in this album is yours! Open Collection for the shiny badge.</p>' : reward.zoneDone ? '<p class="album-done">All zone cards collected! Open Collection to claim your badge.</p>' : ""}
          <button class="btn btn-primary btn-block" data-close type="button">Done</button>`;
     };

@@ -27,6 +27,9 @@ const IslandQuiz = {
   // Right answers needed out of `total` questions.
   passMark(total) { return total <= 3 ? Math.min(2, total) : Math.ceil(total * 0.75); },
 
+  // "word (how to read it)", or just the word when there is nothing to show (Malay).
+  spelled(w) { return w.p ? `${w.w} (${w.p})` : w.w; },
+
   shuffle(list) {
     const a = list.slice();
     for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
@@ -71,7 +74,7 @@ const IslandQuiz = {
     const withSentence = this.shuffle(picks.filter((w) => w.s));
     const sentenceWords = withSentence.slice(0, 2);
     const plainWords = this.shuffle(picks.filter((w) => !sentenceWords.includes(w)));
-    const plainTypes = this.shuffle(["meaning", "reverse", "pinyin", "listening", "hearMeaning"]);
+    const plainTypes = this.shuffle(IslandLang.hasRoman ? ["meaning", "reverse", "pinyin", "listening", "hearMeaning"] : ["meaning", "reverse", "listening", "hearMeaning"]);
     const jobs = [
       ...sentenceWords.map((w, i) => ({ word: w, kind: i === 0 ? "cloze" : "translate" })),
       ...plainWords.map((w, i) => ({ word: w, kind: plainTypes[i % plainTypes.length] })),
@@ -86,24 +89,24 @@ const IslandQuiz = {
       }
       if (kind === "reverse") {
         const opts3 = this.shuffle([word, ...pickOthers(word, 2, "w")]);
-        return { ...base, prompt: "Which word means this?", big: word.m, bigIsEnglish: true, answer: word.w, reveal: `${word.w} (${word.p})`, options: opts3.map((o) => ({ value: o.w, label: o.w, lang: "zh" })) };
+        return { ...base, prompt: "Which word means this?", big: word.m, bigIsEnglish: true, answer: word.w, reveal: this.spelled(word), options: opts3.map((o) => ({ value: o.w, label: o.w, lang: IslandLang.code })) };
       }
       if (kind === "pinyin") {
         const opts3 = this.shuffle([word, ...pickOthers(word, 2, "p")]);
-        return { ...base, prompt: "Which is the pinyin for", big: word.w, answer: word.p, reveal: word.p, options: opts3.map((o) => ({ value: o.p, label: o.p })) };
+        return { ...base, prompt: `Which is the ${IslandLang.roman} for`, big: word.w, answer: word.p, reveal: word.p, options: opts3.map((o) => ({ value: o.p, label: o.p })) };
       }
       if (kind === "listening") {
         const opts3 = this.shuffle([word, ...pickOthers(word, 2, "w")]);
-        return { ...base, prompt: "Listen, then pick the word you heard", speak: word.w, hint: word.p, answer: word.w, reveal: `${word.w} (${word.p})`, options: opts3.map((o) => ({ value: o.w, label: o.w, lang: "zh" })) };
+        return { ...base, prompt: "Listen, then pick the word you heard", speak: word.w, hint: word.p, answer: word.w, reveal: this.spelled(word), options: opts3.map((o) => ({ value: o.w, label: o.w, lang: IslandLang.code })) };
       }
       if (kind === "hearMeaning") {
         const opts3 = this.shuffle([word, ...pickOthers(word, 2, "m")]);
-        return { ...base, prompt: "Listen, then pick what it means", speak: word.w, hint: `${word.p} - ${word.m}`, answer: word.m, reveal: `${word.w} means ${word.m}`, options: opts3.map((o) => ({ value: o.m, label: o.m })) };
+        return { ...base, prompt: "Listen, then pick what it means", speak: word.w, hint: word.p ? `${word.p} - ${word.m}` : word.m, answer: word.m, reveal: `${word.w} means ${word.m}`, options: opts3.map((o) => ({ value: o.m, label: o.m })) };
       }
       if (kind === "cloze") {
         const s = word.s;
         const opts3 = this.shuffle([word.w, ...s.wrong.slice(0, 2)]);
-        return { ...base, prompt: "Pick the word that fits the gap", sentence: s.zh, py: s.py, en: s.en, answer: word.w, reveal: word.w, options: opts3.map((w) => ({ value: w, label: w, lang: "zh" })) };
+        return { ...base, prompt: "Pick the word that fits the gap", sentence: s.zh, py: s.py, en: s.en, answer: word.w, reveal: word.w, options: opts3.map((w) => ({ value: w, label: w, lang: IslandLang.code })) };
       }
       // translate: a whole sentence, pick its English meaning
       const s = word.s;
@@ -121,8 +124,8 @@ const IslandQuiz = {
     if (capLeft.length) pairWords.push(capLeft[0]);
     if (focus && !pairWords.includes(focus)) pairWords[pairWords.length - 1] = focus;
     pairWords = this.shuffle(pairWords);
-    const side = Math.random() < 0.5 ? "meaning" : "pinyin";
-    order.push({ kind: "match", prompt: side === "meaning" ? "Match each word to its meaning" : "Match each word to its pinyin", side, allowedMistakes: 2,
+    const side = IslandLang.hasRoman && Math.random() < 0.5 ? "pinyin" : "meaning";
+    order.push({ kind: "match", prompt: side === "meaning" ? "Match each word to its meaning" : `Match each word to its ${IslandLang.roman}`, side, allowedMistakes: 2,
       words: pairWords.map((x) => x.w),
       pairs: pairWords.map((x) => ({ word: x.w, pinyin: x.p, meaning: x.m, target: side === "meaning" ? x.m : x.p })) });
     return order;
@@ -130,7 +133,7 @@ const IslandQuiz = {
 
   // ---- fallback for NPCs with no entry in npcData.js ----
   wordsFor(zone) {
-    const lists = (typeof ZONE_WORDS !== "undefined" && ZONE_WORDS.zh) || {};
+    const lists = (typeof ZONE_WORDS !== "undefined" && ZONE_WORDS[IslandLang.code]) || {};
     const alias = { transport: "public-transport", hawker: "hawker-centre", neighbourhood: "neighbourhood" };
     const raw = lists[zone.words] || lists[zone.id] || lists[alias[zone.id]] || [];
     return raw.map((w) => ({
@@ -144,6 +147,7 @@ const IslandQuiz = {
     const words = this.wordsFor(zone);
     let kind = npc.kind || "pinyin";
     const usable = (field) => words.filter((w) => w[field]);
+    if (!IslandLang.hasRoman && kind === "pinyin") kind = "meaning";
     if (kind === "meaning" && usable("meaning").length < 3) kind = "pinyin";
     if (kind === "pinyin" && usable("pinyin").length < 3) return [];
     const pool = this.shuffle(kind === "meaning" ? usable("meaning") : kind === "pinyin" ? usable("pinyin") : words);
@@ -151,15 +155,15 @@ const IslandQuiz = {
     return pool.slice(0, this.fallbackCount).map((item) => {
       const others = this.shuffle(pool.filter((w) => w.word !== item.word)).slice(0, 2);
       if (kind === "pinyin") {
-        return { kind, word: item.word, prompt: "Which is the pinyin for", big: item.word, answer: item.pinyin, reveal: item.pinyin,
+        return { kind, word: item.word, prompt: `Which is the ${IslandLang.roman} for`, big: item.word, answer: item.pinyin, reveal: item.pinyin,
           options: this.shuffle([item, ...others].map((w) => ({ value: w.pinyin, label: w.pinyin }))) };
       }
       if (kind === "meaning") {
         return { kind, word: item.word, prompt: "What does this word mean?", big: item.word, answer: item.meaning, reveal: item.meaning,
           options: this.shuffle([item, ...others].map((w) => ({ value: w.meaning, label: w.meaning }))) };
       }
-      return { kind: "listening", word: item.word, prompt: "Listen, then pick the word you heard", speak: item.word, hint: item.pinyin, answer: item.word, reveal: `${item.word} (${item.pinyin})`,
-        options: this.shuffle([item, ...others].map((w) => ({ value: w.word, label: w.word, lang: "zh" }))) };
+      return { kind: "listening", word: item.word, prompt: "Listen, then pick the word you heard", speak: item.word, hint: item.pinyin, answer: item.word, reveal: item.pinyin ? `${item.word} (${item.pinyin})` : item.word,
+        options: this.shuffle([item, ...others].map((w) => ({ value: w.word, label: w.word, lang: IslandLang.code }))) };
     });
   },
 
@@ -169,7 +173,7 @@ const IslandQuiz = {
     try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = "zh-CN";
+      u.lang = IslandLang.speech;
       u.rate = 0.85;
       window.speechSynthesis.speak(u);
       return true;

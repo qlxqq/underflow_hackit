@@ -131,21 +131,37 @@ create policy "badges readable" on user_badges for select to authenticated using
 create policy "badges insert own" on user_badges for insert to authenticated with check (auth.uid() = user_id);
 
 -- ---------- add_rewards: give the signed-in player XP and coins ----------
+-- XP is the player's and shared by every language. Coins are kept per language: pass
+-- p_language ('zh', 'ms' or 'ta') and the coins go to that language's wallet
+-- (island_progress.coins). Without p_language they go to profiles.coins (the old way).
 -- Each call is capped at 500 of each.
-create or replace function add_rewards(p_xp integer, p_coins integer)
+drop function if exists add_rewards(integer, integer);
+create or replace function add_rewards(p_xp integer, p_coins integer, p_language varchar default null)
 returns table (new_xp integer, new_coins integer)
 language plpgsql security definer set search_path = public as $$
+#variable_conflict use_column
+declare uid uuid := auth.uid();
+        xp_add integer := least(greatest(p_xp, 0), 500);
+        coin_add integer := least(greatest(p_coins, 0), 500);
+        total_xp integer; total_coins integer;
 begin
-  if auth.uid() is null then raise exception 'not signed in'; end if;
-  return query
-  update profiles p
-     set xp    = p.xp    + least(greatest(p_xp, 0), 500),
-         coins = p.coins + least(greatest(p_coins, 0), 500)
-   where p.user_id = auth.uid()
-  returning p.xp, p.coins;
+  if uid is null then raise exception 'not signed in'; end if;
+  if p_language is not null and p_language not in ('zh', 'ms', 'ta') then raise exception 'bad language'; end if;
+  update profiles
+     set xp    = xp + xp_add,
+         coins = coins + case when p_language is null then coin_add else 0 end
+   where user_id = uid
+  returning xp, coins into total_xp, total_coins;
+  if not found then raise exception 'no profile'; end if;
+  if p_language is not null then
+    insert into island_progress (user_id, language, coins) values (uid, p_language, coin_add)
+    on conflict (user_id, language) do update set coins = island_progress.coins + coin_add
+    returning coins into total_coins;
+  end if;
+  return query select total_xp, total_coins;
 end $$;
-revoke all on function add_rewards(integer, integer) from public;
-grant execute on function add_rewards(integer, integer) to authenticated;
+revoke all on function add_rewards(integer, integer, varchar) from public;
+grant execute on function add_rewards(integer, integer, varchar) to authenticated;
 
 
 -- ============================================================
@@ -223,8 +239,8 @@ WHERE NOT EXISTS (
 
 -- ---------- island_progress: one row per player and language (shop items, NPCs, levels, avatar) ----------
 
--- One row per player AND language: each language has its own island progress. Coins and XP
--- are the player's and live on profiles.
+-- One row per player AND language: each language has its own island progress and its own coins.
+-- XP is the player's and lives on profiles.
 create table if not exists public.island_progress (
   user_id         uuid not null references auth.users (id) on delete cascade,
   language        varchar(10) not null default 'zh',
@@ -289,8 +305,10 @@ create table if not exists island_daily (
 alter table island_daily enable row level security;
 revoke all on island_daily from anon, authenticated;
 
--- Island rewards (levels, NPC challenges). Limits: 100 per call, 1000 per day (Singapore time).
-create or replace function island_earn(p_amount integer)
+-- Island rewards (levels, NPC challenges). Coins go to the wallet of the language being played
+-- (island_progress.coins). Limits: 100 per call, 1000 per day in total (Singapore time).
+drop function if exists island_earn(integer);
+create or replace function island_earn(p_amount integer, p_language varchar default 'zh')
 returns integer
 language plpgsql security definer set search_path = public as $$
 #variable_conflict use_column
@@ -300,17 +318,20 @@ declare uid uuid := auth.uid(); today date := (now() at time zone 'Asia/Singapor
 begin
   if uid is null then raise exception 'not signed in'; end if;
   if p_amount is null or p_amount <= 0 then raise exception 'bad amount'; end if;
+  if p_language is null or p_language not in ('zh', 'ms', 'ta') then raise exception 'bad language'; end if;
   insert into island_daily (user_id, day) values (uid, today) on conflict do nothing;
   select coins into used from island_daily where user_id = uid and day = today for update;
   amt := least(p_amount, per_call, greatest(0, daily_cap - used));
   update island_daily set coins = used + amt where user_id = uid and day = today;
-  update profiles set coins = coins + amt where user_id = uid returning coins into total;
-  if not found then raise exception 'no profile'; end if;
+  insert into island_progress (user_id, language, coins) values (uid, p_language, amt)
+  on conflict (user_id, language) do update set coins = island_progress.coins + amt
+  returning coins into total;
   return total;
 end $$;
 
--- Island Shop purchases. Fails if the player cannot afford it.
-create or replace function island_spend(p_amount integer)
+-- Island Shop purchases, paid from the coins of the language being played. Fails if the player cannot afford it.
+drop function if exists island_spend(integer);
+create or replace function island_spend(p_amount integer, p_language varchar default 'zh')
 returns integer
 language plpgsql security definer set search_path = public as $$
 #variable_conflict use_column
@@ -318,10 +339,20 @@ declare uid uuid := auth.uid(); total integer;
 begin
   if uid is null then raise exception 'not signed in'; end if;
   if p_amount is null or p_amount <= 0 or p_amount > 10000 then raise exception 'bad amount'; end if;
-  update profiles set coins = coins - p_amount where user_id = uid and coins >= p_amount returning coins into total;
+  if p_language is null or p_language not in ('zh', 'ms', 'ta') then raise exception 'bad language'; end if;
+  update island_progress set coins = coins - p_amount
+   where user_id = uid and language = p_language and coins >= p_amount returning coins into total;
   if not found then raise exception 'not enough coins'; end if;
   return total;
 end $$;
 
-revoke all on function island_earn(integer), island_spend(integer) from public, anon;
-grant execute on function island_earn(integer), island_spend(integer) to authenticated;
+revoke all on function island_earn(integer, varchar), island_spend(integer, varchar) from public, anon;
+grant execute on function island_earn(integer, varchar), island_spend(integer, varchar) to authenticated;
+
+-- ---------- one-time move: coins used to be one shared balance on profiles ----------
+-- The old shared balance becomes the Chinese wallet (the other languages start at 0). Safe to run
+-- again: profiles.coins is emptied, so a second run finds nothing to move.
+insert into island_progress (user_id, language, coins)
+  select user_id, 'zh', coins from profiles where coins > 0
+  on conflict (user_id, language) do update set coins = greatest(island_progress.coins, excluded.coins);
+update profiles set coins = 0 where coins > 0;

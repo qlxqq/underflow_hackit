@@ -15,16 +15,16 @@
 //   - A zone card with no NPC or mini-game that uses it: not practisable yet.
 //   - A captured word: practisable. The island adds captured words to the challenges of the
 //     zone their theme belongs to.
-//   - Only Chinese has an island so far.
+//   - Chinese, Malay and Tamil each have their own island (their own NPC words).
 
 const CollectionPractice = {
   ISLAND_PAGE: "../island/island.html",
-  LANGUAGES: ["zh"],
+  LANGUAGES: ["zh", "ms", "ta"],
 
   // Is this word one of the words an NPC asks about? Pass an album id to look only in that album.
-  npcHas(word, albumId) {
+  npcHas(word, albumId, language = "zh") {
     if (typeof ROLE_CARDS === "undefined") return false;
-    const albums = ROLE_CARDS.zh || {};
+    const albums = ROLE_CARDS[language] || {};
     return Object.entries(albums).some(([id, groups]) =>
       (!albumId || id === albumId) && groups.some((g) => g.words.some((w) => w.word === word)));
   },
@@ -32,10 +32,10 @@ const CollectionPractice = {
   // { ok: true } or { ok: false, reason } with a sentence to show the player.
   check({ word, album = null, language = "zh", captured = false }) {
     if (!this.LANGUAGES.includes(language)) {
-      return { ok: false, reason: "Practising on the island is only in Chinese for now." };
+      return { ok: false, reason: "Practising on the island is not available for this language yet." };
     }
     if (captured) return { ok: true };
-    if (this.npcHas(word, album)) return { ok: true };
+    if (this.npcHas(word, album, language)) return { ok: true };
     return { ok: false, reason: `No practice for ${word} yet.` };
   },
 
