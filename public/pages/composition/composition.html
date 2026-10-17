@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Composition Practice</title>
+
+    <link rel="stylesheet" href="../../css/composition/composition.css">
+</head>
+
+<body>
+    <div class="composition-page">
+
+        <header class="top-bar">
+            <a href="../../pages/journey/journey.html" class="back-button" aria-label="Go back">
+                &larr;
+            </a>
+
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+
+                <span id="questionCounter">Loading questions...</span>
+            </div>
+
+            <div class="xp-badge">
+                <span>⚡</span>
+                <span id="xpDisplay">0 XP</span>
+            </div>
+        </header>
+
+        <main class="composition-container">
+
+            <div class="level-tag">LEVEL 3 · COMPOSITION</div>
+
+            <h1>Build your sentence</h1>
+
+            <p class="subtitle">
+                Arrange the words to form a correct Chinese sentence.
+            </p>
+
+            <section class="question-card">
+                <div class="question-icon">✍️</div>
+
+                <div class="question-content">
+                    <p class="question-label">YOUR CHALLENGE</p>
+
+                    <h2 id="questionPrompt">
+                        Loading question...
+                    </h2>
+
+                    <p class="question-hint" id="questionHint">
+                        Select the words in the correct order.
+                    </p>
+                </div>
+            </section>
+
+            <section class="answer-section">
+                <div class="section-heading">
+                    <h3>Your sentence</h3>
+                    <span class="small-label">Tap a word to remove it</span>
+                </div>
+
+                <div
+                    class="answer-area"
+                    id="answerArea"
+                    aria-label="Your constructed sentence"
+                    aria-live="polite"
+                >
+                    <span class="empty-placeholder" id="emptyPlaceholder">
+                        Select words from the word bank below...
+                    </span>
+                </div>
+            </section>
+
+            <section class="word-bank-section">
+                <div class="section-heading">
+                    <h3>Word bank</h3>
+                    <span class="small-label">Choose the correct order</span>
+                </div>
+
+                <div class="word-bank" id="wordBank">
+                    <!-- JavaScript generates word tiles here -->
+                </div>
+            </section>
+
+            <section
+                class="feedback-box"
+                id="feedbackBox"
+                role="status"
+                aria-live="polite"
+                hidden
+            >
+                <span class="feedback-icon" id="feedbackIcon">✓</span>
+
+                <div>
+                    <h3 id="feedbackTitle">Good job!</h3>
+                    <p id="feedbackMessage"></p>
+                </div>
+            </section>
+
+            <div class="action-buttons">
+                <button
+                    type="button"
+                    class="reset-button"
+                    id="resetButton"
+                    disabled
+                >
+                    Reset
+                </button>
+
+                <button
+                    type="button"
+                    class="check-button"
+                    id="checkButton"
+                    disabled
+                >
+                    Check answer
+                </button>
+
+                <button
+                    type="button"
+                    class="next-button"
+                    id="nextButton"
+                    hidden
+                >
+                    Next question →
+                </button>
+            </div>
+
+        </main>
+
+        <footer class="page-footer">
+            <p>Practice makes progress. Keep going!</p>
+        </footer>
+
+    </div>
+
+    <!-- Load Supabase library first -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Your existing Supabase client -->
+    <script src="../../js/shared/supabaseClient.js"></script>
+
+    <!-- Composition feature -->
+    <script src="../../js/composition/composition.js"></script>
+</body>
+</html>
