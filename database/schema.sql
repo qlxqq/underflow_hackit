@@ -1,12 +1,9 @@
 -- ============================================================
--- Whole database for the app (Supabase / Postgres).
--- Paste into the Supabase SQL Editor and run.
---
--- This is the clean version: every column lives in its table.
--- On a NEW project, run it as is.
--- On your LIVE project the tables already exist with these columns
--- (earlier runs added them), so re-running is harmless: tables and
--- columns are skipped, and the rules and the function are replaced.
+-- Whole database for the app (Supabase / Postgres), including the island.
+-- Paste into the Supabase SQL Editor and run. Safe to run again:
+-- tables and columns are skipped, policies and functions are replaced.
+-- Sections: profiles, journey_progress, vocabulary, album_cards, daily_quests,
+-- user_badges, add_rewards, island_progress, island_earn / island_spend.
 -- ============================================================
 
 -- ---------- profiles: one row per player ----------
@@ -219,3 +216,112 @@ WHERE NOT EXISTS (
     WHERE prompt = 'Arrange the words to describe what you are doing.'
       AND zone = 1 AND level = 3 AND language = 'zh-CN'
 );
+
+-- ============================================================
+-- ISLAND
+-- ============================================================
+
+-- ---------- island_progress: one row per player and language (shop items, NPCs, levels, avatar) ----------
+
+-- One row per player AND language: each language has its own island progress. Coins and XP
+-- are the player's and live on profiles.
+create table if not exists public.island_progress (
+  user_id         uuid not null references auth.users (id) on delete cascade,
+  language        varchar(10) not null default 'zh',
+  coins           integer     not null default 0 check (coins >= 0),
+  owned           text[]      not null default '{}',   -- shop items bought
+  npcs_done       text[]      not null default '{}',   -- NPC challenges passed (each gave coins + a card)
+  levels_done     integer[]   not null default '{}',   -- mystery island levels finished (1-9)
+  zones_revealed  text[]      not null default '{}',   -- zones whose mist has lifted
+  avatar          jsonb       not null default '{}'::jsonb, -- { "gender": "boy"|"girl", "outfit": "sunny" }
+  stats           jsonb       not null default '{}'::jsonb, -- { "plays": { "npc:teacher": 3 }, "weak": ["word"] }
+  updated_at      timestamptz not null default now(),
+  primary key (user_id, language)
+);
+
+-- already created the table before? these bring it up to date (safe to run again):
+alter table public.island_progress add column if not exists stats jsonb not null default '{}'::jsonb;
+alter table public.island_progress add column if not exists language varchar(10) not null default 'zh';
+do $$
+begin
+  -- the old table had one row per player; it now has one per player and language
+  if exists (select 1 from information_schema.table_constraints
+              where table_schema = 'public' and table_name = 'island_progress'
+                and constraint_type = 'PRIMARY KEY' and constraint_name = 'island_progress_pkey')
+     and not exists (select 1 from information_schema.key_column_usage
+                      where table_schema = 'public' and table_name = 'island_progress'
+                        and constraint_name = 'island_progress_pkey' and column_name = 'language') then
+    alter table public.island_progress drop constraint island_progress_pkey;
+    alter table public.island_progress add primary key (user_id, language);
+  end if;
+end $$;
+
+alter table public.island_progress enable row level security;
+
+drop policy if exists "island_progress select own" on public.island_progress;
+drop policy if exists "island_progress insert own" on public.island_progress;
+drop policy if exists "island_progress update own" on public.island_progress;
+
+create policy "island_progress select own" on public.island_progress for select using (auth.uid() = user_id);
+create policy "island_progress insert own" on public.island_progress for insert with check (auth.uid() = user_id);
+create policy "island_progress update own" on public.island_progress for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create or replace function public.island_progress_touch() returns trigger
+language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists island_progress_touch on public.island_progress;
+create trigger island_progress_touch before update on public.island_progress
+  for each row execute function public.island_progress_touch();
+
+-- ---------- island coins: the island uses profiles.coins ----------
+-- Daily limit for island rewards (no policies: only the functions below touch it).
+create table if not exists island_daily (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  day     date not null,
+  coins   integer not null default 0,
+  primary key (user_id, day)
+);
+alter table island_daily enable row level security;
+revoke all on island_daily from anon, authenticated;
+
+-- Island rewards (levels, NPC challenges). Limits: 100 per call, 1000 per day (Singapore time).
+create or replace function island_earn(p_amount integer)
+returns integer
+language plpgsql security definer set search_path = public as $$
+#variable_conflict use_column
+declare uid uuid := auth.uid(); today date := (now() at time zone 'Asia/Singapore')::date;
+        used integer; amt integer; total integer;
+        per_call constant integer := 100; daily_cap constant integer := 1000;
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  if p_amount is null or p_amount <= 0 then raise exception 'bad amount'; end if;
+  insert into island_daily (user_id, day) values (uid, today) on conflict do nothing;
+  select coins into used from island_daily where user_id = uid and day = today for update;
+  amt := least(p_amount, per_call, greatest(0, daily_cap - used));
+  update island_daily set coins = used + amt where user_id = uid and day = today;
+  update profiles set coins = coins + amt where user_id = uid returning coins into total;
+  if not found then raise exception 'no profile'; end if;
+  return total;
+end $$;
+
+-- Island Shop purchases. Fails if the player cannot afford it.
+create or replace function island_spend(p_amount integer)
+returns integer
+language plpgsql security definer set search_path = public as $$
+#variable_conflict use_column
+declare uid uuid := auth.uid(); total integer;
+begin
+  if uid is null then raise exception 'not signed in'; end if;
+  if p_amount is null or p_amount <= 0 or p_amount > 10000 then raise exception 'bad amount'; end if;
+  update profiles set coins = coins - p_amount where user_id = uid and coins >= p_amount returning coins into total;
+  if not found then raise exception 'not enough coins'; end if;
+  return total;
+end $$;
+
+revoke all on function island_earn(integer), island_spend(integer) from public, anon;
+grant execute on function island_earn(integer), island_spend(integer) to authenticated;

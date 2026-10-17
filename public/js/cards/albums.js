@@ -3,19 +3,25 @@
 //  - "Captured Words": every word the player captured in the real world.
 //    Sorted into categories automatically, with a filter and a search.
 //    Captured cards can be deleted.
-//  - Island albums (Hawker Centre, Family, ...): fixed sets of words. These
-//    cards can ONLY be earned in mini-games on the island (they cannot be
-//    captured) and they cannot be deleted. Empty slots show a hint.
+//  - Island albums (Neighbourhood, Hawker Centre, Public Transport): fixed sets
+//    of words that can ONLY be earned on the island (they cannot be captured)
+//    and cannot be deleted. Each album has two kinds of card:
+//        ZONE cards  the zone's words, won in the island's mini-games
+//                    (they can also drop as a bonus from an NPC challenge)
+//        ROLE cards  each NPC's job words (roleCards.js), won only from that
+//                    NPC's challenge
+//    Collecting every ZONE card finishes the album and earns the badge. Collecting
+//    the role cards too earns the shiny Master badge. A filter above the cards
+//    shows All / Zone cards / one NPC's cards.
 //
 // Only the albums for the player's chosen Mother Tongue are shown.
 //
-// Needs (loaded before this file): zoneWords.js (ZONE_WORDS), cardArt.js
-// (ART, pickTheme), icons.js (icon), rarity.js (getRarity) and cards.js
-// (renderCard, escapeHtml, RARITY_LABELS, STAGE_LABELS).
+// Needs (loaded before this file): zoneWords.js (ZONE_WORDS), roleCards.js
+// (ROLE_CARDS, roleCardsFor), cardArt.js (ART, pickTheme), icons.js (icon),
+// rarity.js (getRarity) and cards.js (renderCard, escapeHtml, RARITY_LABELS, STAGE_LABELS).
 //
-// PLACEHOLDER word lists: the first three island albums reuse the Journey
-// zone lists; Family and School are new. All still need checking by a native
-// speaker (especially Malay and Tamil).
+// PLACEHOLDER word lists: the albums reuse the Journey zone lists. All still need
+// checking by a native speaker (especially Malay and Tamil).
 
 const CAPTURED_ALBUM = { id: "captured", name: "Captured Words", art: "captured" };
 
@@ -34,69 +40,11 @@ const ALBUMS = [
   { id: "neighbourhood", name: "Neighbourhood", art: "home" },
   { id: "hawker-centre", name: "Hawker Centre", art: "stall" },
   { id: "public-transport", name: "Public Transport", art: "train" },
-  { id: "family", name: "Family", art: "family" },
-  { id: "school", name: "School", art: "book" },
 ];
 
 const LANGUAGE_NAMES = { zh: "Chinese", ms: "Malay", ta: "Tamil" };
 
-// Albums that are not Journey zones. { word, romanization, meaning } per language.
-const ALBUM_EXTRA_WORDS = {
-  zh: {
-    family: [
-      { word: "妈妈", romanization: "māma", meaning: "mother" }, { word: "爸爸", romanization: "bàba", meaning: "father" },
-      { word: "哥哥", romanization: "gēge", meaning: "elder brother" }, { word: "姐姐", romanization: "jiějie", meaning: "elder sister" },
-      { word: "弟弟", romanization: "dìdi", meaning: "younger brother" }, { word: "妹妹", romanization: "mèimei", meaning: "younger sister" },
-      { word: "奶奶", romanization: "nǎinai", meaning: "grandmother" }, { word: "爷爷", romanization: "yéye", meaning: "grandfather" },
-      { word: "家人", romanization: "jiārén", meaning: "family members" }, { word: "孩子", romanization: "háizi", meaning: "child" },
-      { word: "叔叔", romanization: "shūshu", meaning: "uncle" }, { word: "阿姨", romanization: "āyí", meaning: "aunt" },
-    ],
-    school: [
-      { word: "学校", romanization: "xuéxiào", meaning: "school" }, { word: "老师", romanization: "lǎoshī", meaning: "teacher" },
-      { word: "学生", romanization: "xuésheng", meaning: "student" }, { word: "课本", romanization: "kèběn", meaning: "textbook" },
-      { word: "铅笔", romanization: "qiānbǐ", meaning: "pencil" }, { word: "教室", romanization: "jiàoshì", meaning: "classroom" },
-      { word: "作业", romanization: "zuòyè", meaning: "homework" }, { word: "考试", romanization: "kǎoshì", meaning: "exam" },
-      { word: "同学", romanization: "tóngxué", meaning: "classmate" }, { word: "书包", romanization: "shūbāo", meaning: "school bag" },
-      { word: "黑板", romanization: "hēibǎn", meaning: "blackboard" }, { word: "下课", romanization: "xiàkè", meaning: "class ends" },
-    ],
-  },
-  ms: {
-    family: [
-      { word: "ibu", meaning: "mother" }, { word: "ayah", meaning: "father" },
-      { word: "abang", meaning: "elder brother" }, { word: "kakak", meaning: "elder sister" },
-      { word: "adik", meaning: "younger sibling" }, { word: "nenek", meaning: "grandmother" },
-      { word: "datuk", meaning: "grandfather" }, { word: "keluarga", meaning: "family" },
-      { word: "anak", meaning: "child" }, { word: "pakcik", meaning: "uncle" },
-      { word: "makcik", meaning: "aunt" }, { word: "sepupu", meaning: "cousin" },
-    ],
-    school: [
-      { word: "sekolah", meaning: "school" }, { word: "guru", meaning: "teacher" },
-      { word: "murid", meaning: "pupil" }, { word: "buku", meaning: "book" },
-      { word: "pensel", meaning: "pencil" }, { word: "kelas", meaning: "class" },
-      { word: "peperiksaan", meaning: "exam" }, { word: "kawan", meaning: "friend" },
-      { word: "rehat", meaning: "break" }, { word: "pelajaran", meaning: "lesson" },
-      { word: "meja", meaning: "desk" }, { word: "kerusi", meaning: "chair" },
-    ],
-  },
-  ta: {
-    family: [
-      { word: "அம்மா", romanization: "ammaa", meaning: "mother" }, { word: "அப்பா", romanization: "appaa", meaning: "father" },
-      { word: "அண்ணன்", romanization: "annan", meaning: "elder brother" }, { word: "அக்கா", romanization: "akkaa", meaning: "elder sister" },
-      { word: "தம்பி", romanization: "thambi", meaning: "younger brother" }, { word: "தங்கை", romanization: "thangai", meaning: "younger sister" },
-      { word: "பாட்டி", romanization: "paatti", meaning: "grandmother" }, { word: "தாத்தா", romanization: "thaaththaa", meaning: "grandfather" },
-      { word: "மாமா", romanization: "maamaa", meaning: "uncle" }, { word: "அத்தை", romanization: "aththai", meaning: "aunt" },
-      { word: "குடும்பம்", romanization: "kudumbam", meaning: "family" }, { word: "குழந்தை", romanization: "kuzhanthai", meaning: "baby / child" },
-    ],
-    school: [
-      { word: "பள்ளி", romanization: "palli", meaning: "school" }, { word: "ஆசிரியர்", romanization: "aasiriyar", meaning: "teacher" },
-      { word: "மாணவர்", romanization: "maanavar", meaning: "student" }, { word: "புத்தகம்", romanization: "puththagam", meaning: "book" },
-      { word: "பென்சில்", romanization: "pencil", meaning: "pencil" }, { word: "வகுப்பு", romanization: "vakuppu", meaning: "class" },
-      { word: "பாடம்", romanization: "paadam", meaning: "lesson" }, { word: "தேர்வு", romanization: "thervu", meaning: "exam" },
-      { word: "நண்பர்", romanization: "nanbar", meaning: "friend" }, { word: "மேசை", romanization: "mesai", meaning: "desk" },
-      { word: "நாற்காலி", romanization: "naarkaali", meaning: "chair" }, { word: "விளையாட்டு", romanization: "vilaiyaattu", meaning: "game / sport" },
-    ],
-  },
-};
+// Every island album is a Journey zone with its words in zoneWords.js, plus its NPC role cards (roleCards.js).
 
 // ---------- island albums: data ----------
 function albumWordKey(word, language) {
@@ -104,13 +52,21 @@ function albumWordKey(word, language) {
   return language === "ms" ? w.toLowerCase() : w;
 }
 
+// The cards of an album: the zone's words first, then each NPC's role cards.
+// kind is "zone" or "role"; role cards also carry roleId and roleLabel.
 function getAlbumWords(albumId, language) {
-  const zone = typeof ZONE_WORDS !== "undefined" && ZONE_WORDS[language] && ZONE_WORDS[language][albumId];
-  const list = zone || (ALBUM_EXTRA_WORDS[language] && ALBUM_EXTRA_WORDS[language][albumId]) || [];
-  return list.map((w) => ({ word: w.word, romanization: w.romanization || "", meaning: w.meaning }));
+  const zone = (typeof ZONE_WORDS !== "undefined" && ZONE_WORDS[language] && ZONE_WORDS[language][albumId]) || [];
+  const zoneSlots = zone.map((w) => ({ word: w.word, romanization: w.romanization || w.pinyin || "", meaning: w.meaning, kind: "zone" }));
+  const groups = typeof roleCardsFor === "function" ? roleCardsFor(albumId, language) : [];
+  const roleSlots = groups.flatMap((g) =>
+    g.words.map((w) => ({ word: w.word, romanization: w.romanization || "", meaning: w.meaning, kind: "role", roleId: g.id, roleLabel: g.label })),
+  );
+  return [...zoneSlots, ...roleSlots];
 }
 
 // Every island album for one language, with the slots the player has earned.
+//   complete  every ZONE card is owned (earns the album badge)
+//   master    every card, zone and role, is owned (earns the shiny badge)
 function buildIslandAlbums(albumRows, language) {
   const earned = new Map();
   albumRows.forEach((row) => {
@@ -121,8 +77,17 @@ function buildIslandAlbums(albumRows, language) {
       ...w,
       row: earned.get(`${album.id}|${albumWordKey(w.word, language)}`) || null,
     }));
+    const zoneSlots = slots.filter((s) => s.kind === "zone");
+    const roleSlots = slots.filter((s) => s.kind === "role");
     const have = slots.filter((s) => s.row).length;
-    return { ...album, slots, have, total: slots.length, complete: slots.length > 0 && have === slots.length };
+    const zoneHave = zoneSlots.filter((s) => s.row).length;
+    const roleHave = roleSlots.filter((s) => s.row).length;
+    const complete = zoneSlots.length > 0 && zoneHave === zoneSlots.length;
+    return {
+      ...album, slots, have, total: slots.length,
+      zoneHave, zoneTotal: zoneSlots.length, roleHave, roleTotal: roleSlots.length,
+      complete, master: complete && roleSlots.length > 0 && roleHave === roleSlots.length,
+    };
   }).filter((album) => album.total > 0);
 }
 
@@ -276,7 +241,7 @@ function activeFilterCount() {
 }
 
 // ---------- screen state ----------
-const albumUi = { container: null, handlers: null, data: null, openId: null };
+const albumUi = { container: null, handlers: null, data: null, openId: null, filter: "all" };
 
 function initAlbums(container, handlers) {
   albumUi.container = container;
@@ -292,9 +257,14 @@ function initAlbums(container, handlers) {
     const category = t.closest("[data-cap-category]");
     const head = t.closest("[data-cap-toggle]");
     const dev = t.closest("[data-dev-award]");
+    const albumFilter = t.closest("[data-album-filter]");
 
-    if (open) {
+    if (albumFilter) {
+      albumUi.filter = albumFilter.dataset.albumFilter;
+      renderAlbums(albumUi.data);
+    } else if (open) {
       albumUi.openId = open.dataset.album;
+      albumUi.filter = "all";
       renderAlbums(albumUi.data);
       window.scrollTo(0, 0);
     } else if (t.closest("[data-album-back]")) {
@@ -393,7 +363,7 @@ function shelfHtml(data, albums) {
         <span class="album-count">${a.have} / ${a.total} cards</span>
         ${albumBar(a.have, a.total)}
       </span>
-      ${a.complete ? '<span class="album-badge">Complete</span>' : ""}
+      ${a.master ? '<span class="album-badge">Master</span>' : a.complete ? '<span class="album-badge">Complete</span>' : ""}
     </button>`,
     )
     .join("");
@@ -409,7 +379,7 @@ function shelfHtml(data, albums) {
     </div>
     <h2 class="album-section">Island albums <span>${finished} of ${albums.length} complete</span></h2>
     <div class="album-list">${tiles}</div>
-    <p class="album-note">Island cards can only be earned by winning mini-games on the island. They can't be captured or deleted.</p>`;
+    <p class="album-note">Island cards can only be won on the island: zone cards in mini-games, and role cards from NPC challenges. They can't be captured or deleted.</p>`;
 }
 
 // ---------- Captured Words album ----------
@@ -519,34 +489,78 @@ function updateCaptured(onlyResults) {
 
 // ---------- island album ----------
 function islandDetailSkeleton(album) {
+  const roles = [];
+  album.slots.filter((s) => s.kind === "role").forEach((s) => {
+    let r = roles.find((x) => x.id === s.roleId);
+    if (!r) { r = { id: s.roleId, label: s.roleLabel, have: 0, total: 0 }; roles.push(r); }
+    r.total++;
+    if (s.row) r.have++;
+  });
+  if (albumUi.filter !== "all" && albumUi.filter !== "zone" && !roles.some((r) => r.id === albumUi.filter)) albumUi.filter = "all";
+  const chipHtml = (value, label, count) =>
+    `<button type="button" class="cap-chip" data-album-filter="${escapeHtml(value)}" aria-pressed="${albumUi.filter === value}">${escapeHtml(label)} <span>${count}</span></button>`;
+  const chips =
+    chipHtml("all", "All", `${album.have}/${album.total}`) +
+    chipHtml("zone", "Zone cards", `${album.zoneHave}/${album.zoneTotal}`) +
+    roles.map((r) => chipHtml(r.id, r.label, `${r.have}/${r.total}`)).join("");
+  const status = album.master
+    ? "Master! Every card in this album is yours."
+    : album.complete
+      ? "Zone cards complete! Win the role cards too for the shiny Master badge."
+      : "Win the zone cards to finish the album.";
   return `
     <div class="album-detail-head">
       <button type="button" class="album-back" data-album-back aria-label="Back to albums">${icon("chevLeft", 22)}</button>
       <h2 class="album-title">${escapeHtml(album.name)}</h2>
     </div>
-    ${album.complete ? '<p class="album-done">Album complete! Every card is yours.</p>' : '<p class="album-how">Win these cards in mini-games on the island. They can\'t be captured.</p>'}
+    ${album.complete ? `<p class="album-done">${status}</p>` : `<p class="album-how">${status}</p>`}
+    <p class="album-how">Zone cards: win these in mini-games on the island. Role cards: win these from NPC challenges (talk to the characters marked ? on the island). None can be captured.</p>
+    <div class="cap-chips album-filters" role="group" aria-label="Filter cards">${chips}</div>
     <div class="card-grid album-cards"></div>`;
 }
 
 function fillIslandCards(album, language) {
   const grid = albumUi.container.querySelector(".album-cards");
   const dev = albumUi.handlers.onDevAward && new URLSearchParams(location.search).get("dev") === "1";
-  album.slots.forEach((slot) => {
+  const heading = (title, have, total) =>
+    `<h3 class="album-section" style="grid-column: 1 / -1; margin: 10px 0 0">${escapeHtml(title)} <span>${have} of ${total}</span></h3>`;
+  const addSlot = (slot) => {
     if (slot.row) {
       const card = renderCard(albumCardEntry(album, slot, language), () => {}, albumUi.handlers.onPracticeAlbum);
       const remove = card.querySelector(".card-delete");
       if (remove) remove.remove(); // island cards cannot be deleted
       grid.appendChild(card);
-    } else if (dev) {
+      return;
+    }
+    const how = slot.kind === "role" ? `NPC challenge: ${escapeHtml(slot.roleLabel)}` : "Win it in a mini-game";
+    if (dev) {
       grid.insertAdjacentHTML(
         "beforeend",
-        `<button type="button" class="slot-card is-missing" data-dev-award="${album.id}" data-word="${escapeHtml(slot.word)}"><span class="slot-q" aria-hidden="true">?</span><span class="slot-hint">${escapeHtml(slot.meaning)}</span><span class="slot-how">Dev: tap to award</span></button>`,
+        `<button type="button" class="slot-card is-missing" data-dev-award="${album.id}" data-word="${escapeHtml(slot.word)}"><span class="slot-q" aria-hidden="true">?</span><span class="slot-hint">${escapeHtml(slot.meaning)}</span><span class="slot-how">${how} (dev: tap to award)</span></button>`,
       );
     } else {
       grid.insertAdjacentHTML(
         "beforeend",
-        `<div class="slot-card is-missing"><span class="slot-q" aria-hidden="true">?</span><span class="slot-hint">${escapeHtml(slot.meaning)}</span><span class="slot-how">Win it on the island</span></div>`,
+        `<div class="slot-card is-missing"><span class="slot-q" aria-hidden="true">?</span><span class="slot-hint">${escapeHtml(slot.meaning)}</span><span class="slot-how">${how}</span></div>`,
       );
     }
+  };
+  const filter = albumUi.filter;
+  const zone = album.slots.filter((s) => s.kind === "zone");
+  const roles = [];
+  album.slots.filter((s) => s.kind === "role").forEach((s) => {
+    let r = roles.find((x) => x.id === s.roleId);
+    if (!r) { r = { id: s.roleId, label: s.roleLabel, slots: [] }; roles.push(r); }
+    r.slots.push(s);
   });
+  if (filter === "zone") zone.forEach(addSlot);
+  else if (filter !== "all") (roles.find((r) => r.id === filter) || { slots: [] }).slots.forEach(addSlot);
+  else {
+    grid.insertAdjacentHTML("beforeend", heading("Zone cards", album.zoneHave, album.zoneTotal));
+    zone.forEach(addSlot);
+    roles.forEach((r) => {
+      grid.insertAdjacentHTML("beforeend", heading(r.label, r.slots.filter((s) => s.row).length, r.slots.length));
+      r.slots.forEach(addSlot);
+    });
+  }
 }

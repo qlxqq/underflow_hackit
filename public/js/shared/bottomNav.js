@@ -1,7 +1,7 @@
 // Renders the shared bottom navigation into <nav id="bottom-nav" data-active="...">.
 // Scenarios and Friends are not built yet, so they render as disabled tabs.
 const NAV_LINKS = {
-  journey: "../journey/journey.html",
+  journey: "../island/island.html",
   capture: "../storeVocab/storeVocab.html#capture",
   collection: "../storeVocab/storeVocab.html#collection",
 };
@@ -18,7 +18,7 @@ function renderBottomNav() {
     `<button class="nav-tab" type="button" disabled title="Coming soon">${icon(iconName)}<span>${label}</span></button>`;
 
   nav.innerHTML =
-    link("journey", "Journey", "route") +
+    link("journey", "Island", "route") +
     soon("Scenarios", "chat") +
     `<div class="nav-capture"><a class="nav-capture-btn" data-nav="capture" href="${NAV_LINKS.capture}" aria-label="Capture words">${icon("camera", 26)}</a><span class="nav-capture-label">Capture</span></div>` +
     link("collection", "Collection", "cards") +

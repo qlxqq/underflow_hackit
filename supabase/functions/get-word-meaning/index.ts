@@ -28,7 +28,7 @@ const ART_MODEL = "claude-haiku-4-5-20251001";
 // bigger model. It is only called once per photo.
 const OCR_MODEL = "claude-sonnet-5-5";
 
-// Must match THEMES in public/js/cards/cardArt.js (everything except
+// Must match THEMES in public/js/storeVocab/cardArt.js (everything except
 // "generic", which is only the plain fallback picture).
 const THEME_NAMES = [
   "food", "drink", "stall", "bus", "taxi", "train", "card", "home", "lift", "park",
@@ -96,6 +96,8 @@ async function readTextFromPhoto(image: string, mediaType: string, language: str
       { type: "text", text: "Transcribe the text in this photo." },
     ],
     1500,
+    // A failed call is reported to the app, not turned into "no text found".
+    { throwOnError: true },
   );
   return text.trim();
 }
@@ -169,7 +171,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function callClaude(model: string, system: string, userContent: string | unknown[], maxTokens: number) {
+async function callClaude(model: string, system: string, userContent: string | unknown[], maxTokens: number, options: { temperature?: number; throwOnError?: boolean } = {}) {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -180,13 +182,17 @@ async function callClaude(model: string, system: string, userContent: string | u
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,
+      ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
       system,
       messages: [{ role: "user", content: userContent }],
     }),
   });
   const data = await response.json();
   // Shows up in the function's logs in the Supabase dashboard.
-  if (!response.ok) console.error("Anthropic API error:", response.status, JSON.stringify(data));
+  if (!response.ok) {
+    console.error("Anthropic API error:", response.status, JSON.stringify(data));
+    if (options.throwOnError) throw new Error(`Reader error ${response.status}: ${data?.error?.message ?? "unknown"}`);
+  }
   return data.content?.[0]?.text ?? "";
 }
 
@@ -259,7 +265,11 @@ Deno.serve(async (req) => {
       if (!["image/jpeg", "image/png", "image/webp"].includes(mediaType)) {
         return json({ error: "Unsupported photo type." }, 400);
       }
-      return json({ text: await readTextFromPhoto(image, mediaType, language) });
+      try {
+        return json({ text: await readTextFromPhoto(image, mediaType, language) });
+      } catch (err) {
+        return json({ error: err instanceof Error ? err.message : "Could not read the photo." }, 502);
+      }
     }
 
     // ---- job 2: draw a picture for one word ----
