@@ -1,20 +1,32 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
     <title>Composition Practice</title>
 
+    <!-- PWA -->
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- Shared tokens first, then this page -->
+    <link rel="stylesheet" href="../../css/shared/base.css">
     <link rel="stylesheet" href="../../css/composition/composition.css">
 </head>
 
 <body>
-    <div class="composition-page">
+    <div class="app composition-page">
 
-        <header class="top-bar">
-            <a href="../../pages/journey/journey.html" class="back-button" aria-label="Go back">
+        <header class="top-bar has-back">
+            <a href="../../pages/journey/journey.html" class="icon-btn back-button" aria-label="Go back">
                 &larr;
             </a>
 
@@ -22,8 +34,6 @@
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
-
-                <span id="questionCounter">Loading questions...</span>
             </div>
 
             <div class="xp-badge">
@@ -34,7 +44,11 @@
 
         <main class="composition-container">
 
-            <div class="level-tag">LEVEL 3 · COMPOSITION</div>
+            <div class="session-chip">
+                <span>Level 3 · Composition</span>
+                <span aria-hidden="true">·</span>
+                <span id="questionCounter">Loading questions...</span>
+            </div>
 
             <h1>Build your sentence</h1>
 
@@ -43,19 +57,11 @@
             </p>
 
             <section class="question-card">
-                <div class="question-icon">✍️</div>
+                <h2 id="questionPrompt">Loading question...</h2>
 
-                <div class="question-content">
-                    <p class="question-label">YOUR CHALLENGE</p>
-
-                    <h2 id="questionPrompt">
-                        Loading question...
-                    </h2>
-
-                    <p class="question-hint" id="questionHint">
-                        Select the words in the correct order.
-                    </p>
-                </div>
+                <p class="question-hint" id="questionHint">
+                    Select the words in the correct order.
+                </p>
             </section>
 
             <section class="answer-section">
@@ -103,39 +109,20 @@
             </section>
 
             <div class="action-buttons">
-                <button
-                    type="button"
-                    class="reset-button"
-                    id="resetButton"
-                    disabled
-                >
+                <button type="button" class="btn btn-outline reset-button" id="resetButton" disabled>
                     Reset
                 </button>
 
-                <button
-                    type="button"
-                    class="check-button"
-                    id="checkButton"
-                    disabled
-                >
+                <button type="button" class="btn btn-primary check-button" id="checkButton" disabled>
                     Check answer
                 </button>
 
-                <button
-                    type="button"
-                    class="next-button"
-                    id="nextButton"
-                    hidden
-                >
+                <button type="button" class="btn btn-primary next-button" id="nextButton" hidden>
                     Next question →
                 </button>
             </div>
 
         </main>
-
-        <footer class="page-footer">
-            <p>Practice makes progress. Keep going!</p>
-        </footer>
 
     </div>
 
