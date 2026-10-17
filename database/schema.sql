@@ -356,3 +356,149 @@ insert into island_progress (user_id, language, coins)
   select user_id, 'zh', coins from profiles where coins > 0
   on conflict (user_id, language) do update set coins = greatest(island_progress.coins, excluded.coins);
 update profiles set coins = 0 where coins > 0;
+
+-- ============================================================
+-- FRIENDS: friend requests and friend lists
+-- Paste into the Supabase SQL Editor (a New query tab) and run.
+-- Safe to run again: the table and index are skipped, the policy and
+-- functions are replaced.
+-- ============================================================
+
+-- ---------- friendships: one row per pair of players ----------
+-- requester_id sent the request, addressee_id received it.
+-- status: 'pending' until the addressee accepts, then 'accepted'.
+-- Declining, cancelling and removing a friend all delete the row.
+create table if not exists public.friendships (
+  id           bigint generated always as identity primary key,
+  requester_id uuid not null references auth.users(id) on delete cascade,
+  addressee_id uuid not null references auth.users(id) on delete cascade,
+  status       text not null default 'pending' check (status in ('pending', 'accepted')),
+  created_at   timestamptz not null default now(),
+  constraint friendships_not_self check (requester_id <> addressee_id)
+);
+
+-- A pair can only appear once, whichever player asked first.
+create unique index if not exists friendships_pair_unique
+  on public.friendships (least(requester_id, addressee_id), greatest(requester_id, addressee_id));
+
+alter table public.friendships enable row level security;
+
+-- Players can only read friendships they are part of.
+-- There are no insert, update or delete policies on purpose:
+-- only the functions below can change this table.
+drop policy if exists "friendships select own" on public.friendships;
+create policy "friendships select own" on public.friendships
+  for select to authenticated
+  using (auth.uid() in (requester_id, addressee_id));
+
+-- ---------- send_friend_request: ask another player by username ----------
+-- Returns 'sent' for a new request, or 'accepted' if that player had already asked you.
+create or replace function public.send_friend_request(p_username text)
+returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  v_uid     uuid := auth.uid();
+  v_target  uuid;
+  v_row     public.friendships%rowtype;
+begin
+  if v_uid is null then raise exception 'not signed in'; end if;
+  if p_username is null or length(trim(p_username)) = 0 then raise exception 'enter a username'; end if;
+
+  select user_id into v_target from public.profiles
+   where lower(username) = lower(trim(p_username));
+  if v_target is null then raise exception 'no player with that username'; end if;
+  if v_target = v_uid then raise exception 'you cannot add yourself'; end if;
+
+  select * into v_row from public.friendships
+   where (requester_id = v_uid and addressee_id = v_target)
+      or (requester_id = v_target and addressee_id = v_uid);
+
+  if found then
+    if v_row.status = 'accepted' then raise exception 'already friends'; end if;
+    if v_row.requester_id = v_target then
+      -- they already asked you, so asking back makes you friends
+      update public.friendships set status = 'accepted' where id = v_row.id;
+      return 'accepted';
+    end if;
+    raise exception 'request already sent';
+  end if;
+
+  insert into public.friendships (requester_id, addressee_id) values (v_uid, v_target);
+  return 'sent';
+end $$;
+
+-- ---------- respond_friend_request: accept or decline a request sent to you ----------
+create or replace function public.respond_friend_request(p_id bigint, p_accept boolean)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then raise exception 'not signed in'; end if;
+
+  if p_accept then
+    update public.friendships set status = 'accepted'
+     where id = p_id and addressee_id = v_uid and status = 'pending';
+  else
+    delete from public.friendships
+     where id = p_id and addressee_id = v_uid and status = 'pending';
+  end if;
+
+  if not found then raise exception 'request not found'; end if;
+end $$;
+
+-- ---------- remove_friend: unfriend, or cancel a request you sent ----------
+create or replace function public.remove_friend(p_friend_id uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then raise exception 'not signed in'; end if;
+
+  delete from public.friendships
+   where (requester_id = v_uid and addressee_id = p_friend_id)
+      or (requester_id = p_friend_id and addressee_id = v_uid);
+
+  if not found then raise exception 'friendship not found'; end if;
+end $$;
+
+-- ---------- my_friendships: everything the Friends page needs in one call ----------
+-- state is 'accepted' or 'pending'. is_incoming is true when the request was sent TO you.
+create or replace function public.my_friendships()
+returns table (
+  friendship_id   bigint,
+  friend_id       uuid,
+  friend_username varchar,
+  friend_avatar   text,
+  friend_streak   integer,
+  friend_xp       integer,
+  state           text,
+  is_incoming     boolean
+)
+language sql stable security definer set search_path = public as $$
+  select f.id,
+         p.user_id,
+         p.username,
+         p.avatar,
+         p.current_streak,
+         p.xp,
+         f.status,
+         (f.addressee_id = auth.uid())
+    from public.friendships f
+    join public.profiles p
+      on p.user_id = case when f.requester_id = auth.uid() then f.addressee_id else f.requester_id end
+   where auth.uid() in (f.requester_id, f.addressee_id)
+   order by (f.status = 'accepted') desc, p.username;
+$$;
+
+-- Only signed-in players can call these.
+revoke all on function public.send_friend_request(text) from public, anon;
+revoke all on function public.respond_friend_request(bigint, boolean) from public, anon;
+revoke all on function public.remove_friend(uuid) from public, anon;
+revoke all on function public.my_friendships() from public, anon;
+
+grant execute on function public.send_friend_request(text) to authenticated;
+grant execute on function public.respond_friend_request(bigint, boolean) to authenticated;
+grant execute on function public.remove_friend(uuid) to authenticated;
+grant execute on function public.my_friendships() to authenticated;
