@@ -28,10 +28,23 @@ function levelFromXp(xp) {
 }
 
 // ---------- player stats ----------
+// XP is the player's, shared by all languages. Coins are kept per language (island_progress.coins),
+// so every page shows and pays the coins of the language the player is on now.
+function rewardLanguage(userId) {
+  try {
+    const code = localStorage.getItem(`journeyLanguage:${userId}`);
+    if (code === "ms" || code === "ta" || code === "zh") return code;
+  } catch (err) { /* storage blocked */ }
+  return "zh";
+}
+
 async function getPlayerStats(userId) {
-  const { data, error } = await supabase.from("profiles").select("xp, coins").eq("user_id", userId).maybeSingle();
-  if (error || !data) return { xp: 0, coins: 0, available: false };
-  return { xp: data.xp ?? 0, coins: data.coins ?? 0, available: true };
+  const [profile, wallet] = await Promise.all([
+    supabase.from("profiles").select("xp").eq("user_id", userId).maybeSingle(),
+    supabase.from("island_progress").select("coins").eq("user_id", userId).eq("language", rewardLanguage(userId)).maybeSingle(),
+  ]);
+  if (profile.error || !profile.data) return { xp: 0, coins: 0, available: false };
+  return { xp: profile.data.xp ?? 0, coins: wallet.data ? wallet.data.coins ?? 0 : 0, available: true };
 }
 
 // Adds XP and coins, and pays the level-up bonus. Returns the new totals and
@@ -43,7 +56,12 @@ async function grantRewards(userId, { xp = 0, coins = 0 }) {
   const levelUps = Math.max(0, levelAfter - levelBefore);
   const bonusCoins = levelUps * LEVEL_UP_COINS;
 
-  const { data, error } = await supabase.rpc("add_rewards", { p_xp: xp, p_coins: coins + bonusCoins });
+  const language = rewardLanguage(userId);
+  let { data, error } = await supabase.rpc("add_rewards", { p_xp: xp, p_coins: coins + bonusCoins, p_language: language });
+  if (error && /p_language|add_rewards/i.test(error.message || "")) {
+    // the database has not been updated yet (database/schema.sql): pay the old way
+    ({ data, error } = await supabase.rpc("add_rewards", { p_xp: xp, p_coins: coins + bonusCoins }));
+  }
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
   return {

@@ -47,11 +47,39 @@ function fillEllipse(ctx, x, y, rx, ry, color, rot = 0) {
 function groundShadow(ctx, cx, y, rx, ry) {
   fillEllipse(ctx, cx, y, rx, ry, PAL.shadow);
 }
-function artText(ctx, text, x, y, size, color, weight = 800) {
-  ctx.font = `${weight} ${size}px "Noto Sans SC", "Manrope", system-ui, sans-serif`;
+// The words painted on signs. The island's signs are written in Chinese; Malay and Tamil
+// have their own text (sg() picks it). A sign that is too long for its board is shrunk to fit.
+const ISLAND_SIGNS = {
+  ms: {
+    "鸡饭": "Nasi Ayam", "面": "Mi", "烧烤": "Bakar", "饮料": "Minuman", "沙爹": "Sate", "煎饼": "Apam Balik", "水果": "Buah",
+    "熟食中心": "Pusat Penjaja", "站": "Bas", "杂货店": "Kedai Runcit", "巴刹": "Pasar", "咖啡店": "Kopitiam",
+    "巴士转换站": "Terminal Bas", "的士站": "Stesen Teksi", "岛屿小店": "Kedai Pulau", "小学": "Sekolah Rendah",
+    "民众俱乐部": "Kelab Komuniti", "警察岗亭": "Pondok Polis", "诊所": "Klinik", "售票处": "Tiket", "咖啡馆": "Kafe", "游戏厅": "Arked",
+  },
+  ta: {
+    "鸡饭": "கோழி சாதம்", "面": "நூடுல்ஸ்", "烧烤": "வறுவல்", "饮料": "பானங்கள்", "沙爹": "சாத்தே", "煎饼": "அப்பம்", "水果": "பழம்",
+    "熟食中心": "உணவு மையம்", "站": "பேருந்து", "杂货店": "மளிகைக் கடை", "巴刹": "சந்தை", "咖啡店": "காபி கடை",
+    "巴士转换站": "பேருந்து முனையம்", "的士站": "டாக்ஸி நிலையம்", "岛屿小店": "தீவுக் கடை", "小学": "ஆரம்பப் பள்ளி",
+    "民众俱乐部": "சமூக மன்றம்", "警察岗亭": "காவல் நிலையம்", "诊所": "கிளினிக்", "售票处": "டிக்கெட்", "咖啡馆": "கஃபே", "游戏厅": "விளையாட்டு",
+  },
+};
+function sg(zh) {
+  const map = ISLAND_SIGNS[IslandLang.code];
+  return (map && map[zh]) || zh;
+}
+
+function artText(ctx, text, x, y, size, color, weight = 800, maxW = 0) {
+  const family = IslandLang.code === "ta" ? '"Noto Sans Tamil", "Manrope", system-ui, sans-serif'
+    : IslandLang.code === "ms" ? '"Manrope", system-ui, sans-serif'
+    : '"Noto Sans SC", "Manrope", system-ui, sans-serif';
+  ctx.font = `${weight} ${size}px ${family}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = color;
+  if (maxW > 0) {
+    const width = ctx.measureText(text).width;
+    if (width > maxW) ctx.font = `${weight} ${Math.max(8, Math.floor((size * maxW) / width))}px ${family}`;
+  }
   ctx.fillText(text, x, y);
 }
 
@@ -144,7 +172,7 @@ function paintHawkerCentre(ctx, w, h) {
     const x = 40 + i * sw;
     fillRR(ctx, x + 8, 200, sw - 16, 28, 6, "#fffdf6");
     fillRR(ctx, x + 8, 200, sw - 16, 28, 6, "rgba(0,0,0,0.0)");
-    artText(ctx, st.t, x + sw / 2, 215, 19, st.s, 800);
+    artText(ctx, sg(st.t), x + sw / 2, 215, 19, st.s, 800, sw - 28);
     // scalloped awning
     ctx.fillStyle = st.a; ctx.fillRect(x + 4, 232, sw - 8, 20);
     for (let k = 0; k < 5; k++) { fillEllipse(ctx, x + 4 + (k + 0.5) * ((sw - 8) / 5), 252, (sw - 8) / 10, 12, k % 2 ? "#fbf3e2" : st.a); }
@@ -160,7 +188,7 @@ function paintHawkerCentre(ctx, w, h) {
   ctx.fillStyle = "rgba(120,100,70,0.12)"; for (let x = 20; x < w - 20; x += 60) ctx.fillRect(x, h - 56, 2, 46);
   // sign board
   fillRR(ctx, w / 2 - 150, 60, 300, 44, 10, "#fffdf6");
-  artText(ctx, "熟食中心", w / 2, 82, 28, "#8a4a1f", 800);
+  artText(ctx, sg("熟食中心"), w / 2, 82, 28, "#8a4a1f", 800, 280);
 }
 
 // ---------- landmark: MRT station ----------
@@ -196,7 +224,7 @@ function paintBus(ctx, w, h) {
   fillRR(ctx, 4, h - 44, w - 8, 14, 4, "#d94a3b");
   for (let k = 0; k < 6; k++) { fillRR(ctx, 20 + k * 44, 18, 32, 24, 4, "#4c5d7d"); fillRR(ctx, 20 + k * 44, 80, 32, 22, 4, "#4c5d7d"); }
   fillRR(ctx, w - 50, 80, 38, 38, 6, "#3a4766");
-  fillRR(ctx, w - 90, 0, 56, 12, 3, "#2f3a58"); artText(ctx, "174", w - 62, 6, 9, "#ffd166", 800);
+  fillRR(ctx, w - 90, 0, 56, 12, 3, "#2f3a58"); artText(ctx, sg("174"), w - 62, 6, 9, "#ffd166", 800, (56) - 14);
   [60, w - 70].forEach((x) => { fillEllipse(ctx, x, h - 22, 17, 17, "#2a3550"); fillEllipse(ctx, x, h - 22, 8, 8, "#aab4c6"); });
 }
 function paintTaxi(ctx, w, h) {
@@ -211,7 +239,7 @@ function paintBusStop(ctx, w, h) {
   groundShadow(ctx, w / 2, h - 6, 28, 7);
   fillRR(ctx, w / 2 - 3, 36, 6, h - 44, 2, "#9aa6b8");
   fillRR(ctx, 8, 6, w - 16, 44, 8, "#3b6fd0");
-  fillRR(ctx, 14, 12, w - 28, 18, 4, "#e9f0fb"); artText(ctx, "站", w / 2, 21, 13, "#3b6fd0", 800);
+  fillRR(ctx, 14, 12, w - 28, 18, 4, "#e9f0fb"); artText(ctx, sg("站"), w / 2, 21, 13, "#3b6fd0", 800, (w - 28) - 14);
   ctx.fillStyle = "#fff"; ctx.fillRect(18, 36, w - 36, 3);
 }
 
@@ -221,7 +249,7 @@ function paintStall(ctx, w, h, awning, deep, label) {
   fillRR(ctx, 12, 54, w - 24, h - 66, 5, "#e9d8b7");
   fillRR(ctx, 12, 100, w - 24, h - 112, 4, "#d9c19c");
   fillRR(ctx, 12, 100, w - 24, 14, 4, "#b8895f");
-  fillRR(ctx, 24, 12, w - 48, 30, 8, "#fffdf6"); artText(ctx, label, w / 2, 27, 18, deep, 800);
+  fillRR(ctx, 24, 12, w - 48, 30, 8, "#fffdf6"); artText(ctx, sg(label), w / 2, 27, 18, deep, 800, w - 60);
   ctx.fillStyle = awning; ctx.fillRect(8, 46, w - 16, 18);
   for (let k = 0; k < 6; k++) fillEllipse(ctx, 8 + (k + 0.5) * ((w - 16) / 6), 64, (w - 16) / 12, 11, k % 2 ? "#fbf3e2" : awning);
   fillEllipse(ctx, w / 2 - 30, 92, 18, 8, "#e8c88e"); fillRR(ctx, w / 2 + 6, 80, 38, 22, 5, "#cfd6e2");
@@ -357,7 +385,7 @@ function paintMinimart(ctx, w, h) {
   ctx.fillStyle = PAL.woodDark; ctx.fillRect(60, 40, 150, 2); ["#e57373", "#64b5f6", "#ffd54f", "#81c784"].forEach((col, i) => fillRR(ctx, 66 + i * 34, 42, 14, 24, 2, col));
   // shop front
   fillRR(ctx, 20, 150, w - 40, h - 164, 4, "#59658a");
-  fillRR(ctx, 40, 156, w - 80, 36, 8, "#fffdf6"); artText(ctx, "杂货店", w / 2, 174, 26, "#a8402f", 800);
+  fillRR(ctx, 40, 156, w - 80, 36, 8, "#fffdf6"); artText(ctx, sg("杂货店"), w / 2, 174, 26, "#a8402f", 800, (w - 80) - 14);
   ctx.fillStyle = "#d94a3b"; ctx.fillRect(28, 196, w - 56, 22);
   for (let k = 0; k < 8; k++) { fillRR(ctx, 28 + k * ((w - 56) / 8), 196, (w - 56) / 16, 22, 0, "#fbf3e2"); }
   for (let k = 0; k < 8; k++) fillEllipse(ctx, 28 + (k + 0.5) * ((w - 56) / 8), 218, (w - 56) / 16, 9, k % 2 ? "#d94a3b" : "#fbf3e2");
@@ -403,7 +431,7 @@ function paintWetMarket(ctx, w, h) {
   ctx.beginPath(); ctx.moveTo(18, 124); ctx.lineTo(42, 56); ctx.lineTo(w - 42, 56); ctx.lineTo(w - 18, 124); ctx.closePath(); ctx.fillStyle = "#9cb9aa"; ctx.fill();
   for (let x = 80; x < w - 70; x += 54) { ctx.fillStyle = "rgba(255,255,255,0.22)"; ctx.fillRect(x, 60, 3, 62); }
   fillRR(ctx, 0, 118, w, 14, 4, "#5f7d6f");
-  fillRR(ctx, w / 2 - 130, 66, 260, 40, 10, "#fffdf6"); artText(ctx, "巴刹", w / 2, 86, 28, "#2f6d58", 800);
+  fillRR(ctx, w / 2 - 130, 66, 260, 40, 10, "#fffdf6"); artText(ctx, sg("巴刹"), w / 2, 86, 28, "#2f6d58", 800, (260) - 14);
   // pillars
   [30, w / 3, (2 * w) / 3, w - 54].forEach((x) => fillRR(ctx, x, 132, 24, h - 152, 4, "#d2c9b8"));
   // produce stalls
@@ -428,7 +456,7 @@ function paintKopitiam(ctx, w, h) {
   for (let c = 0; c < 3; c++) { const x = 46 + c * 118; fillRR(ctx, x, 70, 64, 90, 30, "#5b8c7a"); fillRR(ctx, x + 6, 78, 52, 80, 24, "#e3ebf6"); ctx.fillStyle = "#5b8c7a"; for (let i = 0; i < 4; i++) ctx.fillRect(x + 10 + i * 13, 82, 3, 74); }
   fillRR(ctx, 24, 172, w - 48, 22, 4, "#4f9a8c");                                  // peranakan tile strip
   for (let i = 0; i < 12; i++) fillRR(ctx, 30 + i * ((w - 60) / 12), 177, 12, 12, 2, i % 2 ? "#f1c673" : "#e0848b");
-  fillRR(ctx, 50, 196, w - 100, 40, 8, "#fffdf6"); artText(ctx, "咖啡店", w / 2, 216, 28, "#7a3f23", 800);
+  fillRR(ctx, 50, 196, w - 100, 40, 8, "#fffdf6"); artText(ctx, sg("咖啡店"), w / 2, 216, 28, "#7a3f23", 800, (w - 100) - 14);
   fillRR(ctx, 24, 244, w - 48, h - 262, 4, "#59658a");                             // open frontage
   // marble tables and stools
   [90, 210, 330].forEach((x) => { fillEllipse(ctx, x, h - 70, 34, 12, "#efe7d4"); fillRR(ctx, x - 3, h - 70, 6, 34, 2, "#8c7a63"); fillEllipse(ctx, x - 40, h - 32, 11, 6, "#b88a64"); fillEllipse(ctx, x + 40, h - 32, 11, 6, "#b88a64"); });
@@ -442,14 +470,14 @@ function paintBusInterchange(ctx, w, h) {
   ctx.beginPath(); ctx.moveTo(16, 96); ctx.lineTo(40, 42); ctx.lineTo(w - 40, 42); ctx.lineTo(w - 16, 96); ctx.closePath(); ctx.fillStyle = "#93a9cc"; ctx.fill();
   for (let x = 70; x < w - 60; x += 56) { ctx.fillStyle = "rgba(255,255,255,0.22)"; ctx.fillRect(x, 46, 3, 48); }
   fillRR(ctx, 0, 92, w, 12, 4, "#4f6188");
-  fillRR(ctx, w / 2 - 150, 50, 300, 34, 8, "#fffdf6"); artText(ctx, "巴士转换站", w / 2, 67, 22, "#2c4f97", 800);
+  fillRR(ctx, w / 2 - 150, 50, 300, 34, 8, "#fffdf6"); artText(ctx, sg("巴士转换站"), w / 2, 67, 22, "#2c4f97", 800, (300) - 14);
   [20, w / 3, (2 * w) / 3, w - 44].forEach((x) => fillRR(ctx, x, 104, 22, h - 124, 4, "#aab4c6"));
   // bays and two buses
   fillRR(ctx, 8, h - 34, w - 16, 26, 4, "#cfd6e2"); ctx.fillStyle = "#fff"; for (let x = 40; x < w - 40; x += 70) ctx.fillRect(x, h - 24, 34, 5);
   const bus = (x, col) => { fillRR(ctx, x, h - 118, 200, 78, 14, "#f6f8fb"); fillRR(ctx, x, h - 82, 200, 9, 0, col); for (let k = 0; k < 5; k++) fillRR(ctx, x + 12 + k * 36, h - 108, 26, 20, 4, "#4c5d7d"); fillRR(ctx, x + 160, h - 74, 30, 34, 5, "#3a4766"); [x + 40, x + 160].forEach((cx) => { fillEllipse(ctx, cx, h - 42, 14, 14, "#2a3550"); fillEllipse(ctx, cx, h - 42, 6, 6, "#aab4c6"); }); };
   bus(46, "#d94a3b"); bus(w - 250, "#3b6fd0");
   // waiting benches and bay signs
-  [120, w - 120].forEach((x) => { fillRR(ctx, x, 114, 8, 40, 2, "#9aa6b8"); fillRR(ctx, x - 20, 108, 48, 24, 6, "#3b6fd0"); artText(ctx, "A", x + 4, 120, 14, "#ffffff", 800); });
+  [120, w - 120].forEach((x) => { fillRR(ctx, x, 114, 8, 40, 2, "#9aa6b8"); fillRR(ctx, x - 20, 108, 48, 24, 6, "#3b6fd0"); artText(ctx, sg("A"), x + 4, 120, 14, "#ffffff", 800, (48) - 14); });
 }
 
 function paintTaxiStand(ctx, w, h) {
@@ -458,12 +486,12 @@ function paintTaxiStand(ctx, w, h) {
   fillRR(ctx, 10, 26, w - 20, 22, 8, "#f1c673"); fillRR(ctx, 10, 42, w - 20, 8, 3, "#d9a63f");
   [24, w - 40].forEach((x) => fillRR(ctx, x, 48, 14, 96, 3, "#9aa6b8"));
   fillRR(ctx, 40, 54, w - 80, 70, 4, "rgba(159,194,228,0.45)");
-  fillRR(ctx, w / 2 - 70, 60, 140, 30, 6, "#fffdf6"); artText(ctx, "的士站", w / 2, 75, 22, "#a86a12", 800);
+  fillRR(ctx, w / 2 - 70, 60, 140, 30, 6, "#fffdf6"); artText(ctx, sg("的士站"), w / 2, 75, 22, "#a86a12", 800, (140) - 14);
   fillRR(ctx, 56, 110, w - 112, 10, 3, "#b88a64");
   // sign pole
-  fillRR(ctx, w - 18, 90, 5, 88, 2, "#8c96aa"); fillRR(ctx, w - 40, 78, 44, 22, 5, "#3b6fd0"); artText(ctx, "TAXI", w - 18, 89, 11, "#fff", 800);
+  fillRR(ctx, w - 18, 90, 5, 88, 2, "#8c96aa"); fillRR(ctx, w - 40, 78, 44, 22, 5, "#3b6fd0"); artText(ctx, sg("TAXI"), w - 18, 89, 11, "#fff", 800, (44) - 14);
   // two taxis
-  const taxi = (x, y, col, col2) => { fillRR(ctx, x, y + 26, 150, 34, 12, col); fillRR(ctx, x + 28, y, 94, 34, 12, col2); fillRR(ctx, x + 38, y + 6, 34, 22, 5, "#dfeaf8"); fillRR(ctx, x + 78, y + 6, 34, 22, 5, "#dfeaf8"); fillRR(ctx, x + 56, y - 10, 38, 12, 4, "#ffd166"); artText(ctx, "TAXI", x + 75, y - 4, 8, "#7a4a00", 800); [x + 32, x + 120].forEach((cx) => { fillEllipse(ctx, cx, y + 60, 13, 13, "#2a3550"); fillEllipse(ctx, cx, y + 60, 6, 6, "#aab4c6"); }); };
+  const taxi = (x, y, col, col2) => { fillRR(ctx, x, y + 26, 150, 34, 12, col); fillRR(ctx, x + 28, y, 94, 34, 12, col2); fillRR(ctx, x + 38, y + 6, 34, 22, 5, "#dfeaf8"); fillRR(ctx, x + 78, y + 6, 34, 22, 5, "#dfeaf8"); fillRR(ctx, x + 56, y - 10, 38, 12, 4, "#ffd166"); artText(ctx, sg("TAXI"), x + 75, y - 4, 8, "#7a4a00", 800, (38) - 14); [x + 32, x + 120].forEach((cx) => { fillEllipse(ctx, cx, y + 60, 13, 13, "#2a3550"); fillEllipse(ctx, cx, y + 60, 6, 6, "#aab4c6"); }); };
   taxi(30, h - 96, "#5b8fdc", "#6fa0e8"); taxi(w - 190, h - 90, "#e0a23b", "#efb85a");
 }
 
@@ -489,7 +517,7 @@ function paintIslandShop(ctx, w, h) {
   fillRR(ctx, 16, 70, w - 32, h - 82, 6, "#f3e7cc");
   fillRR(ctx, w - 56, 70, 40, h - 82, 6, "#e0d2ac");
   fillRR(ctx, 6, 40, w - 12, 26, 6, "#4f9a8c");
-  fillRR(ctx, 40, 6, w - 80, 40, 10, "#fffdf6"); artText(ctx, "岛屿小店", w / 2, 26, 24, "#2f7a6c", 800);
+  fillRR(ctx, 40, 6, w - 80, 40, 10, "#fffdf6"); artText(ctx, sg("岛屿小店"), w / 2, 26, 24, "#2f7a6c", 800, (w - 80) - 14);
   ctx.fillStyle = "#4f9a8c"; ctx.fillRect(10, 66, w - 20, 22);
   for (let k = 0; k < 7; k++) fillEllipse(ctx, 10 + (k + 0.5) * ((w - 20) / 7), 88, (w - 20) / 14, 12, k % 2 ? "#fbf3e2" : "#4f9a8c");
   fillRR(ctx, 28, 104, w - 56, h - 130, 4, "#59658a");

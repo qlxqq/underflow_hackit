@@ -28,7 +28,7 @@ const LANGUAGES = {
   ms: { glyph: "BM", name: "Malay" },
   ta: { glyph: "தமிழ்", name: "Tamil" },
 };
-const ISLAND_LANGUAGES = ["zh"]; // the island is only built in Chinese so far
+const ISLAND_LANGUAGES = ["zh", "ms", "ta"]; // the languages the island is built in
 
 // Reading localStorage can throw if the browser blocks it, so go through here.
 function getStorage() {
@@ -173,6 +173,7 @@ async function mountIsland(language) {
   if (islandSoon) { islandSoon.remove(); islandSoon = null; }
   if (playable) {
     await IslandApp.mount(mapEl, {
+      language,
       // Finished a level, an NPC challenge, bought something...: refresh the quests above the island.
       onEvent: (type) => {
         if (["level", "npc", "purchase", "practice"].includes(type)) refreshQuests();
@@ -194,6 +195,13 @@ async function mountIsland(language) {
 }
 
 async function startIslandFor(language) {
+  // The island is built for one language at a time, so changing language starts the page again.
+  // The choice is saved first, and the page opens straight into the new island.
+  if (IslandApp.started && IslandApp.language && IslandApp.language !== language) {
+    writeSavedLanguage(getStorage(), currentUser.id, language);
+    window.location.reload();
+    return;
+  }
   currentLanguage = language;
   writeSavedLanguage(getStorage(), currentUser.id, language);
   renderLanguageChip();

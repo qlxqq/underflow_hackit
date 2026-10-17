@@ -26,11 +26,11 @@ const ZONE_UNOWNED_WEIGHT = 3;      // an unowned zone card is 3x as likely as o
 const ISLAND_ALBUM_NAMES = { neighbourhood: "Neighbourhood", "hawker-centre": "Hawker Centre", "public-transport": "Public Transport" };
 
 const IslandCards = {
-  language: "zh",
+  get language() { return IslandLang.code; },
   have: new Set(),   // "albumId|word"
 
   key(album, word) { return `${album}|${word}`; },
-  localKey() { return `island.cards.v1.${(typeof IslandSave !== "undefined" && IslandSave.userId) || "guest"}`; },
+  localKey() { return `island.cards.v1.${(typeof IslandSave !== "undefined" && IslandSave.userId) || "guest"}${IslandLang.saveSuffix()}`; },
   useCloud() { return typeof IslandSave !== "undefined" && !!IslandSave.userId && IslandSave.hasCloud() && !IslandState.testing; },
 
   async load() {
@@ -135,7 +135,7 @@ const IslandCards = {
     }
     const album = this.albumInfo(d.album);
     return {
-      cards: fresh.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, kind: w.kind, album: d.album, role: w.kind === "role" ? d.label : null })),
+      cards: fresh.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, kind: w.kind, role: w.kind === "role" ? d.label : null })),
       dupes: dupes.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m })),
       album,
       zoneDone: before.zoneHave < before.zoneTotal && album.zoneTotal > 0 && album.zoneHave >= album.zoneTotal,

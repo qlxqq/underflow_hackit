@@ -68,20 +68,20 @@ function paintCafe(ctx, w, h) {
   groundShadow(ctx, w / 2, h - 8, w * 0.46, 11);
   fillRR(ctx, 18, 60, w - 36, h - 72, 8, "#f6e6d6"); fillRR(ctx, w - 54, 60, 36, h - 72, 8, "#e8d2bb");
   fillRR(ctx, 8, 44, w - 16, 24, 8, "#8a5a3a");
-  fillRR(ctx, w / 2 - 62, 8, 124, 40, 12, "#fffdf7"); artText(ctx, "咖啡馆", w / 2, 28, 26, "#6f4b34", 800);
+  fillRR(ctx, w / 2 - 62, 8, 124, 40, 12, "#fffdf7"); artText(ctx, sg("咖啡馆"), w / 2, 28, 26, "#6f4b34", 800, (124) - 14);
   ctx.fillStyle = "#e0848b"; ctx.fillRect(14, 96, w - 28, 22); for (let k = 0; k < 8; k++) fillEllipse(ctx, 14 + (k + 0.5) * ((w - 28) / 8), 118, (w - 28) / 16, 10, k % 2 ? "#fbf3e2" : "#e0848b");
   for (let k = 0; k < 8; k += 2) fillRR(ctx, 14 + k * ((w - 28) / 8), 96, (w - 28) / 8, 22, 0, "#fbf3e2");
   fillRR(ctx, 34, 128, w - 68, h - 150, 6, "#59658a"); fillRR(ctx, 40, 134, w - 80, h - 162, 4, "#9fc2e4");
   fillRR(ctx, 50, 160, w - 100, 8, 3, "#b88a64"); fillEllipse(ctx, 80, 150, 12, 9, "#fff"); fillEllipse(ctx, w / 2, 150, 12, 9, "#fff"); fillEllipse(ctx, w - 80, 150, 12, 9, "#fff");
   fillRR(ctx, w / 2 - 20, h - 58, 40, 46, 5, "#6f4b34");
-  fillEllipse(ctx, 40, h - 24, 18, 6, "rgba(40,50,80,0.12)"); fillRR(ctx, 28, h - 48, 24, 24, 5, "#e0a23b"); artText(ctx, "☕", 40, h - 36, 14, "#fff", 800);
+  fillEllipse(ctx, 40, h - 24, 18, 6, "rgba(40,50,80,0.12)"); fillRR(ctx, 28, h - 48, 24, 24, 5, "#e0a23b"); artText(ctx, sg("☕"), 40, h - 36, 14, "#fff", 800, (24) - 14);
 }
 
 function paintArcade(ctx, w, h) {
   groundShadow(ctx, w / 2, h - 8, w * 0.46, 11);
   fillRR(ctx, 16, 56, w - 32, h - 68, 8, "#4b4f8a"); fillRR(ctx, w - 56, 56, 40, h - 68, 8, "#3b3f72");
   fillRR(ctx, 8, 40, w - 16, 22, 8, "#2f3260");
-  fillRR(ctx, 30, 6, w - 60, 44, 12, "#1f2246"); artText(ctx, "游戏厅", w / 2, 29, 28, "#7ff0ff", 800);
+  fillRR(ctx, 30, 6, w - 60, 44, 12, "#1f2246"); artText(ctx, sg("游戏厅"), w / 2, 29, 28, "#7ff0ff", 800, (w - 60) - 14);
   ctx.strokeStyle = "#ff7ad9"; ctx.lineWidth = 3; rrPath(ctx, 34, 10, w - 68, 36, 10); ctx.stroke();
   [["#ff7ad9", 40], ["#7ff0ff", 80], ["#f6d54a", w - 80], ["#8bf09c", w - 40]].forEach(([c, x]) => fillEllipse(ctx, x, 66, 6, 6, c));
   for (let i = 0; i < 3; i++) { const x = 40 + i * 78; fillRR(ctx, x, 100, 64, 70, 6, "#232650"); fillRR(ctx, x + 6, 106, 52, 36, 4, ["#7ff0ff", "#ff7ad9", "#f6d54a"][i]); fillEllipse(ctx, x + 22, 156, 6, 6, "#ff5a5a"); fillEllipse(ctx, x + 42, 156, 6, 6, "#5ab0ff"); }

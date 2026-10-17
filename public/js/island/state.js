@@ -70,17 +70,17 @@ const IslandState = {
   emit() { this.listeners.forEach((fn) => { try { fn(this); } catch (err) { console.error(err); } }); },
 
   // ---- coins ----
-  // Logged in: the balance lives in profiles.coins and changes only through the
-  // island_earn / island_spend functions (database/island_coins.sql). The screen
+  // Logged in: each language has its own coins (island_progress.coins for that language) and
+  // they change only through the island_earn / island_spend functions (database/schema.sql). The screen
   // updates straight away and the server answer then replaces the number.
   // Guests and ?testing links: local only, as before.
   useServer() { return !this.testing && !!IslandSave.userId && IslandSave.hasCloud(); },
 
-  // The profile's coins, or null when they cannot be read.
+  // This language's coins, or null when they cannot be read (or this language has no saved game yet).
   async readServerCoins() {
     if (!this.useServer()) return null;
     try {
-      const { data, error } = await supabase.from("profiles").select("coins").eq("user_id", IslandSave.userId).maybeSingle();
+      const { data, error } = await supabase.from("island_progress").select("coins").eq("user_id", IslandSave.userId).eq("language", IslandLang.code).maybeSingle();
       if (error || !data) return null;
       return Math.max(0, Number(data.coins) || 0);
     } catch (err) {
@@ -89,7 +89,7 @@ const IslandState = {
     }
   },
 
-  // Reads the profile's coins. `force` also applies it while a payment is pending.
+  // Reads this language's coins. `force` also applies it while a payment is pending.
   async syncCoins(force) {
     if (!this.useServer() || (this.inflight > 0 && !force)) return;
     const coins = await this.readServerCoins();
@@ -101,7 +101,7 @@ const IslandState = {
     this.inflight++;
     let failed = false;
     try {
-      const { data, error } = await supabase.rpc(fn, { p_amount: n });
+      const { data, error } = await supabase.rpc(fn, { p_amount: n, p_language: IslandLang.code });
       if (error) throw error;
       this.lastServerCoins = Number(Array.isArray(data) ? data[0] : data);
     } catch (err) {

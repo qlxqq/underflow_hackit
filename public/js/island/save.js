@@ -38,7 +38,9 @@ const IslandSave = {
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") this.flush(); });
   },
 
-  localKey() { return `island.save.v${ISLAND_SAVE_VERSION}.${this.userId || "guest"}`; },
+  // One saved game per language (Chinese keeps the original key). Coins and XP are the
+  // player's, not the language's: logged in, they live on the profile.
+  localKey(language) { return `island.save.v${ISLAND_SAVE_VERSION}.${this.userId || "guest"}${language ? (language === "zh" ? "" : "." + language) : IslandLang.saveSuffix()}`; },
 
   readLocal() {
     try { return JSON.parse(localStorage.getItem(this.localKey())) || null; } catch (err) { return null; }
@@ -57,36 +59,64 @@ const IslandSave = {
   },
   toRow(blob) {
     const row = {
-      user_id: this.userId, coins: Math.max(0, Math.round(blob.coins)), owned: blob.owned, npcs_done: blob.npcs,
+      // coins are not written from here: the server keeps each language's coins (island_earn / island_spend)
+      user_id: this.userId, owned: blob.owned, npcs_done: blob.npcs,
       levels_done: blob.levels, zones_revealed: blob.zones, avatar: blob.avatar || {},
     };
+    if (!this.noLanguage) row.language = IslandLang.code;
     // `stats` needs the column from database/island_progress.sql; without it the rest still saves.
     if (!this.noStats) row.stats = blob.stats || {};
     return row;
   },
 
+  // The look the player chose in another language, so a new language does not ask again.
+  otherAvatar() {
+    for (const code of Object.keys(ISLAND_LANG_INFO)) {
+      if (code === IslandLang.code) continue;
+      try {
+        const blob = JSON.parse(localStorage.getItem(this.localKey(code)));
+        if (blob && blob.avatar && blob.avatar.gender) return blob.avatar;
+      } catch (err) { /* none */ }
+    }
+    return null;
+  },
+
   // Returns the best saved copy (or null for a brand new player).
   async load() {
     let local = this.readLocal();
-    if (!local && this.userId) { try { local = JSON.parse(localStorage.getItem(`island.save.v${ISLAND_SAVE_VERSION}.guest`)); } catch (err) { local = null; } }
-    if (!this.userId) return local;
+    if (!local && this.userId && IslandLang.code === "zh") { try { local = JSON.parse(localStorage.getItem(`island.save.v${ISLAND_SAVE_VERSION}.guest`)); } catch (err) { local = null; } }
+    if (!this.userId) return this.withAvatar(local);
     let remote = null;
     try {
-      const { data, error } = await supabase.from("island_progress").select("*").eq("user_id", this.userId).maybeSingle();
+      let query = supabase.from("island_progress").select("*").eq("user_id", this.userId);
+      if (!this.noLanguage) query = query.eq("language", IslandLang.code);
+      let { data, error } = await query.maybeSingle();
+      if (error && !this.noLanguage && /language/i.test(error.message || "")) {
+        this.noLanguage = true; // database/schema.sql has not been run again: only Chinese can be saved to Supabase
+        ({ data, error } = await supabase.from("island_progress").select("*").eq("user_id", this.userId).maybeSingle());
+        if (IslandLang.code !== "zh") { data = null; error = null; }
+      }
       if (error) throw error;
       remote = data ? this.fromRow(data) : null;
       this.status = "synced";
     } catch (err) {
       console.warn("Island: could not load from Supabase, using this device's copy.", err && err.message);
       this.status = "offline";
-      return local;
+      return this.withAvatar(local);
     }
-    if (!remote) return local; // first time on this account: keep what was played as a guest here
+    if (!remote) return this.withAvatar(local); // first time in this language: keep what was played as a guest here
     if (!local) return remote;
     // Both exist: the newer one wins for coins and look; the lists are joined so nothing earned is lost.
     const newer = (local.savedAt || 0) > remote.savedAt ? local : remote;
     const union = (a, b) => [...new Set([...(a || []), ...(b || [])])];
     return { ...newer, owned: union(local.owned, remote.owned), npcs: union(local.npcs, remote.npcs), levels: union(local.levels, remote.levels), zones: union(local.zones, remote.zones), avatar: newer.avatar || local.avatar || remote.avatar };
+  },
+
+  // A language played for the first time borrows the look from another language.
+  withAvatar(blob) {
+    if (blob && blob.avatar) return blob;
+    const avatar = this.otherAvatar();
+    return avatar ? { ...(blob || { coins: 0, owned: [], npcs: [], levels: [], zones: [], stats: {} }), avatar } : blob;
   },
 
   // Called every time something changes.
@@ -106,10 +136,16 @@ const IslandSave = {
     if (!blob || !this.userId || !this.hasCloud()) return;
     this.pending = null;
     try {
-      let { error } = await supabase.from("island_progress").upsert(this.toRow(blob), { onConflict: "user_id" });
+      const conflict = () => (this.noLanguage ? "user_id" : "user_id,language");
+      let { error } = await supabase.from("island_progress").upsert(this.toRow(blob), { onConflict: conflict() });
+      if (error && !this.noLanguage && /language/i.test(error.message || "")) {
+        this.noLanguage = true; // the column is not there yet: Chinese only, one row per player as before
+        if (IslandLang.code !== "zh") { this.status = "local"; return; }
+        ({ error } = await supabase.from("island_progress").upsert(this.toRow(blob), { onConflict: conflict() }));
+      }
       if (error && !this.noStats && /stats/i.test(error.message || "")) {
         this.noStats = true; // the column is not there yet: save without it
-        ({ error } = await supabase.from("island_progress").upsert(this.toRow(blob), { onConflict: "user_id" }));
+        ({ error } = await supabase.from("island_progress").upsert(this.toRow(blob), { onConflict: conflict() }));
       }
       if (error) throw error;
       this.status = "synced";
