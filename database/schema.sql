@@ -150,10 +150,13 @@ grant execute on function add_rewards(integer, integer) to authenticated;
 -- ISLAND
 -- ============================================================
 
--- ---------- island_progress: one row per player (shop items, NPCs, levels, avatar) ----------
+-- ---------- island_progress: one row per player and language (shop items, NPCs, levels, avatar) ----------
 
+-- One row per player AND language: each language has its own island progress. Coins and XP
+-- are the player's and live on profiles.
 create table if not exists public.island_progress (
-  user_id         uuid primary key references auth.users (id) on delete cascade,
+  user_id         uuid not null references auth.users (id) on delete cascade,
+  language        varchar(10) not null default 'zh',
   coins           integer     not null default 0 check (coins >= 0),
   owned           text[]      not null default '{}',   -- shop items bought
   npcs_done       text[]      not null default '{}',   -- NPC challenges passed (each gave coins + a card)
@@ -161,10 +164,26 @@ create table if not exists public.island_progress (
   zones_revealed  text[]      not null default '{}',   -- zones whose mist has lifted
   avatar          jsonb       not null default '{}'::jsonb, -- { "gender": "boy"|"girl", "outfit": "sunny" }
   stats           jsonb       not null default '{}'::jsonb, -- { "plays": { "npc:teacher": 3 }, "weak": ["word"] }
-  updated_at      timestamptz not null default now()
+  updated_at      timestamptz not null default now(),
+  primary key (user_id, language)
 );
 
+-- already created the table before? these bring it up to date (safe to run again):
 alter table public.island_progress add column if not exists stats jsonb not null default '{}'::jsonb;
+alter table public.island_progress add column if not exists language varchar(10) not null default 'zh';
+do $$
+begin
+  -- the old table had one row per player; it now has one per player and language
+  if exists (select 1 from information_schema.table_constraints
+              where table_schema = 'public' and table_name = 'island_progress'
+                and constraint_type = 'PRIMARY KEY' and constraint_name = 'island_progress_pkey')
+     and not exists (select 1 from information_schema.key_column_usage
+                      where table_schema = 'public' and table_name = 'island_progress'
+                        and constraint_name = 'island_progress_pkey' and column_name = 'language') then
+    alter table public.island_progress drop constraint island_progress_pkey;
+    alter table public.island_progress add primary key (user_id, language);
+  end if;
+end $$;
 
 alter table public.island_progress enable row level security;
 
