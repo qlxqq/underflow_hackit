@@ -108,19 +108,34 @@ const IslandPractice = {
     const focus = this.pending && this.pending.npcId === npcId ? this.pending.word : null;
     const useCloud = typeof IslandSave !== "undefined" && IslandSave.userId && IslandSave.hasCloud() && !IslandState.testing;
     if (!useCloud) { if (focus && right.includes(focus)) done.push({ word: focus, evolved: false }); return done; }
+    // Every word that came up counts, right or wrong, and whether or not the player came from the
+    // Practise button: captured words, and cards from the albums the player already owns.
+    const albumRows = await this.ownedAlbumRows(right.filter((w) => !IslandCaptured.find(w)));
     for (const word of right) {
       const captured = IslandCaptured.find(word);
       try {
         if (captured) {
           done.push(await this.bump("vocabulary", "vocab_id", captured.vocab_id, captured, word));
-        } else if (word === focus) {
-          const card = await this.cardRow(word);
+        } else {
+          const card = albumRows.get(word);
           if (card) done.push(await this.bump("album_cards", "card_id", card.card_id, card, word));
         }
       } catch (err) { console.warn("Island: could not record practice for", word, err && err.message); }
     }
     if (done.length && typeof recordQuestEvent === "function") { try { await recordQuestEvent(IslandSave.userId, "practise_card", 1); } catch (err) { /* quests are optional */ } }
     return done.filter(Boolean);
+  },
+
+  // The album cards the player owns for these words: Map word -> { card_id, usage_count, evolution_stage }.
+  async ownedAlbumRows(words) {
+    const map = new Map();
+    if (!words.length) return map;
+    try {
+      const { data } = await supabase.from("album_cards").select("card_id, word, usage_count, evolution_stage")
+        .eq("user_id", IslandSave.userId).eq("language", this.language || "zh").in("word", words);
+      (data || []).forEach((r) => map.set(r.word, { card_id: r.card_id, usage_count: r.usage_count, evolution_stage: r.evolution_stage }));
+    } catch (err) { console.warn("Island: could not read album cards", err && err.message); }
+    return map;
   },
 
   async cardRow(word) {
