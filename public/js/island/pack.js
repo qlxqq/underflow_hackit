@@ -5,8 +5,10 @@
 //   await IslandPack.show(cards, ["+25 coins", "+25 XP"]);
 //
 // `cards` = [{ word, album, kind }] as returned by IslandCards.award.
-// Mini-games can open a pack for cards they award with
-// IslandAPI.showPack(albumId, [words], lines).
+// A mini-game gives its cards, and opens the pack, with one call:
+//   const won = await IslandAPI.awardWords("hawker-centre", ["鸡饭", "茶"]);   // zone words it got right
+//   -> { cards, dupes }   new cards are saved to the Collection and shown in a pack
+// (IslandAPI.showPack(albumId, [words], lines) only shows a pack, for cards a game saved itself.)
 //
 // This never blocks a reward: if the card scripts are not on the page, or a
 // card cannot be drawn, it resolves straight away and the result sheet still
@@ -44,5 +46,10 @@ const IslandPack = {
 };
 
 window.IslandAPI = Object.assign(window.IslandAPI || {}, {
+  awardWords: async (albumId, words, lines) => {
+    const won = await IslandCards.awardWords(albumId, words);
+    await IslandPack.show(won.cards, lines || []);
+    return won;
+  },
   showPack: (albumId, words, lines) => IslandPack.show((words || []).map((word) => ({ album: albumId, word })), lines || []),
 });
