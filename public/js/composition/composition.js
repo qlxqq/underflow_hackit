@@ -5,6 +5,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const db = window.supabaseClient ||
     (typeof supabase !== "undefined" && supabase.auth ? supabase : null);
 
+    const params = new URLSearchParams(location.search);
+    const zone = Number(params.get("zone")) || 1;
+    const level = Number(params.get("level")) || 3;
+    document.querySelector(".session-chip span").textContent = "Level " + level + " · Composition";  
+
     const questionPrompt = document.getElementById("questionPrompt");
     const questionHint = document.getElementById("questionHint");
     const answerArea = document.getElementById("answerArea");
@@ -91,8 +96,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 .select(
                     "id, zone, level, topic, language, prompt, tiles, accepted_answers, explanation, xp"
                 )
-                .eq("zone", 1)
-                .eq("level", 3)
+                .eq("zone", zone)
+                .eq("level", level)
                 .eq("language", "zh-CN")
                 .order("id");
 
@@ -104,7 +109,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!data || data.length === 0) {
                 throw new Error(
-                    "No questions found for zone 1, level 3, zh-CN."
+                    "No questions found for zone " + zone + ", level " + level + ", zh-CN."
                 );
             }
 
