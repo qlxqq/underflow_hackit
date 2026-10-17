@@ -176,3 +176,7 @@ button.stat-chip { cursor: pointer; }
 }
 @keyframes ready-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
 @media (prefers-reduced-motion: reduce) { .stat-level.has-ready::after { animation: none; } }
+
+/* Keep the bottom bar (and the Capture button that rises above it) on top of
+   pop-ups and the Sailing screen. */
+.bottom-nav { z-index: 45; }

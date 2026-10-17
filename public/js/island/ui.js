@@ -400,6 +400,12 @@ const IslandUI = {
       reward = reward || { coins: 0, xp: 0, cards: [], dupes: [] };
       const cards = reward.cards || [];
       const dupes = reward.dupes || [];
+      // new cards arrive in a pack the player opens; the result sheet follows
+      if (cards.length && typeof IslandPack !== "undefined") {
+        const packLines = [reward.coins ? `+${reward.coins} coins` : "", reward.xp ? `+${reward.xp} XP` : "",
+          dupes.length && reward.dupePay ? `${dupes.length} duplicate${dupes.length > 1 ? "s" : ""} turned into coins and XP` : ""].filter(Boolean);
+        await IslandPack.show(cards, packLines);
+      }
       const msg = score === total ? "Perfect! Well done." : passed ? "Nice work!" : `Good try. You need ${pass} right to pass. Come back and try again.`;
       const cardsHtml = cards.length
         ? `<div class="won-cards">${cards.map((c) => `<div class="won-card${c.kind === "zone" ? " is-zone" : ""}" lang="zh"><b>${this.esc(c.word)}</b><small>${this.esc(c.pinyin)} · ${this.esc(c.meaning)}</small><em>${c.kind === "role" ? `${this.esc(c.role || "Role")} card` : "Bonus zone card"}</em></div>`).join("")}</div>`

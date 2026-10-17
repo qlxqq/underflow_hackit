@@ -29,24 +29,28 @@ const IslandApp = {
     wrap("onZoneDiscovered", "zone");
     if (opts.onTap) root.addEventListener("pointerdown", () => opts.onTap(), true);
 
+    // Painted signs use these fonts. Start loading them now, alongside the saved
+    // game below, instead of after it.
+    const fontsReady = Promise.race([
+      Promise.all([
+        document.fonts.load('800 20px "Noto Sans SC"', "岛屿小店鸡饭熟食中心沙爹煎饼烧烤饮料站面杂货店巴刹咖啡店巴士转换站的士站民众俱乐部警察岗亭诊所小学水果售票处"),
+        document.fonts.load('800 20px "Manrope"', "Level 1 BLK 88 MRT"),
+      ]),
+      new Promise((resolve) => setTimeout(resolve, 1500)),
+    ]).catch(() => { /* fall back to system fonts */ });
+
     await IslandSave.init();   // who is logged in (if anyone)
-    await IslandState.load();  // their saved game
-    await IslandCards.load();  // the island album cards they own
-    await IslandCaptured.load(); // their captured words (they join the challenges)
+    // These do not depend on each other, so they are asked for together.
+    await Promise.all([
+      IslandState.load(),      // their saved game
+      IslandCards.load(),      // the island album cards they own
+      IslandCaptured.load(),   // their captured words (they join the challenges)
+    ]);
     if (opts.onCoins) { const sendCoins = () => opts.onCoins(IslandState.coins); IslandState.onChange(sendCoins); sendCoins(); }
     IslandControls.init();
     IslandUI.init();
 
-    // Painted signs use these fonts; give them a moment to load.
-    try {
-      await Promise.race([
-        Promise.all([
-          document.fonts.load('800 20px "Noto Sans SC"', "岛屿小店鸡饭熟食中心沙爹煎饼烧烤饮料站面杂货店巴刹咖啡店巴士转换站的士站民众俱乐部警察岗亭诊所小学水果售票处"),
-          document.fonts.load('800 20px "Manrope"', "Level 1 BLK 88 MRT"),
-        ]),
-        new Promise((resolve) => setTimeout(resolve, 2500)),
-      ]);
-    } catch (err) { /* fall back to system fonts */ }
+    await fontsReady;
 
     const parent = document.getElementById("game");
     const dpr = Math.min(window.devicePixelRatio || 1, 2);

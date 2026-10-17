@@ -651,12 +651,52 @@ const ISLAND_ART = {
   staff: [80, 120, (c, w, h) => paintPerson(c, w, h, "staff", 0)],
 };
 
-// Registers every painted prop as a Phaser texture.
-function buildIslandTextures(scene) {
-  Object.entries(ISLAND_ART).forEach(([key, [w, h, paint]]) => {
-    if (scene.textures.exists(key)) return;
-    const { c, ctx } = artCanvas(w, h);
-    paint(ctx, w, h);
-    scene.textures.addCanvas(key, c);
-  });
+// Registers painted props as Phaser textures. `only` is a list of keys; without
+// it every prop is painted. Painting all of them takes a noticeable moment,
+// so each island paints just what it shows and the others are done later.
+function paintIslandTexture(textures, key) {
+  const spec = ISLAND_ART[key];
+  if (!spec || textures.exists(key)) return;
+  const [w, h, paint] = spec;
+  const { c, ctx } = artCanvas(w, h);
+  paint(ctx, w, h);
+  textures.addCanvas(key, c);
+}
+
+function buildIslandTextures(scene, only) {
+  (only || Object.keys(ISLAND_ART)).forEach((key) => paintIslandTexture(scene.textures, key));
+}
+
+// Paints whatever is still missing, one prop at a time while the browser is
+// idle, so sailing to the other island finds its pictures ready.
+function buildIslandTexturesLater(scene) {
+  const textures = scene.textures;
+  const todo = Object.keys(ISLAND_ART).filter((key) => !textures.exists(key));
+  if (!todo.length) return;
+  const idle = window.requestIdleCallback
+    ? (fn) => window.requestIdleCallback(fn, { timeout: 2500 })
+    : (fn) => setTimeout(fn, 60);
+  const step = () => {
+    try {
+      const key = todo.shift();
+      if (key) paintIslandTexture(textures, key);
+    } catch (err) {
+      return; // the game was closed: stop quietly
+    }
+    if (todo.length) idle(step);
+  };
+  idle(step);
+}
+
+// What each island needs on screen when it opens.
+const ISLAND_SHARED_ART = ["tree", "palm", "shrub", "pot", "lamp", "boat", "cloud", "bubble", "shadowDot", "gate", "barricade"];
+function homeArtKeys() {
+  const keys = new Set(["homeHouse", "islandShop", ...ISLAND_SHARED_ART]);
+  if (typeof HOME_ITEMS !== "undefined") HOME_ITEMS.forEach((item) => keys.add(item.key));
+  if (typeof HomeWorld !== "undefined") HomeWorld.props.forEach((p) => keys.add(p.key));
+  return [...keys];
+}
+function mysteryArtKeys() {
+  const homeOnly = new Set(typeof HOME_ITEMS !== "undefined" ? HOME_ITEMS.map((item) => item.key) : []);
+  return Object.keys(ISLAND_ART).filter((key) => !homeOnly.has(key));
 }

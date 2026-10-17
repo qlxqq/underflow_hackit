@@ -7,6 +7,9 @@ const HomeWorld = Object.assign(Object.create(IslandWorld), {
   coast: [], paths: [], rects: [], props: [], gates: [], locked: new Set(),
 
   build() {
+    // Worked out once per visit (see IslandWorld.build). Items the player has
+    // placed add their own blocks each time the island opens, so those start fresh.
+    if (WORLD_BUILT.has(this)) { this.rects = this.baseRects.map((r) => ({ ...r })); return this; }
     this.coast = islandSmooth(HOME_COAST, true, 12);
     this.paths = HOME_PATHS.map((p) => islandSmooth(p, false, 12));
     this.rects = [];
@@ -43,6 +46,8 @@ const HomeWorld = Object.assign(Object.create(IslandWorld), {
         placed++;
       }
     });
+    this.baseRects = this.rects.map((r) => ({ ...r }));
+    WORLD_BUILT.add(this);
     return this;
   },
 
@@ -82,7 +87,9 @@ class HomeScene extends Phaser.Scene {
 
   create() {
     HomeWorld.build();
-    buildIslandTextures(this);
+    // Paint only what this island shows now; the rest is painted in the
+    // background while the player plays (see buildIslandTexturesLater).
+    buildIslandTextures(this, homeArtKeys());
     this.dpr = this.game.islandDpr || 1;
     this.cameras.main.setBackgroundColor("#c3dcea");
     this.ground = new IslandGround(this, homeGroundConfig());
@@ -102,6 +109,7 @@ class HomeScene extends Phaser.Scene {
     this.tweens.add({ targets: ring, scaleX: 1.6, scaleY: 1.6, alpha: 0, duration: 1500, repeat: -1, ease: "Sine.easeOut" });
 
     this.makeItems();
+    setTimeout(() => buildIslandTexturesLater(this), 1200); // the Mystery Island's pictures, while the player plays
 
     this.look = currentAvatarLook();
     ensureAvatarTextures(this, this.look);

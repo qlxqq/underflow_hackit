@@ -22,8 +22,14 @@ const IslandSave = {
   async init() {
     if (this.ready) return;
     try {
-      if (this.hasCloud() && typeof getCurrentUser === "function") {
-        const user = await getCurrentUser();
+      if (this.hasCloud()) {
+        // The saved login on this device answers straight away; asking the server is the fallback.
+        let user = null;
+        try {
+          const { data } = await supabase.auth.getSession();
+          user = data && data.session && data.session.user;
+        } catch (err) { user = null; }
+        if (!user && typeof getCurrentUser === "function") user = await getCurrentUser();
         this.userId = user ? user.id : null;
       }
     } catch (err) { this.userId = null; }

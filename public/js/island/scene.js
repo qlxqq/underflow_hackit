@@ -36,7 +36,7 @@ class IslandScene extends Phaser.Scene {
   // ---------- setup ----------
   create() {
     IslandWorld.build();
-    buildIslandTextures(this);
+    buildIslandTextures(this, mysteryArtKeys());
     this.dpr = this.game.islandDpr || 1;
     this.cameras.main.setBackgroundColor("#c3dcea");
 
@@ -58,6 +58,7 @@ class IslandScene extends Phaser.Scene {
       where: () => "mystery",
     });
     this.updateHud();
+    setTimeout(() => buildIslandTexturesLater(this), 1200); // the home island's pictures, while the player plays
     IslandUI.setZone("Mystery Island", "#8190a8");
     IslandUI.onMap = () => this.openMap();
     IslandUI.showMapButton(true);

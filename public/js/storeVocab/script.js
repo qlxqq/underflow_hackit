@@ -1,4 +1,4 @@
-// Capture page: three views - Capture, Words found, and Collection -
+// Capture page: four views - Capture, Pick your words (photo highlight), Words found, and Collection -
 // switched by showView(). Login lives on the Journey page; anyone who is not
 // logged in is sent there. Every data call passes the logged-in user's id,
 // since vocabulary is scoped per user.
@@ -10,10 +10,10 @@ const JOURNEY_PAGE = "../island/island.html";
 const appSection = $("app-section");
 const signOutButton = $("sign-out");
 
-const views = { capture: $("capture-view"), found: $("found-view"), collection: $("collection-view") };
+const views = { capture: $("capture-view"), highlight: $("highlight-view"), found: $("found-view"), collection: $("collection-view") };
 const captureForm = $("capture-form");
 const textInput = $("capture-text");
-const languageSelect = $("capture-language");
+const languageLabel = $("capture-language"); // shows the language; it cannot be changed here
 const imageInput = $("capture-image");
 const previewList = $("preview-list");
 const albumView = $("album-view");
@@ -83,7 +83,9 @@ function showView(name) {
 // The capture and found views take the colour of the chosen language, the
 // same green / sand / blue the Journey language cards use.
 function setLanguageTint(code) {
+  languageLabel.textContent = LANGUAGE_NAMES[code] || "";
   views.capture.dataset.lang = code;
+  views.highlight.dataset.lang = code;
   views.found.dataset.lang = code;
   streetStrip.innerHTML = getStreetStrip(code);
   foundStrip.innerHTML = getStreetStrip(code);
@@ -135,16 +137,17 @@ function renderCollectionStats(entries) {
   `;
 }
 
-// The Mother Tongue the player chose on the Journey page. The Collection
-// only shows albums for this language.
+// The Mother Tongue the player chose on the island. Capture, the Collection
+// and everything else on this page use this language and nothing else; it is
+// changed on the island, not here.
 function getMotherTongue() {
   try {
     const code = localStorage.getItem(`journeyLanguage:${currentUser.id}`);
     if (code && LANGUAGE_NAMES[code]) return code;
   } catch (err) {
-    // storage blocked: fall back to the capture language
+    // storage blocked: fall back to Chinese
   }
-  return languageSelect.value;
+  return "zh";
 }
 
 async function loadCardGrid() {
@@ -357,7 +360,7 @@ function renderPreview() {
   renderFoundSummary();
 
   if (currentPreviewWords.length === 0) {
-    previewList.innerHTML = `<p class="empty-state">No ${LANGUAGE_NAMES[languageSelect.value] || ""} words found. Check the language at the top of the Capture page, or try different text.</p>`;
+    previewList.innerHTML = `<p class="empty-state">No ${LANGUAGE_NAMES[getMotherTongue()] || ""} words found. Try a different part of the photo, or different text.</p>`;
     updateSaveButton();
     return;
   }
@@ -423,9 +426,10 @@ captureForm.addEventListener("submit", async (e) => {
   }
 
   clearStatus();
+  leavePhoto();
   setBusy(previewButton, "Finding words...");
   try {
-    await buildPreview(text, languageSelect.value);
+    await buildPreview(text, getMotherTongue());
   } catch (err) {
     console.error("Failed to preview text:", err);
     showStatus("Could not process that text. Try again.", "error");
@@ -434,34 +438,109 @@ captureForm.addEventListener("submit", async (e) => {
   }
 });
 
-imageInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+// ---- photo -> pick your words -> words found ----
+// After a photo, the player highlights the words they want on a screen of
+// their own (scan/highlight.js): they draw boxes round the words they want and
+// only those parts are read.
+let photoCanvas = null;       // the photo being boxed
+let photoLanguage = "zh";     // the language it was taken in
+let photoQuestCounted = false; // "scan a photo" counts once per photo, however many times it is read
+let cameFromPhoto = false;    // so the back arrow on Words found returns to the photo
 
+const highlighter = createPhotoHighlighter(
+  {
+    stage: $("hl-stage"),
+    hint: $("hl-hint"),
+    clearBtn: $("hl-clear"),
+    findBtn: $("hl-find"),
+    wholeBtn: $("hl-whole"),
+  },
+  {
+    onFind: (rects) => readPhoto(rects),
+    onWhole: () => readPhoto(null),
+    onMessage: (message) => showStatus(message, "info"),
+  },
+);
+
+function leavePhoto() {
+  highlighter.close();
+  photoCanvas = null;
+  cameFromPhoto = false;
+}
+
+async function openHighlight(file) {
   clearStatus();
-  showStatus("Reading text from the photo. This can take a moment...", "info");
+  showStatus("Opening your photo...", "info");
   imageInput.disabled = true;
-
   try {
-    const extractedText = await extractTextFromImage(file, languageSelect.value);
-    if (!extractedText) {
-      showStatus("Could not find any text in that photo. Try a clearer one.", "error");
-      return;
-    }
-    textInput.value = extractedText;
-    questEvent("photo_scan");
-    await buildPreview(extractedText, languageSelect.value);
-    showStatus(window.lastOcrInfo || "", "info");
+    photoCanvas = await photoToCanvas(file);
   } catch (err) {
-    console.error("Failed to process image:", err);
-    showStatus("Could not read that photo. Try a clearer one.", "error");
+    console.error("Failed to open image:", err);
+    showStatus("Could not open that photo. Try another one.", "error");
+    return;
   } finally {
     imageInput.disabled = false;
     imageInput.value = "";
   }
+  clearStatus();
+
+  photoLanguage = getMotherTongue();
+  photoQuestCounted = false;
+  cameFromPhoto = false;
+  setLanguageTint(photoLanguage);
+  highlighter.open(photoCanvas);
+  showView("highlight");
+}
+
+// rects = the highlighted areas, or null for the whole photo.
+async function readPhoto(rects) {
+  if (!photoCanvas) return;
+  highlighter.setBusy(true);
+  clearStatus();
+  showStatus("Reading your words. This can take a moment...", "info");
+  try {
+    const extractedText = rects
+      ? await extractTextFromRegions(photoCanvas, rects, photoLanguage)
+      : await extractTextFromCanvas(photoCanvas, photoLanguage);
+    if (!extractedText) {
+      // window.lastOcrInfo says whether Claude read it (and found nothing) or the backup did and why
+      showStatus(`Could not find any text there. Try a slightly bigger box. (${window.lastOcrInfo || "no reading was made"})`, "error");
+      return;
+    }
+    textInput.value = extractedText;
+    if (!photoQuestCounted) {
+      photoQuestCounted = true;
+      questEvent("photo_scan");
+    }
+    cameFromPhoto = true;
+    await buildPreview(extractedText, photoLanguage);
+    showStatus(window.lastOcrInfo || "", "info");
+  } catch (err) {
+    console.error("Failed to process image:", err);
+    showStatus("Could not read that. Try a clearer photo or a different part.", "error");
+  } finally {
+    highlighter.setBusy(false);
+  }
+}
+
+imageInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) openHighlight(file);
 });
 
-foundBack.addEventListener("click", () => showView("capture"));
+$("highlight-back").addEventListener("click", () => {
+  leavePhoto();
+  showView("capture");
+});
+
+foundBack.addEventListener("click", () => {
+  if (cameFromPhoto && photoCanvas && highlighter.isOpen) {
+    setLanguageTint(photoLanguage);
+    showView("highlight");
+  } else {
+    showView("capture");
+  }
+});
 
 saveButton.addEventListener("click", async () => {
   if (isSaving) return;
@@ -508,6 +587,7 @@ saveButton.addEventListener("click", async () => {
   isSaving = false;
   previewList.innerHTML = "";
   textInput.value = "";
+  leavePhoto();
   history.replaceState(null, "", "#collection");
   showView("collection");
   const loadingGrid = loadCardGrid();
@@ -519,10 +599,7 @@ saveButton.addEventListener("click", async () => {
   await loadingGrid;
 
   if (skippedCount === 0) {
-    // The Collection only shows the player's Mother Tongue.
-    const savedLanguage = currentPreviewWords[0] && currentPreviewWords[0].language;
-    const otherLanguage = savedLanguage && savedLanguage !== getMotherTongue() ? ` They are in your ${LANGUAGE_NAMES[savedLanguage]} collection: change your Mother Tongue on the Journey page to see them.` : "";
-    showStatus(`Added ${savedCount} word${savedCount === 1 ? "" : "s"} to your collection.${otherLanguage}`, "success");
+    showStatus(`Added ${savedCount} word${savedCount === 1 ? "" : "s"} to your collection.`, "success");
   } else {
     showStatus(`Added ${savedCount}, but ${skippedCount} could not be added (likely already in your collection).`, "error");
   }
@@ -563,10 +640,8 @@ async function enterApp() {
   }
   appSection.hidden = false;
   if (PACK_ON_CAPTURE) showStatus("Pack test is on for captured words. Open the page with ?pack=0 on the end to turn it off.", "info");
-  // Start the capture language on the player's Mother Tongue.
-  const motherTongue = getMotherTongue();
-  languageSelect.value = motherTongue;
-  setLanguageTint(motherTongue);
+  // Capture uses the player's Mother Tongue and nothing else.
+  setLanguageTint(getMotherTongue());
 
   if (location.hash === "#collection") {
     showView("collection");
@@ -599,9 +674,8 @@ if (tipsCard) {
   });
 }
 $("photo-icon").innerHTML = icon("camera", 26);
-languageSelect.addEventListener("change", () => setLanguageTint(languageSelect.value));
-setLanguageTint(languageSelect.value);
 $("found-back").innerHTML = icon("chevLeft", 22);
+$("highlight-back").innerHTML = icon("chevLeft", 22);
 $("found-note-icon").innerHTML = icon("info", 18);
 signOutButton.innerHTML = icon("logout", 22);
 renderBottomNav();

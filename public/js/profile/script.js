@@ -56,35 +56,31 @@ function getMotherTongue(userId) {
 async function loadAll() {
   language = getMotherTongue(currentUser.id);
 
-  const [loadedProfile, loadedStats] = await Promise.all([
-    loadProfile(currentUser.id).catch((err) => {
-      console.error("Could not load profile:", err);
-      return null;
-    }),
+  // Everything is asked for at the same time, instead of one request after another.
+  // A failure in one of these only loses that one part of the page.
+  const tryTo = async (fn, fallback, message) => {
+    try {
+      return await fn();
+    } catch (err) {
+      console.error(message, err);
+      return fallback;
+    }
+  };
+  const [loadedProfile, loadedStats, badgeRows, capturedRows, albumRowsLoaded, fav] = await Promise.all([
+    tryTo(() => loadProfile(currentUser.id), null, "Could not load profile:")
+      .then((loaded) => (loaded ? recordDailyVisit(currentUser.id, loaded).catch(() => loaded) : null)),
     getPlayerStats(currentUser.id).catch(() => ({ xp: 0, coins: 0, available: false })),
+    tryTo(() => getBadges(currentUser.id), null, "Could not load badges (is database/badges.sql run?):"),
+    tryTo(() => getAllVocabulary(currentUser.id, language), [], "Could not load cards:"),
+    tryTo(() => getAlbumCards(currentUser.id, language), [], "Could not load island cards:"),
+    tryTo(() => supabase.from("profiles").select("favourite_cards").eq("user_id", currentUser.id).maybeSingle(), { error: new Error("not loaded") }, "Could not load favourite cards:"),
   ]);
-  profile = loadedProfile ? await recordDailyVisit(currentUser.id, loadedProfile).catch(() => loadedProfile) : null;
+  profile = loadedProfile;
   stats = loadedStats;
+  earnedBadges = badgeRows ? new Set(badgeRows.map((b) => b.badge_id)) : new Set();
 
-  try {
-    earnedBadges = new Set((await getBadges(currentUser.id)).map((b) => b.badge_id));
-  } catch (err) {
-    console.error("Could not load badges (is database/badges.sql run?):", err);
-    earnedBadges = new Set();
-  }
-
-  let captured = [];
-  let albumRows = [];
-  try {
-    captured = await getAllVocabulary(currentUser.id, language);
-  } catch (err) {
-    console.error("Could not load cards:", err);
-  }
-  try {
-    albumRows = await getAlbumCards(currentUser.id, language);
-  } catch (err) {
-    console.error("Could not load island cards:", err);
-  }
+  const captured = capturedRows || [];
+  const albumRows = albumRowsLoaded || [];
   entryMap = new Map();
   captured.forEach((row) => entryMap.set(`v:${row.vocab_id}`, row));
   buildIslandAlbums(albumRows, language).forEach((album) =>
@@ -92,7 +88,6 @@ async function loadAll() {
   );
   entries = [...entryMap.entries()].map(([key, entry]) => ({ key, entry }));
 
-  const fav = await supabase.from("profiles").select("favourite_cards").eq("user_id", currentUser.id).maybeSingle();
   if (fav.error) {
     console.error("Could not load favourite cards (is database/profile.sql run?):", fav.error);
     favsAvailable = false;

@@ -135,7 +135,7 @@ const IslandCards = {
     }
     const album = this.albumInfo(d.album);
     return {
-      cards: fresh.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, kind: w.kind, role: w.kind === "role" ? d.label : null })),
+      cards: fresh.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, kind: w.kind, album: d.album, role: w.kind === "role" ? d.label : null })),
       dupes: dupes.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m })),
       album,
       zoneDone: before.zoneHave < before.zoneTotal && album.zoneTotal > 0 && album.zoneHave >= album.zoneTotal,

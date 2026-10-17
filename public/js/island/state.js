@@ -28,6 +28,8 @@ const IslandState = {
       try { Object.keys(localStorage).filter((k) => k.startsWith("island.")).forEach((k) => localStorage.removeItem(k)); } catch (err) { /* ignore */ }
     }
     this.testing = ["reveal", "unlock", "coins", "dev"].some((k) => params.has(k));
+    // The saved game and the profile's coins are asked for at the same time.
+    const coinsAsked = this.readServerCoins();
     const blob = params.get("reset") === "1" ? null : await IslandSave.load();
     if (blob) {
       this.coins = Math.max(0, Number(blob.coins) || 0);
@@ -41,7 +43,8 @@ const IslandState = {
       this.weak = Array.isArray(stats.weak) ? stats.weak.slice(0, this.WEAK_MAX) : [];
     }
     // Logged in: coins are the profile's coins (the same balance as quests and the rest of the app).
-    await this.syncCoins(true);
+    const serverCoins = await coinsAsked;
+    if (serverCoins !== null && serverCoins !== this.coins) { this.coins = serverCoins; this.save(); this.emit(); }
     // The player always arrives on their home island (?start=mystery is for testing).
     this.where = params.get("start") === "mystery" ? "mystery" : "home";
     // Coming from the Collection's Practise button: go straight to the Mystery Island.
@@ -73,15 +76,24 @@ const IslandState = {
   // Guests and ?testing links: local only, as before.
   useServer() { return !this.testing && !!IslandSave.userId && IslandSave.hasCloud(); },
 
+  // The profile's coins, or null when they cannot be read.
+  async readServerCoins() {
+    if (!this.useServer()) return null;
+    try {
+      const { data, error } = await supabase.from("profiles").select("coins").eq("user_id", IslandSave.userId).maybeSingle();
+      if (error || !data) return null;
+      return Math.max(0, Number(data.coins) || 0);
+    } catch (err) {
+      console.warn("Island: could not read coins, using the saved number.", err && err.message);
+      return null;
+    }
+  },
+
   // Reads the profile's coins. `force` also applies it while a payment is pending.
   async syncCoins(force) {
     if (!this.useServer() || (this.inflight > 0 && !force)) return;
-    try {
-      const { data, error } = await supabase.from("profiles").select("coins").eq("user_id", IslandSave.userId).maybeSingle();
-      if (error || !data) return;
-      const coins = Math.max(0, Number(data.coins) || 0);
-      if (coins !== this.coins) { this.coins = coins; this.save(); this.emit(); }
-    } catch (err) { console.warn("Island: could not read coins, using the saved number.", err && err.message); }
+    const coins = await this.readServerCoins();
+    if (coins !== null && coins !== this.coins) { this.coins = coins; this.save(); this.emit(); }
   },
 
   async pay(fn, n, undo) {

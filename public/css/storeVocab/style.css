@@ -19,7 +19,15 @@
   box-shadow: 0 6px 20px rgba(24, 35, 58, 0.18);
 }
 
-/* ---- language select styled as a chip, in the language's colour ---- */
+/* ---- the language, shown as a chip in its colour. It is fixed to the player's
+   Mother Tongue, so it is a label and not a menu. ---- */
+.lang-chip {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 22px;
+  border: 1px solid var(--tint-bd); background: var(--tint);
+  font: 700 15px var(--font-ui); color: var(--accent);
+}
+
+/* (older) language select, kept in case another page still uses it */
 .lang-select select {
   appearance: none; -webkit-appearance: none;
   min-height: 44px; padding: 0 38px 0 16px; border-radius: 22px;
@@ -73,6 +81,31 @@
   .intro-sub, .photo-sub { display: none; }
   .street-strip { height: 72px; }
 }
+
+/* ---- pick your words (photo highlight) view ---- */
+.hl-hint { margin: 14px 20px 0; min-height: 20px; font-weight: 600; font-size: 14px; line-height: 1.4; color: var(--muted); }
+
+.hl-stage { display: flex; justify-content: center; margin: 12px 20px 0; }
+.hl-frame {
+  position: relative; display: block; max-width: 100%; line-height: 0;
+  border: 2px solid var(--tint-bd); border-radius: 12px; overflow: hidden; background: var(--white);
+}
+.hl-photo { display: block; width: auto; height: auto; max-width: 100%; max-height: 56vh; max-height: 56dvh; }
+.hl-overlay { position: absolute; inset: 0; touch-action: none; cursor: crosshair; -webkit-user-select: none; user-select: none; }
+
+.hl-rect {
+  position: absolute; box-sizing: border-box; pointer-events: none; border-radius: 4px;
+  border: 2.5px solid var(--amber); background: rgba(242, 169, 59, 0.28);
+}
+.hl-rect.is-live { border-style: dashed; }
+
+.hl-links { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hl-link {
+  min-height: 44px; padding: 0 4px; border: none; background: none; cursor: pointer;
+  font: 800 14px var(--font-ui); color: var(--accent); text-decoration: underline; text-underline-offset: 3px;
+}
+.hl-link:disabled { opacity: 0.5; cursor: default; }
+.hl-links .hl-link:last-child { margin-left: auto; }
 
 /* ---- words found view ---- */
 .street-strip.short { height: 84px; }

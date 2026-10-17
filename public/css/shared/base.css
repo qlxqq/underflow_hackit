@@ -146,11 +146,6 @@ body {
   font: 700 11px var(--font-ui); color: var(--muted); text-decoration: none; cursor: pointer;
 }
 .nav-tab[aria-current="page"] { color: var(--ink); }
-.nav-tab[aria-current="page"]::before {
-  content: ""; position: absolute; top: 0; left: 50%;
-  width: 28px; height: 3px; margin-left: -14px;
-  border-radius: 0 0 3px 3px; background: var(--amber);
-}
 .nav-tab:disabled { opacity: 0.45; cursor: default; }
 .nav-capture { position: relative; flex: 1; min-height: var(--nav-h); }
 .nav-capture-btn {

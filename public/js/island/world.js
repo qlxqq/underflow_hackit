@@ -1,6 +1,35 @@
 // The island's physical rules: where the land is, what blocks the player, and
 // where the scenery goes. No drawing happens here, so it can be tested alone.
 
+// Worlds already built this visit, and the grid of path pieces used by pathDistance.
+const WORLD_BUILT = new WeakSet();
+const PATH_INDEX = new WeakMap();
+
+function buildPathIndex(paths) {
+  const cell = 128;
+  const segs = [];
+  paths.forEach((line) => {
+    for (let i = 0; i < line.length - 1; i++) segs.push([line[i][0], line[i][1], line[i + 1][0], line[i + 1][1]]);
+  });
+  const idx = { paths, count: paths.length, cell, empty: segs.length === 0, cells: [] };
+  if (idx.empty) return idx;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  segs.forEach((s) => {
+    minX = Math.min(minX, s[0], s[2]); maxX = Math.max(maxX, s[0], s[2]);
+    minY = Math.min(minY, s[1], s[3]); maxY = Math.max(maxY, s[1], s[3]);
+  });
+  idx.ox = Math.floor(minX / cell);
+  idx.oy = Math.floor(minY / cell);
+  idx.cols = Math.floor(maxX / cell) - idx.ox + 1;
+  idx.rows = Math.floor(maxY / cell) - idx.oy + 1;
+  segs.forEach((s) => {
+    const x0 = Math.floor(Math.min(s[0], s[2]) / cell) - idx.ox, x1 = Math.floor(Math.max(s[0], s[2]) / cell) - idx.ox;
+    const y0 = Math.floor(Math.min(s[1], s[3]) / cell) - idx.oy, y1 = Math.floor(Math.max(s[1], s[3]) / cell) - idx.oy;
+    for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) (idx.cells[j * idx.cols + i] = idx.cells[j * idx.cols + i] || []).push(s);
+  });
+  return idx;
+}
+
 const IslandWorld = {
   coast: [],
   paths: [],
@@ -14,6 +43,9 @@ const IslandWorld = {
   MASK_SCALE: 8,
 
   build() {
+    // The island never changes, so it is worked out once per visit to the page.
+    // Sailing back and forth only resets which gates are locked.
+    if (WORLD_BUILT.has(this)) { this.locked = new Set(); return this; }
     this.locked = new Set();
     this.coast = islandSmooth(ISLAND_COAST, true, 12);
     this.paths = ISLAND_PATHS.map((p) => islandSmooth(p, false, 12));
@@ -26,6 +58,7 @@ const IslandWorld = {
     this.buildGates();
     this.buildGateRuns();
     this.buildProps();
+    WORLD_BUILT.add(this);
     return this;
   },
 
@@ -156,21 +189,45 @@ const IslandWorld = {
     return this.mask[my * this.maskW + mx] === 1;
   },
 
-  // Distance from a point to the nearest path.
+  // Distance from a point to the nearest path. The path pieces are sorted into
+  // a grid, so only the pieces near the point are measured (the answer is the
+  // same as measuring every piece; it is just much quicker, and scenery
+  // placement asks this thousands of times).
   pathDistance(x, y) {
+    let idx = PATH_INDEX.get(this);
+    if (!idx || idx.paths !== this.paths || idx.count !== this.paths.length) {
+      idx = buildPathIndex(this.paths);
+      PATH_INDEX.set(this, idx);
+    }
+    if (idx.empty) return Infinity;
+    const { cell, cols, rows, cells } = idx;
+    const qx = Math.floor(x / cell) - idx.ox;
+    const qy = Math.floor(y / cell) - idx.oy;
+    const maxK = Math.max(Math.abs(qx), Math.abs(qx - cols), Math.abs(qy), Math.abs(qy - rows)) + 1;
     let best = Infinity;
-    this.paths.forEach((line) => {
-      for (let i = 0; i < line.length - 1; i++) {
-        const [ax, ay] = line[i];
-        const [bx, by] = line[i + 1];
-        const dx = bx - ax;
-        const dy = by - ay;
+    const scan = (i, j) => {
+      if (i < 0 || j < 0 || i >= cols || j >= rows) return;
+      const list = cells[j * cols + i];
+      if (!list) return;
+      for (let n = 0; n < list.length; n++) {
+        const s = list[n];
+        const dx = s[2] - s[0];
+        const dy = s[3] - s[1];
         const len2 = dx * dx + dy * dy || 1;
-        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len2));
-        const d = Math.hypot(x - (ax + t * dx), y - (ay + t * dy));
+        const t = Math.max(0, Math.min(1, ((x - s[0]) * dx + (y - s[1]) * dy) / len2));
+        const d = Math.hypot(x - (s[0] + t * dx), y - (s[1] + t * dy));
         if (d < best) best = d;
       }
-    });
+    };
+    for (let k = 0; k <= maxK; k++) {
+      if (k === 0) scan(qx, qy);
+      else {
+        for (let i = qx - k; i <= qx + k; i++) { scan(i, qy - k); scan(i, qy + k); }
+        for (let j = qy - k + 1; j <= qy + k - 1; j++) { scan(qx - k, j); scan(qx + k, j); }
+      }
+      // anything not looked at yet is at least k cells away
+      if (best <= k * cell) break;
+    }
     return best;
   },
 
