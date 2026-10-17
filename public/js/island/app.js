@@ -1,21 +1,15 @@
-// The island page: login, the Mother Tongue choice, the top bar (language, streak,
+// The island page: the Mother Tongue choice, the top bar (language, streak,
 // level + daily quests, coins, profile) and the island itself. This page replaces
 // the old Journey page; nothing here depends on the MRT map files.
+// Log in and sign up live on their own page (pages/auth/login.html, js/auth/login.js):
+// a player who is not signed in is sent there.
 
 const $ = (id) => document.getElementById(id);
 
-const authSection = $("auth-section");
 const languageSection = $("language-select-section");
 const journeySection = $("journey-section");
-const signupForm = $("signup-form");
-const loginForm = $("login-form");
-const authStatus = $("auth-status");
 const changeLanguageButton = $("change-language");
 const mapEl = $("map");
-const tabLogin = $("tab-login");
-const tabSignup = $("tab-signup");
-const authHeading = $("auth-heading");
-const authSubheading = $("auth-subheading");
 const statusMessage = $("status-message");
 const streakChip = $("streak-chip");
 const openProfileButton = $("open-profile");
@@ -43,17 +37,13 @@ let currentUser = null;
 let currentLanguage = null;
 let currentProfile = null;
 
+const LOGIN_PAGE = "../auth/login.html";
+
 function showScreen(name) {
-  authSection.hidden = name !== "auth";
   languageSection.hidden = name !== "language";
   journeySection.hidden = name !== "journey";
   const nav = $("bottom-nav");
   if (nav) nav.hidden = name !== "journey";
-}
-
-function showAuthMessage(message, type) {
-  authStatus.textContent = message;
-  authStatus.className = `status-message status-${type}`;
 }
 
 function renderLanguageChip() {
@@ -226,53 +216,7 @@ function showToast(message) {
   }, 2500);
 }
 
-// ---- login / sign up tabs ----
-const AUTH_COPY = {
-  login: { heading: "Welcome back", sub: "Log in to pick up where you left off." },
-  signup: { heading: "Create your account", sub: "It only takes a minute." },
-};
-
-function selectAuthTab(which) {
-  const signup = which === "signup";
-  authHeading.textContent = AUTH_COPY[signup ? "signup" : "login"].heading;
-  authSubheading.textContent = AUTH_COPY[signup ? "signup" : "login"].sub;
-  tabLogin.setAttribute("aria-selected", String(!signup));
-  tabSignup.setAttribute("aria-selected", String(signup));
-  loginForm.hidden = signup;
-  signupForm.hidden = !signup;
-  authStatus.textContent = "";
-  authStatus.className = "status-message";
-}
-tabLogin.addEventListener("click", () => selectAuthTab("login"));
-tabSignup.addEventListener("click", () => selectAuthTab("signup"));
-
-// ---- auth + language choice ----
-signupForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const email = $("signup-email").value.trim();
-  const password = $("signup-password").value;
-  const username = $("signup-username").value.trim();
-  try {
-    await signUp(email, password, username);
-    selectAuthTab("login");
-    showAuthMessage("Account created. If email confirmation is on, confirm it first, then log in.", "success");
-  } catch (err) {
-    console.error("Sign up failed:", err);
-    showAuthMessage(err.message || "Could not sign up.", "error");
-  }
-});
-
-loginForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  try {
-    await signIn($("login-email").value.trim(), $("login-password").value);
-    await enterApp();
-  } catch (err) {
-    console.error("Login failed:", err);
-    showAuthMessage(err.message || "Could not log in.", "error");
-  }
-});
-
+// ---- language choice ----
 changeLanguageButton.addEventListener("click", () => showScreen("language"));
 
 document.querySelectorAll(".language-choice").forEach((button) => {
@@ -295,7 +239,7 @@ async function findSignedInUser() {
 async function enterApp() {
   currentUser = await findSignedInUser();
   if (!currentUser) {
-    showScreen("auth");
+    location.replace(LOGIN_PAGE); // not signed in: log in on the login page
     return;
   }
   // Open the island straight away in the language this player last chose
@@ -311,9 +255,7 @@ async function enterApp() {
 }
 
 
-if (typeof buildLoginScene === "function") {
-  $("auth-hero-art").innerHTML = buildLoginScene();
-  $("auth-footer-art").innerHTML = buildFooterScene();
+if (typeof buildLanguageScene === "function") {
   $("language-hero-art").innerHTML = buildLanguageScene();
 }
 renderBottomNav();
