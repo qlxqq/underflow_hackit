@@ -30,21 +30,14 @@
       <section id="capture-view" class="screen" hidden>
         <header class="top-bar">
           <h1 class="top-title">Capture words</h1>
-          <label class="lang-select">
-            <span class="visually-hidden">Language</span>
-            <select id="capture-language">
-              <option value="zh">Chinese</option>
-              <option value="ms">Malay</option>
-              <option value="ta">Tamil</option>
-            </select>
-          </label>
+          <span class="lang-select lang-chip" id="capture-language" title="Your Mother Tongue. Change it on the island."></span>
         </header>
 
         <div id="street-strip" class="street-strip" aria-hidden="true"></div>
 
         <div class="capture-intro">
           <h2 class="intro-title">Collect words from daily life</h2>
-          <p class="intro-sub">Snap a sign or paste some text. Each word becomes a card.</p>
+          <p class="intro-sub">Snap a sign, box the words you want, or paste some text. Each word becomes a card.</p>
         </div>
 
         <form id="capture-form" class="capture-form">
@@ -61,8 +54,8 @@
               <li>Photograph one paragraph or half a page at a time.</li>
               <li>Use good light, hold the phone flat and avoid glare and shadows.</li>
               <li>Keep the text sharp and fill the frame with it.</li>
-              <li>Up to 30 words are listed per capture, so a smaller area works best.</li>
-              <li>Want to change something after the words are found? Tap the Capture button at the bottom to go back.</li>
+              <li>After the photo, draw a box round just the words you want. Up to 30 words are listed per capture.</li>
+              <li>Want to change something after the words are found? Tap the back arrow to pick different words.</li>
             </ul>
           </details>
 
@@ -75,6 +68,25 @@
 
           <button type="submit" class="btn btn-primary btn-block">Find words</button>
         </form>
+      </section>
+
+      <section id="highlight-view" class="screen" hidden>
+        <header class="top-bar has-back">
+          <button type="button" id="highlight-back" class="icon-btn" aria-label="Back to capture"></button>
+          <h1 class="top-title">Pick your words</h1>
+        </header>
+
+        <p id="hl-hint" class="hl-hint"></p>
+
+        <div id="hl-stage" class="hl-stage"></div>
+
+        <div class="found-footer">
+          <button type="button" id="hl-find" class="btn btn-primary btn-block" disabled>Draw a box round some words</button>
+          <div class="hl-links">
+            <button type="button" id="hl-clear" class="hl-link" hidden>Clear boxes</button>
+            <button type="button" id="hl-whole" class="hl-link">Use the whole photo</button>
+          </div>
+        </div>
       </section>
 
       <section id="found-view" class="screen" hidden>
@@ -128,6 +140,7 @@
   <script src="../../js/storeVocab/fillerWords.js"></script>
   <script src="../../js/storeVocab/scan/segmentation.js"></script>
   <script src="../../js/storeVocab/scan/ocr.js"></script>
+  <script src="../../js/storeVocab/scan/highlight.js"></script>
   <script src="../../js/storeVocab/scan/pronunciation.js"></script>
   <script src="../../js/shared/auth.js"></script>
   <script src="../../js/storeVocab/meaningLookup.js"></script>
@@ -137,11 +150,13 @@
   <script src="../../js/cards/cards.js"></script>
   <script src="../../js/cards/data/zoneWords.js"></script>
   <script src="../../js/cards/albumCards.js"></script>
+  <script src="../../js/shared/roleCards.js"></script>
   <script src="../../js/cards/albums.js"></script>
   <script src="../../js/storeVocab/packOpening.js"></script>
   <script src="../../js/shared/streak.js"></script>
   <script src="../../js/shared/rewards.js"></script>
   <script src="../../js/cards/quests.js"></script>
+  <script src="../../js/storeVocab/practiceLink.js"></script>
   <script src="../../js/storeVocab/script.js"></script>
   <script src="../../js/shared/tour.js"></script>
 </body>

@@ -19,11 +19,16 @@
 
   const STEPS = {
     journey: [
-      { target: "#change-language", title: "Pick your Mother Tongue", text: "Switch between Chinese, Malay and Tamil any time." },
+      { target: "#change-language", title: "Your Mother Tongue", text: "This is the language you are practising. Tap it to switch between Chinese, Malay and Tamil." },
       { target: "#streak-chip", title: "Your streak", text: "Practise every day to keep your streak going." },
-      { target: "#level-chip", title: "Your level", text: "Earn XP by capturing words and finishing quests. XP fills this ring and raises your level. Your coins are shown next to it." },
-      { target: "#journey-quests", title: "Daily quests", text: "Small goals that reset every day, like capturing 3 words. Tap to open the list, and press Claim when one is done to earn XP and coins." },
-      { target: "#map", title: "Your journey", text: "Follow the path through each zone to practise its words, one step at a time." },
+      { target: "#level-chip", title: "Your level", text: "The ring shows your level and XP. Tap it to drop down today's quests. A yellow ! on it means a reward is waiting for you." },
+      { target: "#journey-quests", title: "Daily quests", text: "Small goals that reset every day, like capturing 3 words. Press Claim when one is done to earn XP and coins.", before: openQuests, after: closeQuests },
+      { target: "#island-coins", title: "Your coins", text: "You earn coins by finishing mini-game levels and passing challenges on the island. Spend them at the Island Shop." },
+      { target: "#map", title: "Your home island", text: "This is your home island. Walk around to explore. The Island Shop sells fun buildings and decorations, and the boat at the jetty takes you to the Mystery Island." },
+      { target: "island:#joystick", title: "Move around", text: "Drag the joystick to walk (or use the arrow keys). When you stand next to something, a button appears to use it." },
+      { target: "island:#map-btn", title: "Island map", text: "Shows where the shop and the boat are. Tap a place on it and an arrow points you the way." },
+      { target: "island:#avatar-btn", title: "Your character", text: "Choose a boy or girl character and an outfit colour." },
+      { target: "#map", title: "The Mystery Island", text: "Take the boat to get there. Play the mini-game levels in any order, and talk to the people marked ? on its map to win cards. A boat button there brings you straight back home." },
       { target: ".nav-capture", title: "Capture words", text: "Snap a sign, a menu or a textbook page. Every word it finds can become a collectible card. This is the heart of the app." },
       { target: '[data-nav="collection"]', title: "Your collection", text: "All your cards live here. Practise a word to make its card evolve." },
       { target: "#open-profile", title: "Your profile", text: "Tap your picture to see your level, badges and favourite cards, change your picture, or sign out." },
@@ -42,10 +47,36 @@
   };
 
   let layer = null;
-  let session = null; // { page, steps, index }
+  let session = null; // { page, steps, index, active }
+
+  // Opens / closes the daily-quests drop-down for the step that explains it.
+  function openQuests() {
+    const panel = document.querySelector("#journey-quests"), chip = document.querySelector("#level-chip");
+    if (panel && chip && panel.classList.contains("is-collapsed")) chip.click();
+  }
+  function closeQuests() {
+    const panel = document.querySelector("#journey-quests");
+    const head = panel && panel.querySelector("[data-qp-toggle]");
+    if (head && !panel.classList.contains("is-collapsed")) head.click();
+  }
 
   // ---------- helpers ----------
-  const q = (sel) => document.querySelector(sel);
+  // "island:#id" points at something inside the island (it runs in a frame).
+  function islandDoc() {
+    const f = document.getElementById("island-frame");
+    try { return f && f.contentDocument; } catch (err) { return null; }
+  }
+  const q = (sel) => {
+    if (sel.indexOf("island:") === 0) { const d = islandDoc(); return d ? d.querySelector(sel.slice(7)) : null; }
+    return document.querySelector(sel);
+  };
+  // Position of an element on this page, including elements inside the island frame.
+  function rectOf(node) {
+    const r = node.getBoundingClientRect();
+    if (node.ownerDocument === document) return r;
+    const f = document.getElementById("island-frame").getBoundingClientRect();
+    return { top: r.top + f.top, left: r.left + f.left, width: r.width, height: r.height, bottom: r.bottom + f.top, right: r.right + f.left };
+  }
 
   function isVisible(el) {
     return !!el && el.getClientRects().length > 0 && !el.closest("[hidden]");
@@ -127,7 +158,7 @@
   // single = true: just this page (the "?" button); the tour does not move on.
   function startTour(page, { single = false } = {}) {
     removeLayer();
-    const steps = STEPS[page].filter((s) => isVisible(q(s.target)));
+    const steps = STEPS[page].filter((s) => s.before || isVisible(q(s.target)));
     if (steps.length === 0) return;
     session = { page, steps, index: 0, single };
 
@@ -142,8 +173,26 @@
     showStep(0);
   }
 
+  // A step may open something first (the quests drop-down) and close it when we move on.
+  function leaveStep() {
+    if (session && session.active && session.active.after) { try { session.active.after(); } catch (err) { /* ignore */ } }
+    if (session) session.active = null;
+  }
+
   function showStep(index) {
+    leaveStep();
     session.index = index;
+    const step = session.steps[index];
+    if (step.before) {
+      try { step.before(); } catch (err) { /* ignore */ }
+      session.active = step;
+      setTimeout(() => { if (session && session.index === index) renderStep(index); }, 350);
+      return;
+    }
+    renderStep(index);
+  }
+
+  function renderStep(index) {
     const step = session.steps[index];
     const target = q(step.target);
     if (!isVisible(target)) return next();
@@ -190,7 +239,7 @@
       }
     });
 
-    target.scrollIntoView({ block: "center", behavior: "auto" });
+    if (target.ownerDocument === document) target.scrollIntoView({ block: "center", behavior: "auto" });
     requestAnimationFrame(() => {
       place();
       card.querySelector("[data-next]").focus({ preventScroll: true });
@@ -204,6 +253,7 @@
   }
 
   function endTour() {
+    leaveStep();
     removeLayer();
     session = null;
   }
@@ -217,7 +267,7 @@
     const card = layer.querySelector(".tour-card");
     if (!target || !spot || !card) return;
 
-    const r = target.getBoundingClientRect();
+    const r = rectOf(target);
     const pad = 6;
     spot.style.top = r.top - pad + "px";
     spot.style.left = r.left - pad + "px";

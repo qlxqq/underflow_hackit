@@ -1,0 +1,89 @@
+/* The collectible card face: rarity colours, Mastered foil, picture, word, buttons.
+   A copy of the card rules in css/storeVocab/style.css, so pages that show a card
+   without the whole Capture page styles (the island's pack opening) can load just this.
+   If you change the card design, change both files. */
+
+/* Five rarities, each with its own colour: the word, the border, the
+   backdrop behind the picture, and (for the top two) a glow. */
+.vocab-card {
+  --r-text: #5b6b85; --r-border: #d3dbe7; --r-bg: #eef2f8; --r-glow: 0 0 0 0 transparent;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 10px 12px; text-align: center;
+  background: var(--white); border: 2px solid var(--r-border); border-radius: var(--radius-md);
+  box-shadow: var(--r-glow);
+}
+.vocab-card.rarity-uncommon { --r-text: #1f7a4d; --r-border: #8fd0a6; --r-bg: #e6f5ea; }
+.vocab-card.rarity-rare { --r-text: #2458b8; --r-border: #7ea7ee; --r-bg: #e6eefc; }
+.vocab-card.rarity-epic { --r-text: #7a3fc0; --r-border: #b08ce4; --r-bg: #f1e9fb; --r-glow: 0 0 0 3px #efe4fb; }
+.vocab-card.rarity-legendary { --r-text: #b8650a; --r-border: #f2a93b; --r-bg: #fff1d6; --r-glow: 0 0 0 3px #ffe6b3, 0 6px 16px rgba(242, 169, 59, 0.3); }
+
+/* Trained (stage 1) changes nothing on the border: the pips, the label and a
+   sparkle on the picture show it. Mastered (stage 2) becomes a rainbow foil
+   card. The rarity is still plain to see inside the foil: the thin inner
+   line, the picture's backdrop and the rarity word keep the rarity colour,
+   and Epic and Legendary keep their glow. */
+.vocab-card.stage-2 {
+  border: 3px solid transparent; padding: 8px 8px 10px;
+  background:
+    linear-gradient(var(--white), var(--white)) padding-box,
+    linear-gradient(115deg, #ff5f6d, #ffc371, #f7f06d, #5fe3a1, #5fb6ff, #a77bff, #ff5fb2, #ff5f6d) border-box;
+  background-size: 100% 100%, 300% 300%;
+  box-shadow: inset 0 0 0 2px var(--r-border), var(--r-glow);
+  animation: foil 7s linear infinite;
+}
+@keyframes foil { from { background-position: 0 0, 0% 50%; } to { background-position: 0 0, 300% 50%; } }
+.vocab-card.stage-2 .card-art { position: relative; overflow: hidden; }
+.vocab-card.stage-2 .card-art::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.7) 50%, transparent 62%);
+  transform: translateX(-130%); animation: sheen 4s ease-in-out infinite;
+}
+@keyframes sheen { 0%, 55% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
+.vocab-card.stage-2 .art-main { filter: drop-shadow(0 2px 2px rgba(24, 35, 58, 0.28)); }
+.vocab-card.stage-2 .rays { transform-origin: 36px 36px; animation: spin 30s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .vocab-card.stage-2, .vocab-card.stage-2 .card-art::after, .vocab-card.stage-2 .rays { animation: none; }
+}
+
+.card-top { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 36px; }
+.card-rarity {
+  display: flex; align-items: center; gap: 5px; padding-left: 2px;
+  font: 800 10.5px var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--r-text);
+}
+.card-rarity::before { content: ""; width: 7px; height: 7px; background: currentColor; transform: rotate(45deg); }
+.card-play-audio {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0; border-radius: 50%;
+  background: var(--white); border: 1px solid var(--line); color: var(--ink); cursor: pointer;
+}
+.card-art {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; margin: 2px 0 6px; padding: 8px 0; background: var(--r-bg); border-radius: 12px;
+}
+.card-art { position: relative; }
+.card-art > svg { display: block; width: 80px; height: 80px; }
+.card-word { font: 700 26px/1.2 var(--font-cjk); overflow-wrap: break-word; }
+.card-word.long { font-size: 20px; }
+.card-word.xlong { font-size: 16px; } /* long words, such as in Tamil, stay on one line */
+.card-romanization { min-height: 16px; font-weight: 600; font-size: 12px; color: var(--muted); }
+.card-meaning { font-weight: 800; font-size: 13px; line-height: 1.35; }
+
+.card-progress { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-weight: 700; font-size: 11px; color: var(--muted); }
+.card-pips { display: flex; gap: 3px; }
+.card-pips i { display: block; width: 14px; height: 5px; border-radius: 3px; background: var(--line); }
+.card-pips i.on { background: var(--teal); }
+.card-usage { font-weight: 600; font-size: 11px; color: var(--muted); }
+
+.card-actions { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 10px; }
+.card-practice {
+  flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 4px;
+  min-height: 40px; padding: 0 6px; border-radius: 20px;
+  background: var(--white); border: 1.5px solid var(--teal); color: #0f6f64;
+  font: 800 13px var(--font-ui); cursor: pointer;
+}
+.card-delete {
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 38px; height: 38px; padding: 0; border-radius: 50%;
+  background: var(--white); border: 1px solid var(--line); color: var(--muted); cursor: pointer;
+}

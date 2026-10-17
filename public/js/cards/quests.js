@@ -14,8 +14,30 @@ function coinSvg(size = 16) {
 }
 
 // A medal with the album's picture on it.
-function albumBadgeSvg(album) {
+// The album badge. `master` draws the shiny version: a silver-and-violet ring with sparkles,
+// earned by collecting every card of the album (zone and role cards).
+const ALBUM_MASTER_REWARD = { xp: 100, coins: 60 };
+
+function albumBadgeSvg(album, master) {
   const art = typeof ART !== "undefined" && ART[album.art] ? ART[album.art] : "";
+  if (master) {
+    const id = `mb${Math.random().toString(36).slice(2, 7)}`;
+    return `<svg viewBox="0 0 96 112" aria-hidden="true">
+    <defs>
+      <linearGradient id="${id}r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c5cff"/><stop offset="0.5" stop-color="#2fd0c0"/><stop offset="1" stop-color="#ff8ad8"/></linearGradient>
+      <linearGradient id="${id}f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e9e4ff"/></linearGradient>
+    </defs>
+    <path d="M30 70 L20 106 L34 98 L42 110 L52 72z" fill="#7c5cff"/>
+    <path d="M66 70 L76 106 L62 98 L54 110 L44 72z" fill="#5a3fd6"/>
+    <circle cx="48" cy="46" r="44" fill="url(#${id}r)"/>
+    <circle cx="48" cy="46" r="37" fill="#fff"/>
+    <circle cx="48" cy="46" r="33" fill="url(#${id}f)"/>
+    <g transform="translate(20 18) scale(0.78)">${art}</g>
+    <path d="M84 12l2.4 6.2 6.2 2.4-6.2 2.4L84 29l-2.4-6-6.2-2.4 6.2-2.4z" fill="#ffd166"/>
+    <path d="M10 70l1.8 4.4 4.4 1.8-4.4 1.8L10 82.4l-1.8-4.4L3.8 76.2l4.4-1.8z" fill="#fff" stroke="#2fd0c0" stroke-width="1"/>
+    <path d="M12 14l1.6 3.8 3.8 1.6-3.8 1.6L12 24.8l-1.6-3.8L6.6 19.4l3.8-1.6z" fill="#ff8ad8"/>
+  </svg>`;
+  }
   return `<svg viewBox="0 0 96 112" aria-hidden="true">
     <path d="M30 70 L20 106 L34 98 L42 110 L52 72z" fill="#e0463a"/>
     <path d="M66 70 L76 106 L62 98 L54 110 L44 72z" fill="#c23a30"/>
@@ -91,8 +113,9 @@ function levelBadgeSvg(xp, size = 64) {
   </svg>`;
 }
 
-// Gives a badge, coins and XP for every island album that is now complete
-// and has not been rewarded yet. Safe to call every time the Collection loads.
+// Gives a badge, coins and XP for every island album whose ZONE cards are all collected, and a shiny
+// Master badge (with a smaller bonus) when the role cards are all collected too. Each is paid once.
+// Safe to call every time the Collection loads.
 let albumBadgeCheckBusy = false;
 
 async function checkAlbumBadges(userId, albumRows, language) {
@@ -103,19 +126,21 @@ async function checkAlbumBadges(userId, albumRows, language) {
     if (finished.length === 0) return;
     const have = new Set((await getBadges(userId)).map((b) => b.badge_id));
     for (const album of finished) {
-      const badgeId = `album:${album.id}:${language}`;
-      if (have.has(badgeId)) continue;
-      const { isNew } = await awardBadge(userId, badgeId);
-      if (!isNew) continue;
-      const reward = await grantRewards(userId, ALBUM_COMPLETE_REWARD);
-      const lines = [`+${ALBUM_COMPLETE_REWARD.xp} XP`, `+${ALBUM_COMPLETE_REWARD.coins} ${coinSvg(14)} coins`, "New badge for your profile"];
-      if (reward.levelUps > 0) lines.push(`Level up! You are now level ${reward.level} (+${reward.levelUps * LEVEL_UP_COINS} bonus coins)`);
-      await showCelebration({
-        title: "Album complete!",
-        text: `You collected every card in the ${album.name} album.`,
-        badgeHtml: albumBadgeSvg(album),
-        lines,
-      });
+      const steps = [
+        { id: `album:${album.id}:${language}`, due: true, master: false, reward: ALBUM_COMPLETE_REWARD,
+          title: "Album complete!", text: `You collected every zone card in the ${album.name} album.`, extra: "New badge for your profile" },
+        { id: `album-master:${album.id}:${language}`, due: album.master, master: true, reward: ALBUM_MASTER_REWARD,
+          title: "Master collector!", text: `You collected every card in the ${album.name} album, role cards too.`, extra: "New shiny badge for your profile" },
+      ];
+      for (const step of steps) {
+        if (!step.due || have.has(step.id)) continue;
+        const { isNew } = await awardBadge(userId, step.id);
+        if (!isNew) continue;
+        const reward = await grantRewards(userId, step.reward);
+        const lines = [`+${step.reward.xp} XP`, `+${step.reward.coins} ${coinSvg(14)} coins`, step.extra];
+        if (reward.levelUps > 0) lines.push(`Level up! You are now level ${reward.level} (+${reward.levelUps * LEVEL_UP_COINS} bonus coins)`);
+        await showCelebration({ title: step.title, text: step.text, badgeHtml: albumBadgeSvg(album, step.master), lines });
+      }
     }
   } catch (err) {
     console.error("Could not check album rewards (are the rewards tables created?):", err);
