@@ -1,32 +1,14 @@
-// Renders the shared bottom navigation into <nav id="bottom-nav" data-active="...">.
-// Scenarios and Friends are not built yet, so they render as disabled tabs.
-const NAV_LINKS = {
-  journey: "../island/island.html",
-  capture: "../storeVocab/storeVocab.html#capture",
-  collection: "../storeVocab/storeVocab.html#collection",
-};
+// The bottom navigation is written in each page's HTML (<nav id="bottom-nav" class="bottom-nav" data-active="...">)
+// and styled by css/shared/bottomnav.css. This file only marks which tab is the current page.
+// Scenarios and Friends are not built yet, so they are disabled tabs in the HTML.
 
+// Marks the tab named in the nav's data-active (island, capture, collection or none).
 function renderBottomNav() {
   const nav = document.getElementById("bottom-nav");
-  if (!nav) return;
-  nav.className = "bottom-nav";
-  nav.setAttribute("aria-label", "Main");
-
-  const link = (key, label, iconName) =>
-    `<a class="nav-tab" data-nav="${key}" href="${NAV_LINKS[key]}">${icon(iconName)}<span>${label}</span></a>`;
-  const soon = (label, iconName) =>
-    `<button class="nav-tab" type="button" disabled title="Coming soon">${icon(iconName)}<span>${label}</span></button>`;
-
-  nav.innerHTML =
-    link("journey", "Island", "route") +
-    soon("Scenarios", "chat") +
-    `<div class="nav-capture"><a class="nav-capture-btn" data-nav="capture" href="${NAV_LINKS.capture}" aria-label="Capture words">${icon("camera", 26)}</a><span class="nav-capture-label">Capture</span></div>` +
-    link("collection", "Collection", "cards") +
-    soon("Friends", "friends");
-
-  setBottomNavActive(nav.dataset.active);
+  if (nav) setBottomNavActive(nav.dataset.active);
 }
 
+// key = "journey" (the Island tab), "capture" or "collection"
 function setBottomNavActive(key) {
   document.querySelectorAll("#bottom-nav [data-nav]").forEach((el) => {
     if (el.dataset.nav === key) el.setAttribute("aria-current", "page");

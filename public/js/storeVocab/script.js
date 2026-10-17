@@ -507,8 +507,7 @@ async function readPhoto(rects) {
       ? await extractTextFromRegions(photoCanvas, rects, photoLanguage)
       : await extractTextFromCanvas(photoCanvas, photoLanguage);
     if (!extractedText) {
-      // window.lastOcrInfo says whether Claude read it (and found nothing) or the backup did and why
-      showStatus(`Could not find any text there. Try a slightly bigger box. (${window.lastOcrInfo || "no reading was made"})`, "error");
+      showStatus("Could not find any text there. Try a slightly bigger box.", "error");
       return;
     }
     textInput.value = extractedText;
@@ -521,7 +520,7 @@ async function readPhoto(rects) {
     showStatus(window.lastOcrInfo || "", "info");
   } catch (err) {
     console.error("Failed to process image:", err);
-    showStatus("Could not read that. Try a clearer photo or a different part.", "error");
+    showStatus(err && err.message ? err.message : "Could not read that. Try a clearer photo or a different part.", "error");
   } finally {
     highlighter.setBusy(false);
   }
@@ -678,9 +677,6 @@ if (tipsCard) {
   });
 }
 $("photo-icon").innerHTML = icon("camera", 26);
-$("found-back").innerHTML = icon("chevLeft", 22);
-$("highlight-back").innerHTML = icon("chevLeft", 22);
 $("found-note-icon").innerHTML = icon("info", 18);
-signOutButton.innerHTML = icon("logout", 22);
 renderBottomNav();
 enterApp();

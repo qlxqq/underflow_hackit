@@ -66,18 +66,6 @@ body {
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
 
-/* ---- top bar ---- */
-.top-bar {
-  position: sticky; top: 0; z-index: 10;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  height: var(--bar-h);
-  padding: 0 16px 0 20px;
-  background: var(--white);
-  border-bottom: 1px solid var(--line);
-}
-.top-bar .top-title { margin: 0; font-size: 24px; font-weight: 800; line-height: 1.2; }
-.top-bar.has-back { padding-left: 16px; justify-content: flex-start; }
-
 /* ---- buttons ---- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -129,32 +117,4 @@ body {
 .empty-state {
   margin: 24px 20px; text-align: center; color: var(--muted);
   font-weight: 600; font-size: 14px; line-height: 1.5;
-}
-
-/* ---- bottom navigation ---- */
-.bottom-nav {
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-  z-index: 20; display: flex; width: 100%; max-width: 430px;
-  min-height: var(--nav-h);
-  padding-bottom: env(safe-area-inset-bottom);
-  background: var(--white); border-top: 1px solid var(--line);
-}
-.nav-tab {
-  position: relative; flex: 1; min-height: var(--nav-h);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  padding: 0; background: none; border: none;
-  font: 700 11px var(--font-ui); color: var(--muted); text-decoration: none; cursor: pointer;
-}
-.nav-tab[aria-current="page"] { color: var(--ink); }
-.nav-tab:disabled { opacity: 0.45; cursor: default; }
-.nav-capture { position: relative; flex: 1; min-height: var(--nav-h); }
-.nav-capture-btn {
-  position: absolute; left: 50%; top: -18px; margin-left: -28px;
-  display: flex; align-items: center; justify-content: center;
-  width: 56px; height: 56px; border-radius: 50%;
-  background: var(--amber); color: var(--ink); box-shadow: 0 0 0 5px var(--white);
-}
-.nav-capture-label {
-  position: absolute; left: 0; right: 0; bottom: 10px;
-  text-align: center; font: 800 11px var(--font-ui); color: var(--ink);
 }

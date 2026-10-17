@@ -28,3 +28,9 @@ const ICON_PATHS = {
 function icon(name, size = 24) {
   return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name] || ""}</svg>`;
 }
+
+// Puts an SVG string (such as an avatar picture) into an element without using innerHTML.
+function setSvg(el, svgText) {
+  const doc = new DOMParser().parseFromString(svgText, "text/html");
+  el.replaceChildren(document.importNode(doc.body.firstElementChild, true));
+}

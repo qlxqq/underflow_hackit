@@ -113,6 +113,26 @@ function levelBadgeSvg(xp, size = 64) {
   </svg>`;
 }
 
+// The level badge in the top bar is already in the page's HTML (css/shared/topbar.css colours it);
+// this only sets the level number, the ring's fill and the colour tier.
+function updateLevelChip(chip, xp) {
+  const lv = levelFromXp(xp);
+  const pct = lv.span > 0 ? lv.into / lv.span : 0;
+  const circ = 2 * Math.PI * 27;
+  const digits = String(lv.level).length;
+  const fontSize = digits >= 3 ? 20 : digits === 2 ? 26 : 32;
+  chip.classList.remove("tier-teal", "tier-blue", "tier-purple", "tier-gold");
+  chip.classList.add(`tier-${levelTier(lv.level).name.toLowerCase()}`);
+  const svg = chip.querySelector(".lvl-ring");
+  if (!svg) return; // a page whose chip is not in the shared markup (the old Journey page)
+  svg.setAttribute("aria-label", `Level ${lv.level}, ${lv.into} of ${lv.span} XP`);
+  chip.querySelector("#level-arc").setAttribute("stroke-dasharray", `${(circ * pct).toFixed(1)} ${circ.toFixed(1)}`);
+  const num = chip.querySelector("#level-num");
+  num.textContent = String(lv.level);
+  num.setAttribute("y", String(32 + fontSize * 0.36));
+  num.setAttribute("font-size", String(fontSize * 0.78));
+}
+
 // Gives a badge, coins and XP for every island album whose ZONE cards are all collected, and a shiny
 // Master badge (with a smaller bonus) when the role cards are all collected too. Each is paid once.
 // Safe to call every time the Collection loads.
@@ -213,7 +233,7 @@ function setupJourneyQuests(getUserId) {
     renderQuestsPanel(panel, latest.quests, latest.stats, collapsed);
     panel.hidden = false;
     if (chip) {
-      chip.innerHTML = levelBadgeSvg(latest.stats.xp, 34);
+      updateLevelChip(chip, latest.stats.xp);
       chip.setAttribute("aria-label", `Level ${levelFromXp(latest.stats.xp).level}. Show daily quests`);
       chip.hidden = false;
     }

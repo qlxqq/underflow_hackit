@@ -103,35 +103,6 @@
   transform: rotate(45deg);
 }
 
-/* ---- journey top bar: language, streak, profile picture ---- */
-.journey-bar { padding: 0 16px; }
-.stats { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.stat-chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 44px; padding: 0 14px; border-radius: 22px;
-  background: var(--white); border: 1px solid var(--line);
-  font: 800 15px var(--font-ui); color: var(--ink);
-}
-button.stat-chip { cursor: pointer; }
-.stat-chip .chip-glyph { font-family: var(--font-cjk); font-weight: 700; }
-.stat-chip .icon { color: var(--muted); }
-.stat-streak { color: #c25b0a; }
-.stat-streak .icon { color: inherit; }
-
-.avatar-btn {
-  flex-shrink: 0; width: 44px; height: 44px; padding: 0; overflow: hidden;
-  border-radius: 50%; border: 2px solid var(--white); background: var(--white);
-  box-shadow: 0 0 0 1px var(--line); cursor: pointer;
-}
-.avatar-btn svg { display: block; width: 100%; height: 100%; }
-
-.avatar-btn {
-  flex-shrink: 0; width: 44px; height: 44px; padding: 0; overflow: hidden;
-  border-radius: 50%; border: 2px solid var(--white); background: var(--white);
-  box-shadow: 0 0 0 1px var(--line); cursor: pointer;
-}
-.avatar-btn svg { display: block; width: 100%; height: 100%; }
-
 /* ---- toast (floats above the bottom nav) ---- */
 .toast {
   position: fixed; left: 50%; bottom: calc(var(--nav-h) + 16px);
@@ -153,10 +124,6 @@ button.stat-chip { cursor: pointer; }
 .island-soon h2 { margin: 0; font-size: 22px; font-weight: 800; }
 .island-soon p { margin: 0; color: var(--muted); font-weight: 600; line-height: 1.4; }
 
-.island-screen .stat-chip { padding: 0 11px; }
-.island-screen .stat-level { position: relative; padding: 0 5px; }
-.stat-coins { gap: 6px; }
-
 /* ---- daily quests: a drop-down from the level badge ---- */
 .island-screen #journey-quests.quests-panel {
   position: absolute; z-index: 40; margin: 0; left: 12px; right: 12px;
@@ -164,18 +131,6 @@ button.stat-chip { cursor: pointer; }
   box-shadow: 0 14px 34px rgba(24, 35, 58, 0.28);
 }
 .island-screen #journey-quests.is-collapsed { display: none; }
-
-/* a yellow ! on the level badge when a quest reward is waiting */
-.stat-level.has-ready::after {
-  content: "!"; position: absolute; top: -4px; right: -4px; z-index: 2;
-  width: 20px; height: 20px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: #f2a93b; color: #fff; border: 2px solid var(--white);
-  font: 800 12px/1 var(--font-ui); box-shadow: 0 1px 4px rgba(24, 35, 58, 0.3);
-  animation: ready-pulse 1.6s ease-in-out infinite;
-}
-@keyframes ready-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
-@media (prefers-reduced-motion: reduce) { .stat-level.has-ready::after { animation: none; } }
 
 /* Keep the bottom bar (and the Capture button that rises above it) on top of
    pop-ups and the Sailing screen. */

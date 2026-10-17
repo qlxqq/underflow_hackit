@@ -14,6 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@500;700;800&family=Noto+Sans+Tamil:wght@500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../../css/shared/base.css" />
+  <link rel="stylesheet" href="../../css/shared/topbar.css" />
+  <link rel="stylesheet" href="../../css/shared/bottomnav.css" />
   <link rel="stylesheet" href="../../css/shared/tour.css" />
   <link rel="stylesheet" href="../../css/shared/rewards.css" />
   <link rel="stylesheet" href="../../css/storeVocab/pack.css" />
@@ -62,12 +64,20 @@
         <section id="journey-section" class="island-screen" hidden>
       <header class="top-bar journey-bar">
         <div class="stats">
-          <button type="button" id="change-language" class="stat-chip" aria-label="Switch Mother Tongue"></button>
-          <div id="streak-chip" class="stat-chip stat-streak" role="img" hidden></div>
-          <button type="button" id="level-chip" class="stat-chip stat-level" hidden></button>
-          <div id="island-coins" class="stat-chip stat-coins" role="img" aria-label="Coins" hidden></div>
+          <button type="button" id="change-language" class="stat-chip" aria-label="Switch Mother Tongue"><span class="chip-glyph"></span><svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5" /></svg></button>
+          <div id="streak-chip" class="stat-chip stat-streak" role="img" hidden><svg class="icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path class="flame-outer" d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-4.5 3-7 .6 1.8 1.6 2.4 2.4 2.6C11.2 7.6 11.2 4.6 12 2z" /><path class="flame-inner" d="M12 22a3.6 3.6 0 0 1-3.6-3.6c0-2 1.6-3 2.4-4.8.8 1.2 1.2 1.6 1.8 1.8 0-1 .2-1.8.6-2.6 1.4 1.6 2.4 2.6 2.4 5.6A3.6 3.6 0 0 1 12 22z" /></svg><span class="streak-num">0</span></div>
+          <button type="button" id="level-chip" class="stat-chip stat-level" hidden>
+          <svg class="lvl-ring" width="34" height="34" viewBox="0 0 64 64" role="img" aria-label="Level">
+            <defs><linearGradient id="level-chip-grad" x1="0" y1="0" x2="1" y2="1"><stop class="tier-stop-a" offset="0" /><stop class="tier-stop-b" offset="1" /></linearGradient></defs>
+            <circle cx="32" cy="32" r="27" fill="#fff" stroke="#e3e8ef" stroke-width="5" />
+            <circle id="level-arc" cx="32" cy="32" r="27" fill="none" stroke="url(#level-chip-grad)" stroke-width="5" stroke-linecap="round" stroke-dasharray="0 169.6" transform="rotate(-90 32 32)" />
+            <circle cx="32" cy="32" r="20" fill="url(#level-chip-grad)" />
+            <text id="level-num" x="32" y="43.5" text-anchor="middle" font-family="Manrope, sans-serif" font-weight="800" font-size="24.96" fill="#fff">1</text>
+          </svg>
+          </button>
+          <div id="island-coins" class="stat-chip stat-coins" role="img" aria-label="Coins" hidden><svg class="coin-ic" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#f2a93b"/><circle cx="12" cy="12" r="7.2" fill="#ffd166"/><path d="M12 7.5v9M9.6 10c0-1 1-1.6 2.4-1.6s2.4.6 2.4 1.6-1 1.4-2.4 1.8-2.4.8-2.4 1.8 1 1.6 2.4 1.6 2.4-.6 2.4-1.6" fill="none" stroke="#c98a14" stroke-width="1.3" stroke-linecap="round"/></svg><span class="coin-num">0</span></div>
         </div>
-        <button type="button" id="open-profile" class="avatar-btn" aria-label="Your profile and picture"></button>
+        <div class="tour-top-actions"><button type="button" class="tour-help" aria-label="Guide for this page" title="Guide for this page">?</button><button type="button" id="open-profile" class="avatar-btn" aria-label="Your profile and picture"></button></div>
       </header>
       <div id="journey-quests" class="quests-panel" aria-label="Daily quests" hidden></div>
       <!-- The island is mounted here by js/island/app.js -->
@@ -76,7 +86,13 @@
 
     <div id="status-message" class="status-message toast" role="status" aria-live="polite"></div>
 
-    <nav id="bottom-nav" data-active="journey" hidden></nav>
+    <nav id="bottom-nav" class="bottom-nav" aria-label="Main" data-active="journey" hidden>
+        <a class="nav-tab" data-nav="journey" href="../island/island.html" aria-current="page"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></svg><span>Island</span></a>
+        <button class="nav-tab" type="button" disabled title="Coming soon"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 4v-4H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /></svg><span>Scenarios</span></button>
+        <div class="nav-capture"><a class="nav-capture-btn" data-nav="capture" href="../storeVocab/storeVocab.html#capture" aria-label="Capture words"><svg class="icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg></a><span class="nav-capture-label">Capture</span></div>
+        <a class="nav-tab" data-nav="collection" href="../storeVocab/storeVocab.html#collection"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="12" height="15" rx="2" /><path d="M8 3h11a1 1 0 0 1 1 1v14" /></svg><span>Collection</span></a>
+        <button class="nav-tab" type="button" disabled title="Coming soon"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5" /><circle cx="17.5" cy="9" r="2.5" /><path d="M17 14.5c2.6 0 4.2 1.4 4.8 4.5" /></svg><span>Friends</span></button>
+      </nav>
   </div>
 
   <!-- shared -->
