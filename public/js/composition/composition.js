@@ -2,7 +2,8 @@
 document.addEventListener("DOMContentLoaded", function () {
     // Reuse the existing client from shared/supabaseClient.js.
     // Both files must be loaded as regular scripts, not modules.
-    const db = window.supabaseClient;
+    const db = window.supabaseClient ||
+    (typeof supabase !== "undefined" && supabase.auth ? supabase : null);
 
     const questionPrompt = document.getElementById("questionPrompt");
     const questionHint = document.getElementById("questionHint");

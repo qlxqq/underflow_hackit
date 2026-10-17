@@ -3,6 +3,5 @@
 const SUPABASE_URL = "https://uicesiabnboovmwktsze.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_-04C5GJ6o5IOxgQstWEbvQ_Y7r8OnD4";
 
-// Create the client and expose it so other scripts can use it.
-window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
