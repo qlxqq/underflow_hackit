@@ -1,83 +1,170 @@
-// Renders vocabulary entries as collectible cards.
+// Island cards. Two kinds go into the island albums of the Collection (the
+// `album_cards` table), which are filled only on the island:
+//
+//   ZONE cards  the zone's mini-game words (zoneWords.js). Won in mini-games, and
+//               they can also drop as a bonus from an NPC challenge.
+//   ROLE cards  the ten words of each NPC's job (roleCards.js). Won only from that
+//               NPC's challenge, and only for a word that was asked AND answered right.
+//
+// Per NPC challenge: failed = no cards. Passed = 2 role cards, all right = 3, plus one
+// zone card (at most one, on any pass). Role cards come from words answered right, cards
+// not owned yet first; if there are not enough new ones the rest are duplicates. A duplicate
+// (role or zone) turns into coins and XP. Finishing the zone words earns the album badge;
+// every card (zone + role) earns the shiny one - both are paid when the Collection opens.
+//
+//   IslandCards.load()                      read what the player owns
+//   IslandCards.award(npcId, tier, right)   give the cards for this attempt
+//   IslandCards.left(npcId)                 role cards of that NPC still to win
+//   IslandCards.finished(npcId)             NPC challenge passed and all eight role cards owned
+//
+// Logged in: saved in `album_cards` (and a copy in this browser).
+// Guest / offline: this browser only.
 
-const RARITY_LABELS = { common: "Common", uncommon: "Uncommon", rare: "Rare", epic: "Epic", legendary: "Legendary" };
-const STAGE_LABELS = ["Caught", "Trained", "Mastered"];
-// Words, meanings and romanization can come from OCR or the AI lookup, so
-// they are escaped before being put into markup.
-// Longer words get a smaller size so they stay on one line (mostly Tamil).
-function wordSizeClass(word) {
-  const n = [...String(word)].length;
-  return n > 9 ? " xlong" : n > 5 ? " long" : "";
-}
+const ROLE_CARDS_PER_PASS = 2;      // role cards for a pass (all right: 3)
+const ZONE_UNOWNED_WEIGHT = 3;      // an unowned zone card is 3x as likely as one the player has
 
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+const ISLAND_ALBUM_NAMES = { neighbourhood: "Neighbourhood", "hawker-centre": "Hawker Centre", "public-transport": "Public Transport" };
 
-function renderCard(entry, onDelete, onPractice) {
-  const rarity = RARITY_LABELS[entry.rarity] ? entry.rarity : "common";
-  const stage = Math.min(Math.max(entry.evolution_stage || 0, 0), STAGE_LABELS.length - 1);
-  const card = document.createElement("article");
-  card.className = `vocab-card rarity-${rarity} stage-${stage}`;
+const IslandCards = {
+  get language() { return IslandLang.code; },
+  have: new Set(),   // "albumId|word"
 
-  const word = escapeHtml(entry.word);
-  const uses = entry.usage_count;
+  key(album, word) { return `${album}|${word}`; },
+  localKey() { return `island.cards.v1.${(typeof IslandSave !== "undefined" && IslandSave.userId) || "guest"}${IslandLang.saveSuffix()}`; },
+  useCloud() { return typeof IslandSave !== "undefined" && !!IslandSave.userId && IslandSave.hasCloud() && !IslandState.testing; },
 
-  card.innerHTML = `
-    <div class="card-top">
-      <span class="card-rarity">${RARITY_LABELS[rarity]}</span>
-      <button type="button" class="card-play-audio" aria-label="Play pronunciation of ${word}">${icon("volume", 18)}</button>
-    </div>
-    <div class="card-art">${getCardArt(entry, stage)}</div>
-    <div class="card-word${wordSizeClass(entry.word)}">${word}</div>
-    <div class="card-romanization">${escapeHtml(entry.romanization || "")}</div>
-    <div class="card-meaning">${escapeHtml(entry.english_meaning || "(meaning pending)")}</div>
-    <div class="card-progress">
-      <span class="card-pips" aria-hidden="true"><i class="on"></i><i class="${stage >= 1 ? "on" : ""}"></i><i class="${stage >= 2 ? "on" : ""}"></i></span>
-      <span class="card-stage">${STAGE_LABELS[stage]}</span>
-    </div>
-    <div class="card-usage">Used ${uses} time${uses === 1 ? "" : "s"}</div>
-    <div class="card-actions">
-      <button type="button" class="card-practice">${icon("spark", 16)}<span>Practise</span></button>
-      <button type="button" class="card-delete" aria-label="Delete ${word}">${icon("trash", 18)}</button>
-    </div>
-  `;
+  async load() {
+    this.have = new Set();
+    try { (JSON.parse(localStorage.getItem(this.localKey())) || []).forEach((k) => this.have.add(k)); } catch (err) { /* none saved */ }
+    if (!this.useCloud()) return;
+    try {
+      const { data, error } = await supabase.from("album_cards").select("album_id, word")
+        .eq("user_id", IslandSave.userId).eq("language", this.language);
+      if (error) throw error;
+      (data || []).forEach((r) => this.have.add(this.key(r.album_id, r.word)));
+      this.saveLocal();
+    } catch (err) { console.warn("Island: could not read album cards, using this device's copy.", err && err.message); }
+  },
 
-  card.querySelector(".card-play-audio").addEventListener("click", () => {
-    speakWord(entry.word, entry.language);
-  });
+  saveLocal() {
+    if (IslandState.testing) return;
+    try { localStorage.setItem(this.localKey(), JSON.stringify([...this.have])); } catch (err) { /* private browsing */ }
+  },
 
-  // TODO: this button stands in for using the word in the composition
-  // mini-game (on its own branch, not built yet). For now it directly
-  // increments usage so the evolution mechanic can be tested and demoed.
-  // Remove it once the real mini-game calls incrementUsage instead.
-  card.querySelector(".card-practice").addEventListener("click", () => {
-    onPractice(entry.vocab_id, entry.usage_count, entry.evolution_stage);
-  });
+  data(npcId) { return typeof ISLAND_NPC_DATA !== "undefined" ? ISLAND_NPC_DATA[npcId] || null : null; },
 
-  card.querySelector(".card-delete").addEventListener("click", () => {
-    if (window.confirm(`Delete "${entry.word}" from your word bank?`)) onDelete(entry.vocab_id);
-  });
+  // The zone's mini-game words, as { w, p, m }.
+  zoneList(album) {
+    const list = typeof ZONE_WORDS !== "undefined" && ZONE_WORDS[this.language] && ZONE_WORDS[this.language][album];
+    return (list || []).map((x) => ({ w: x.word, p: x.romanization || x.pinyin || "", m: x.meaning || (typeof NPC_MEANINGS !== "undefined" && NPC_MEANINGS[x.word]) || "" }));
+  },
+  // An NPC's role cards, minus any word the zone list also has (the zone card wins).
+  roleList(npcId) {
+    const d = this.data(npcId);
+    if (!d) return [];
+    const zone = new Set(this.zoneList(d.album).map((x) => x.w));
+    return d.words.filter((w) => !zone.has(w.w));
+  },
+  albumRoleTotal(album) {
+    return Object.entries(typeof ISLAND_NPC_DATA !== "undefined" ? ISLAND_NPC_DATA : {})
+      .filter(([, d]) => d.album === album).reduce((n, [id]) => n + this.roleList(id).length, 0);
+  },
+  albumTotal(album) { return this.zoneList(album).length + this.albumRoleTotal(album); },
+  albumHave(album) { return [...this.have].filter((k) => k.startsWith(`${album}|`)).length; },
+  zoneHave(album) { return this.zoneList(album).filter((w) => this.have.has(this.key(album, w.w))).length; },
+  albumInfo(album) {
+    return { id: album, name: ISLAND_ALBUM_NAMES[album] || album, have: this.albumHave(album), total: this.albumTotal(album),
+      zoneHave: this.zoneHave(album), zoneTotal: this.zoneList(album).length };
+  },
 
-  return card;
-}
+  left(npcId) {
+    const d = this.data(npcId);
+    return d ? this.roleList(npcId).filter((w) => !this.have.has(this.key(d.album, w.w))) : [];
+  },
+  owned(npcId) {
+    const d = this.data(npcId);
+    return d ? this.roleList(npcId).length - this.left(npcId).length : 0;
+  },
+  finished(npcId) {
+    const d = this.data(npcId);
+    return IslandState.npcDone(npcId) && (!d || this.left(npcId).length === 0);
+  },
 
-function renderCardGrid(entries, containerEl, onDelete, onPractice) {
-  containerEl.innerHTML = "";
-  if (entries.length === 0) {
-    containerEl.innerHTML = `
-      <div class="empty-card">
-        <div class="empty-art" aria-hidden="true">${["home", "food", "bus"].map((t) => `<span>${getCardArt({ theme: t }, 0)}</span>`).join("")}</div>
-        <h2 class="empty-title">No words caught yet</h2>
-        <p class="empty-text">Capture a sign, a menu or a sentence, and every word becomes a card.</p>
-        <button type="button" class="btn btn-primary btn-sm" data-go-capture>Capture a word</button>
-      </div>`;
-    return;
-  }
-  entries.forEach((entry) => containerEl.appendChild(renderCard(entry, onDelete, onPractice)));
-}
+  // One random zone card, unowned ones more likely. `skip` = words already picked this attempt.
+  rollZone(album, skip) {
+    const pool = this.zoneList(album).filter((w) => !skip.has(w.w));
+    if (!pool.length) return null;
+    const weights = pool.map((w) => (this.have.has(this.key(album, w.w)) ? 1 : ZONE_UNOWNED_WEIGHT));
+    let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < pool.length; i++) { r -= weights[i]; if (r < 0) return pool[i]; }
+    return pool[pool.length - 1];
+  },
+
+  // Cards for one finished challenge. tier: "fail" | "pass" | "perfect".
+  // right = the words answered right. Returns { cards, dupes, album, zoneDone, masterDone }.
+  async award(npcId, tier, right) {
+    const d = this.data(npcId);
+    const empty = { cards: [], dupes: [], album: d ? this.albumInfo(d.album) : null, zoneDone: false, masterDone: false };
+    if (!d || tier === "fail") return empty;
+    const before = this.albumInfo(d.album);
+    const rightSet = new Set(right || []);
+    const perfect = tier === "perfect";
+
+    // role cards: words answered right. New ones first; when too few, duplicates fill the rest
+    const count = ROLE_CARDS_PER_PASS + (perfect ? 1 : 0);
+    const rightRole = this.roleList(npcId).filter((w) => rightSet.has(w.w));
+    const isNew = (w) => !this.have.has(this.key(d.album, w.w));
+    const chosen = [...this.shuffle(rightRole.filter(isNew)), ...this.shuffle(rightRole.filter((w) => !isNew(w)))].slice(0, count);
+    const roleCards = chosen.filter(isNew).map((w) => ({ ...w, kind: "role" }));
+    const dupes = chosen.filter((w) => !isNew(w)).map((w) => ({ ...w, kind: "role" }));
+
+    // one zone card at most; if the player already has it, it is a duplicate
+    const zoneCards = [];
+    const z = this.rollZone(d.album, new Set());
+    if (z) { if (isNew(z)) zoneCards.push({ ...z, kind: "zone" }); else dupes.push({ ...z, kind: "zone" }); }
+
+    const fresh = [...roleCards, ...zoneCards];
+    fresh.forEach((w) => this.have.add(this.key(d.album, w.w)));
+    this.saveLocal();
+    if (fresh.length && this.useCloud()) {
+      try {
+        const rows = fresh.map((w) => ({ user_id: IslandSave.userId, album_id: d.album, language: this.language, word: w.w, source: w.kind === "role" ? "island-npc" : "island-npc-bonus" }));
+        const { error } = await supabase.from("album_cards").upsert(rows, { onConflict: "user_id,album_id,language,word", ignoreDuplicates: true });
+        if (error) throw error;
+      } catch (err) { console.warn("Island: could not save cards to Supabase.", err && err.message); }
+    }
+    const album = this.albumInfo(d.album);
+    return {
+      cards: fresh.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, kind: w.kind, album: d.album, role: w.kind === "role" ? d.label : null })),
+      dupes: dupes.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m })),
+      album,
+      zoneDone: before.zoneHave < before.zoneTotal && album.zoneTotal > 0 && album.zoneHave >= album.zoneTotal,
+      masterDone: before.have < before.total && album.total > 0 && album.have >= album.total,
+    };
+  },
+
+  // Cards for a mini-game: `words` are zone words of `albumId` the player got right.
+  // New ones are saved (and shown in the Collection); words already owned are returned
+  // as dupes. Used by IslandAPI.awardWords, which also opens the pack.
+  async awardWords(albumId, words) {
+    const zone = new Map(this.zoneList(albumId).map((w) => [w.w, w]));
+    const picked = [...new Set(words || [])].map((w) => zone.get(w)).filter(Boolean);
+    const fresh = picked.filter((w) => !this.have.has(this.key(albumId, w.w)));
+    const dupes = picked.filter((w) => this.have.has(this.key(albumId, w.w)));
+    fresh.forEach((w) => this.have.add(this.key(albumId, w.w)));
+    this.saveLocal();
+    if (fresh.length && this.useCloud()) {
+      try {
+        const rows = fresh.map((w) => ({ user_id: IslandSave.userId, album_id: albumId, language: this.language, word: w.w, source: "island-game" }));
+        const { error } = await supabase.from("album_cards").upsert(rows, { onConflict: "user_id,album_id,language,word", ignoreDuplicates: true });
+        if (error) throw error;
+      } catch (err) { console.warn("Island: could not save cards to Supabase.", err && err.message); }
+    }
+    return {
+      cards: fresh.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, kind: "zone", album: albumId })),
+      dupes: dupes.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m })),
+    };
+  },
+
+  shuffle(list) { return typeof IslandQuiz !== "undefined" ? IslandQuiz.shuffle(list) : list.slice(); },
+};
