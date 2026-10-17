@@ -1,0 +1,90 @@
+-- Composition questions: hawker centre (zone 2) and public transport (zone 3), levels 2 and 3.
+-- Plain version: the same kind of INSERT that already worked as a single row.
+-- It first removes any zone 2 and zone 3 questions (including the test row), then adds all 24,
+-- so running it twice never leaves duplicates. Only run it if zones 2 and 3 hold nothing else.
+
+DELETE FROM public.composition_questions WHERE zone IN (2, 3);
+
+INSERT INTO public.composition_questions
+    (zone, level, topic, language, prompt, tiles, accepted_answers, explanation, xp)
+VALUES
+-- ===== Hawker centre, level 2 =====
+(2, 2, 'hawker centre', 'zh-CN', 'Arrange the words to say you want chicken rice.',
+  '["我", "要", "鸡饭", "。"]'::jsonb, '["我要鸡饭。"]'::jsonb,
+  '鸡饭 means "chicken rice".', 10),
+(2, 2, 'hawker centre', 'zh-CN', 'Arrange the words to ask politely for a cup of coffee.',
+  '["请", "给我", "一杯", "咖啡", "。"]'::jsonb, '["请给我一杯咖啡。"]'::jsonb,
+  '给我 means "give me".', 10),
+(2, 2, 'hawker centre', 'zh-CN', 'Arrange the words to ask how much this bowl of noodles costs.',
+  '["这碗", "面", "多少钱", "？"]'::jsonb, '["这碗面多少钱？"]'::jsonb,
+  '多少钱 means "how much".', 10),
+(2, 2, 'hawker centre', 'zh-CN', 'Arrange the words to ask for no chilli.',
+  '["请", "不要", "辣", "。"]'::jsonb, '["请不要辣。"]'::jsonb,
+  '不要 means "do not want".', 10),
+(2, 2, 'hawker centre', 'zh-CN', 'Arrange the words to say you want a takeaway.',
+  '["我", "要", "打包", "。"]'::jsonb, '["我要打包。"]'::jsonb,
+  '打包 means "takeaway".', 10),
+(2, 2, 'hawker centre', 'zh-CN', 'Arrange the words to say you want to drink tea.',
+  '["我", "想", "喝", "茶", "。"]'::jsonb, '["我想喝茶。"]'::jsonb,
+  '想 means "want to".', 10),
+
+-- ===== Hawker centre, level 3 =====
+(2, 3, 'hawker centre', 'zh-CN', 'Arrange the words to order a bowl of wanton noodles from the stallholder.',
+  '["老板", "，", "我", "要", "一碗", "云吞面", "。"]'::jsonb, '["老板，我要一碗云吞面。"]'::jsonb,
+  '老板 means "boss" and is used to call a stallholder.', 10),
+(2, 3, 'hawker centre', 'zh-CN', 'Arrange the words to ask if a seat is free.',
+  '["这里", "有", "人", "坐", "吗", "？"]'::jsonb, '["这里有人坐吗？"]'::jsonb,
+  '吗 turns the sentence into a question.', 10),
+(2, 3, 'hawker centre', 'zh-CN', 'Arrange the words to say you cannot eat spicy food, so you do not want chilli.',
+  '["我", "不能", "吃辣", "，", "所以", "不要", "放", "辣椒", "。"]'::jsonb, '["我不能吃辣，所以不要放辣椒。"]'::jsonb,
+  '所以 means "so".', 10),
+(2, 3, 'hawker centre', 'zh-CN', 'Arrange the words to say the chicken rice here is very tasty.',
+  '["这里", "的", "鸡饭", "非常", "好吃", "。"]'::jsonb, '["这里的鸡饭非常好吃。"]'::jsonb,
+  '好吃 means "tasty".', 10),
+(2, 3, 'hawker centre', 'zh-CN', 'Arrange the words to order an iced coffee and a plate of fried noodles.',
+  '["我", "要", "一杯", "冰咖啡", "和", "一盘", "炒面", "。"]'::jsonb, '["我要一杯冰咖啡和一盘炒面。"]'::jsonb,
+  '一杯 means "a cup" and 一盘 means "a plate".', 10),
+(2, 3, 'hawker centre', 'zh-CN', 'Arrange the words to ask if you can pay with your phone.',
+  '["可以", "用", "手机", "付钱", "吗", "？"]'::jsonb, '["可以用手机付钱吗？"]'::jsonb,
+  '用手机 means "with a phone".', 10),
+
+-- ===== Public transport, level 2 =====
+(3, 2, 'public transport', 'zh-CN', 'Arrange the words to say you take the MRT.',
+  '["我", "坐", "地铁", "。"]'::jsonb, '["我坐地铁。"]'::jsonb,
+  '坐 means "to travel by".', 10),
+(3, 2, 'public transport', 'zh-CN', 'Arrange the words to ask where the bus stop is.',
+  '["巴士站", "在", "哪里", "？"]'::jsonb, '["巴士站在哪里？"]'::jsonb,
+  '在哪里 means "where is".', 10),
+(3, 2, 'public transport', 'zh-CN', 'Arrange the words to say you want to go to school.',
+  '["我", "要", "去", "学校", "。"]'::jsonb, '["我要去学校。"]'::jsonb,
+  '去学校 means "go to school".', 10),
+(3, 2, 'public transport', 'zh-CN', 'Arrange the words to say this bus goes to the MRT station.',
+  '["这辆", "巴士", "去", "地铁站", "。"]'::jsonb, '["这辆巴士去地铁站。"]'::jsonb,
+  '这辆 means "this" for vehicles.', 10),
+(3, 2, 'public transport', 'zh-CN', 'Arrange the words to ask how much one ticket costs.',
+  '["一张", "车票", "多少钱", "？"]'::jsonb, '["一张车票多少钱？"]'::jsonb,
+  '一张 means "one" for tickets.', 10),
+(3, 2, 'public transport', 'zh-CN', 'Arrange the words to say the next stop is Orchard.',
+  '["下一站", "是", "乌节路", "。"]'::jsonb, '["下一站是乌节路。"]'::jsonb,
+  '下一站 means "the next stop".', 10),
+
+-- ===== Public transport, level 3 =====
+(3, 3, 'public transport', 'zh-CN', 'Arrange the words to ask which bus goes to the airport.',
+  '["请问", "几号", "巴士", "去", "机场", "？"]'::jsonb, '["请问几号巴士去机场？"]'::jsonb,
+  '几号 means "which number".', 10),
+(3, 3, 'public transport', 'zh-CN', 'Arrange the words to say you need to change trains at Dhoby Ghaut.',
+  '["我", "要", "在", "多美歌", "转车", "。"]'::jsonb, '["我要在多美歌转车。"]'::jsonb,
+  '转车 means "change trains".', 10),
+(3, 3, 'public transport', 'zh-CN', 'Arrange the words to say you must tap your card before boarding the bus.',
+  '["上", "巴士", "之前", "请", "刷卡", "。"]'::jsonb, '["上巴士之前请刷卡。"]'::jsonb,
+  '之前 means "before".', 10),
+(3, 3, 'public transport', 'zh-CN', 'Arrange the words to say a train comes every five minutes.',
+  '["地铁", "每", "五分钟", "来", "一班", "。"]'::jsonb, '["地铁每五分钟来一班。"]'::jsonb,
+  '每 means "every".', 10),
+(3, 3, 'public transport', 'zh-CN', 'Arrange the words to ask people to give their seat to the elderly.',
+  '["请", "把", "座位", "让给", "老人", "。"]'::jsonb, '["请把座位让给老人。"]'::jsonb,
+  '让给 means "give up to".', 10),
+(3, 3, 'public transport', 'zh-CN', 'Arrange the words to say it takes about thirty minutes to reach the airport by MRT.',
+  '["坐", "地铁", "去", "机场", "大约", "要", "三十分钟", "。"]'::jsonb,
+  '["坐地铁去机场大约要三十分钟。", "去机场坐地铁大约要三十分钟。"]'::jsonb,
+  '大约 means "about". Two word orders work here.', 10);
