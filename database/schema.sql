@@ -356,3 +356,45 @@ insert into island_progress (user_id, language, coins)
   select user_id, 'zh', coins from profiles where coins > 0
   on conflict (user_id, language) do update set coins = greatest(island_progress.coins, excluded.coins);
 update profiles set coins = 0 where coins > 0;
+-- ============================================================
+-- Island content (read-only for players; filled by the island_*_seed.sql files)
+-- ============================================================
+create table if not exists island_zone_words (
+  language text not null, zone text not null, sort integer not null default 0,
+  word text not null, romanization text not null default '', meaning text not null,
+  primary key (language, zone, word)
+);
+create table if not exists island_role_words (
+  language text not null, album text not null, npc_id text not null, npc_label text not null,
+  npc_sort integer not null default 0, sort integer not null default 0,
+  word text not null, romanization text not null default '', meaning text not null,
+  primary key (language, album, npc_id, word)
+);
+create table if not exists island_sentences (
+  word text primary key, sentence text not null, reading text not null default '',
+  english text not null default '', wrong text[] not null default '{}'
+);
+create table if not exists island_zones (id text primary key, name text not null, sort integer not null default 0);
+create table if not exists island_levels (
+  level integer primary key, zone text not null, name text not null, sub text not null default ''
+);
+create table if not exists island_npcs (
+  id text primary key, zone text not null, name text not null, role text not null default '',
+  kind text not null, greeting text not null default '', sort integer not null default 0
+);
+create table if not exists island_shop_categories (id text primary key, name text not null, sort integer not null default 0);
+create table if not exists island_shop_items (
+  id text primary key, name text not null, cat text not null, price integer not null check (price >= 0), sort integer not null default 0
+);
+
+do $$
+declare t text;
+begin
+  foreach t in array array['island_zone_words','island_role_words','island_sentences','island_zones','island_levels','island_npcs','island_shop_categories','island_shop_items']
+  loop
+    execute format('alter table %I enable row level security', t);
+    execute format('grant select on %I to anon, authenticated', t);
+    execute format('drop policy if exists "%s_read" on %I', t, t);
+    execute format('create policy "%s_read" on %I for select using (true)', t, t);
+  end loop;
+end $$;

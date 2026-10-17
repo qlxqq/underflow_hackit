@@ -162,6 +162,7 @@ async function mountIsland(language) {
   const playable = ISLAND_LANGUAGES.includes(language);
   if (islandSoon) { islandSoon.remove(); islandSoon = null; }
   if (playable) {
+    await IslandContent.ready; // the island's words and text, from Supabase (falls back to the built-in lists)
     await IslandApp.mount(mapEl, {
       language,
       // Finished a level, an NPC challenge, bought something...: refresh the quests above the island.
