@@ -1,0 +1,257 @@
+/* Friends page. Builds on the tokens and components in css/shared/base.css
+   (load base.css, topbar.css and bottomnav.css first). */
+
+.friends-page {
+  padding-bottom: var(--nav-h);
+}
+
+.friends-main {
+  padding: 16px 20px 24px;
+}
+
+/* ---------- add a friend ---------- */
+
+.add-friend-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.add-friend-row {
+  display: flex;
+  gap: 10px;
+}
+
+.add-friend-row .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-friend-row .btn {
+  flex: none;
+  min-height: 48px;
+}
+
+/* the shared status message has its own side margins, so line it up with the page */
+.friends-main .status-message {
+  margin: 12px 0 0;
+}
+
+/* ---------- sections ---------- */
+
+.friends-section {
+  margin-top: 24px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.count {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--lock-bg);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.count:empty {
+  display: none;
+}
+
+.friends-main .empty-state {
+  margin: 20px 0;
+}
+
+/* ---------- rows ---------- */
+
+.friend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--white);
+}
+
+.friend-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-bd);
+  color: var(--amber-txt);
+  font-size: 18px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.friend-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.friend-name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-meta {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.friend-actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.friend-actions .btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.btn-danger-text {
+  color: var(--danger);
+}
+
+/* ---------- confirmation pop-up ----------
+   Same look as the welcome pop-up (tour.css) and celebration pop-up (rewards.css):
+   dark backdrop, white rounded card, full-width stacked buttons. */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(14, 22, 40, 0.66);
+}
+
+.confirm-card {
+  width: 100%;
+  max-width: 340px;
+  padding: 24px 20px 18px;
+  border-radius: 22px;
+  background: var(--white);
+  color: var(--ink);
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(14, 22, 40, 0.35);
+  animation: confirm-pop 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.confirm-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.confirm-text {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.confirm-actions .btn {
+  width: 100%;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: var(--white);
+}
+
+@keyframes confirm-pop {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-card { animation: none; }
+}
+
+/* ---------- search results (under the add-friend box) ---------- */
+
+.search-results {
+  margin-top: 10px;
+}
+
+.search-results .friend-row {
+  padding: 10px 14px;
+}
+
+.search-results .empty-state {
+  margin: 4px 0;
+}
+
+/* ---------- duels ---------- */
+
+.duel-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 18px;
+  text-align: left;
+}
+
+.duel-pick label {
+  display: block;
+}
+
+.duel-pick span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.duel-pick .field {
+  width: 100%;
+}
+
+/* a row with two buttons: keep both on screen on narrow phones */
+.friend-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

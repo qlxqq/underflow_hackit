@@ -48,8 +48,9 @@ const IslandPack = {
 };
 
 window.IslandAPI = Object.assign(window.IslandAPI || {}, {
-  awardWords: async (albumId, words, lines) => {
-    const won = await IslandCards.awardWords(albumId, words);
+  // opts = { max } at most that many cards (see IslandCards.awardWords)
+  awardWords: async (albumId, words, lines, opts) => {
+    const won = await IslandCards.awardWords(albumId, words, opts);
     await IslandPack.show(won.cards, lines || [], won.dupes);
     return won;
   },

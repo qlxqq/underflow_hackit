@@ -113,7 +113,10 @@ class HomeScene extends Phaser.Scene {
 
     this.look = currentAvatarLook();
     ensureAvatarTextures(this, this.look);
-    this.player = this.add.image(HOME_SPAWN.x, HOME_SPAWN.y, avatarKey(this.look, "up", 0)).setOrigin(0.5, 0.92).setScale(1 / ART_SCALE);
+    // back from another page (Collection, a mini-game...): stand where the player was
+    const back = typeof IslandMiniGames !== "undefined" ? IslandMiniGames.takeReturnSpot("home") : null;
+    const at = back || HOME_SPAWN;
+    this.player = this.add.image(at.x, at.y, avatarKey(this.look, "up", 0)).setOrigin(0.5, 0.92).setScale(1 / ART_SCALE);
     this.facing = "up";
 
     const cam = this.cameras.main;
@@ -139,6 +142,7 @@ class HomeScene extends Phaser.Scene {
     IslandState.onChange(this.coinListener);
     this.events.once("shutdown", () => { IslandState.listeners = IslandState.listeners.filter((f) => f !== this.coinListener); });
     window.IslandAPI.where = () => "home";
+    window.IslandAPI.spot = () => ({ x: this.player.x, y: this.player.y });
     IslandUI.showAvatarButton(true);
     IslandUI.onAvatar = () => this.pickAvatar(false);
     this.events.once("shutdown", () => { IslandUI.showAvatarButton(false); IslandUI.onAvatar = null; IslandUI.setWaypoint(false); });

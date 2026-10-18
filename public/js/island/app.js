@@ -162,15 +162,22 @@ async function mountIsland(language) {
   const playable = ISLAND_LANGUAGES.includes(language);
   if (islandSoon) { islandSoon.remove(); islandSoon = null; }
   if (playable) {
+    await Promise.all([IslandContent.ready, AppContent.ready]); // the island's words and text, from Supabase (falls back to the built-in lists)
     await IslandApp.mount(mapEl, {
       language,
       // Finished a level, an NPC challenge, bought something...: refresh the quests above the island.
       onEvent: (type) => {
         if (["level", "npc", "purchase", "practice"].includes(type)) refreshQuests();
         if (["level", "npc", "practice"].includes(type)) countStreak(); // a mini-game or NPC challenge was played
+        if (type === "level" && typeof recordQuestEvent === "function" && currentUser) {
+          // counts towards the daily quest "Win a mini-game"
+          recordQuestEvent(currentUser.id, "minigame_win", 1).then(refreshQuests).catch(() => { /* quests are optional */ });
+        }
       },
       onCoins: showIslandCoins,
     });
+    // A mini-game that has just finished (it ran on its own page) hands its result back here to be paid.
+    if (typeof IslandMiniGames !== "undefined") IslandMiniGames.collect();
   }
   const stage = mapEl.querySelector(".island-stage");
   if (stage) stage.hidden = !playable;

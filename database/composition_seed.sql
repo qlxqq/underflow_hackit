@@ -1,13 +1,74 @@
--- Composition questions: hawker centre (zone 2) and public transport (zone 3), levels 2 and 3.
--- Plain version: the same kind of INSERT that already worked as a single row.
--- It first removes any zone 2 and zone 3 questions (including the test row), then adds all 24,
--- so running it twice never leaves duplicates. Only run it if zones 2 and 3 hold nothing else.
+-- Composition questions for all three zones (neighbourhood, hawker centre, public transport).
+-- Levels no longer matter: a play picks 8 random questions from the whole zone, so every zone has
+-- 18 questions (some short, some long). The level column is still filled in but nothing reads it.
+-- This REPLACES every composition question, so running it twice never leaves duplicates.
+-- Paste into the Supabase SQL Editor (New query tab) and run.
 
-DELETE FROM public.composition_questions WHERE zone IN (2, 3);
+DELETE FROM public.composition_questions WHERE zone IN (1, 2, 3);
 
 INSERT INTO public.composition_questions
     (zone, level, topic, language, prompt, tiles, accepted_answers, explanation, xp)
 VALUES
+-- ===== Zone 1: Neighbourhood (levels 1-3) =====
+-- ===== Neighbourhood, level 1 =====
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say you live in an HDB flat.',
+  '["我", "住在", "组屋", "。"]'::jsonb, '["我住在组屋。"]'::jsonb,
+  '组屋 means "HDB flat".', 10),
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say this is my home.',
+  '["这", "是", "我", "家", "。"]'::jsonb, '["这是我家。"]'::jsonb,
+  '家 means "home".', 10),
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say there is a supermarket downstairs.',
+  '["楼下", "有", "超市", "。"]'::jsonb, '["楼下有超市。"]'::jsonb,
+  '楼下 means "downstairs".', 10),
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say you are going to the park.',
+  '["我", "去", "公园", "。"]'::jsonb, '["我去公园。"]'::jsonb,
+  '公园 means "park".', 10),
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say the neighbours are nice.',
+  '["邻居", "很", "好", "。"]'::jsonb, '["邻居很好。"]'::jsonb,
+  '邻居 means "neighbour".', 10),
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say you take the lift.',
+  '["我", "坐", "电梯", "。"]'::jsonb, '["我坐电梯。"]'::jsonb,
+  '电梯 means "lift".', 10),
+-- ===== Neighbourhood, level 2 =====
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to say your home is on the third floor.',
+  '["我家", "在", "三楼", "。"]'::jsonb, '["我家在三楼。"]'::jsonb,
+  '三楼 means "third floor".', 10),
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to ask where the lift is.',
+  '["请问", "电梯", "在", "哪里", "？"]'::jsonb, '["请问电梯在哪里？"]'::jsonb,
+  '请问 means "excuse me, may I ask".', 10),
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to say you are going downstairs to buy groceries.',
+  '["我", "要", "去", "楼下", "买菜", "。"]'::jsonb, '["我要去楼下买菜。"]'::jsonb,
+  '买菜 means "buy groceries".', 10),
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to say there is a playground here.',
+  '["这里", "有", "一个", "游乐场", "。"]'::jsonb, '["这里有一个游乐场。"]'::jsonb,
+  '游乐场 means "playground".', 10),
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to say your neighbour is an elderly person.',
+  '["我的", "邻居", "是", "老人", "。"]'::jsonb, '["我的邻居是老人。"]'::jsonb,
+  '老人 means "elderly person".', 10),
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to say we take a walk in the park.',
+  '["我们", "在", "公园", "散步", "。"]'::jsonb, '["我们在公园散步。"]'::jsonb,
+  '散步 means "take a walk".', 10),
+-- ===== Neighbourhood, level 3 =====
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to ask where the nearest supermarket is.',
+  '["请问", "最近", "的", "超市", "在", "哪里", "？"]'::jsonb, '["请问最近的超市在哪里？"]'::jsonb,
+  '最近的 means "the nearest".', 10),
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to say you jog in the park downstairs every morning.',
+  '["我", "每天", "早上", "在", "楼下", "的", "公园", "跑步", "。"]'::jsonb, '["我每天早上在楼下的公园跑步。"]'::jsonb,
+  '每天早上 means "every morning".', 10),
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to say your neighbour often helps you collect parcels.',
+  '["我的", "邻居", "常常", "帮", "我", "拿", "包裹", "。"]'::jsonb, '["我的邻居常常帮我拿包裹。"]'::jsonb,
+  '帮我 means "help me".', 10),
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to say the lift is broken, so please use the stairs.',
+  '["电梯", "坏了", "，", "请", "走", "楼梯", "。"]'::jsonb, '["电梯坏了，请走楼梯。"]'::jsonb,
+  '坏了 means "broken".', 10),
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to ask people to be quieter at night because neighbours are sleeping.',
+  '["晚上", "请", "小声", "一点", "，", "邻居", "在", "睡觉", "。"]'::jsonb, '["晚上请小声一点，邻居在睡觉。"]'::jsonb,
+  '小声一点 means "a bit quieter".', 10),
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to say this neighbourhood is quiet and clean.',
+  '["这个", "社区", "很", "安静", "，", "也", "很", "干净", "。"]'::jsonb, '["这个社区很安静，也很干净。"]'::jsonb,
+  '社区 means "neighbourhood".', 10),
+
+-- ===== Zones 2 and 3, levels 2 and 3 (hawker centre, public transport) =====
 -- ===== Hawker centre, level 2 =====
 (2, 2, 'hawker centre', 'zh-CN', 'Arrange the words to say you want chicken rice.',
   '["我", "要", "鸡饭", "。"]'::jsonb, '["我要鸡饭。"]'::jsonb,
@@ -87,4 +148,42 @@ VALUES
 (3, 3, 'public transport', 'zh-CN', 'Arrange the words to say it takes about thirty minutes to reach the airport by MRT.',
   '["坐", "地铁", "去", "机场", "大约", "要", "三十分钟", "。"]'::jsonb,
   '["坐地铁去机场大约要三十分钟。", "去机场坐地铁大约要三十分钟。"]'::jsonb,
-  '大约 means "about". Two word orders work here.', 10);
+  '大约 means "about". Two word orders work here.', 10),
+
+-- ===== Zones 2 and 3, level 1 =====
+(2, 1, 'hawker centre', 'zh-CN', 'Arrange the words to say you want noodles.',
+  '["我", "要", "面", "。"]'::jsonb, '["我要面。"]'::jsonb,
+  '面 means "noodles".', 10),
+(2, 1, 'hawker centre', 'zh-CN', 'Arrange the words to say you drink tea.',
+  '["我", "喝", "茶", "。"]'::jsonb, '["我喝茶。"]'::jsonb,
+  '喝 means "drink".', 10),
+(2, 1, 'hawker centre', 'zh-CN', 'Arrange the words to say this is chicken rice.',
+  '["这", "是", "鸡饭", "。"]'::jsonb, '["这是鸡饭。"]'::jsonb,
+  '这是 means "this is".', 10),
+(2, 1, 'hawker centre', 'zh-CN', 'Arrange the words to ask for water.',
+  '["请", "给我", "水", "。"]'::jsonb, '["请给我水。"]'::jsonb,
+  '请 means "please".', 10),
+(2, 1, 'hawker centre', 'zh-CN', 'Arrange the words to ask how much it costs.',
+  '["多少", "钱", "？"]'::jsonb, '["多少钱？"]'::jsonb,
+  '多少钱 means "how much".', 10),
+(2, 1, 'hawker centre', 'zh-CN', 'Arrange the words to say you are eating a meal.',
+  '["我", "吃", "饭", "。"]'::jsonb, '["我吃饭。"]'::jsonb,
+  '吃饭 means "eat a meal".', 10),
+(3, 1, 'public transport', 'zh-CN', 'Arrange the words to say you take the bus.',
+  '["我", "坐", "巴士", "。"]'::jsonb, '["我坐巴士。"]'::jsonb,
+  '巴士 means "bus".', 10),
+(3, 1, 'public transport', 'zh-CN', 'Arrange the words to say you go to school.',
+  '["我", "去", "学校", "。"]'::jsonb, '["我去学校。"]'::jsonb,
+  '去 means "go to".', 10),
+(3, 1, 'public transport', 'zh-CN', 'Arrange the words to say this is the MRT station.',
+  '["这", "是", "地铁站", "。"]'::jsonb, '["这是地铁站。"]'::jsonb,
+  '地铁站 means "MRT station".', 10),
+(3, 1, 'public transport', 'zh-CN', 'Arrange the words to say the bus is coming.',
+  '["车", "来", "了", "。"]'::jsonb, '["车来了。"]'::jsonb,
+  '来了 means "is coming".', 10),
+(3, 1, 'public transport', 'zh-CN', 'Arrange the words to say you want to get off.',
+  '["我", "要", "下车", "。"]'::jsonb, '["我要下车。"]'::jsonb,
+  '下车 means "get off".', 10),
+(3, 1, 'public transport', 'zh-CN', 'Arrange the words to say please sit here.',
+  '["请", "坐", "这里", "。"]'::jsonb, '["请坐这里。"]'::jsonb,
+  '这里 means "here".', 10);

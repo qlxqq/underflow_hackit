@@ -1,7 +1,9 @@
 // The island's reward numbers and how they are paid, all in one place.
 // To rebalance the game change ISLAND_ECONOMY only.
 //
-//   First clear      mini-game 40 coins + 40 XP,  NPC challenge 25 + 25
+//   First clear      mini-game 40 coins + 40 XP for a game of 8 questions, NPC challenge 25 + 25
+//   Game length      a mini-game pays by its question count: 2 questions = 40%, 8 = 100%, 16 or more = 200%
+//   Mini-game cards  1 card per 4 questions (at least 1, at most 4), drawn from the words answered right
 //   Replays          pay less each time: 100%, 60%, 40%, 25%, then 15%
 //   NPC performance  failed 30%  /  passed 100%  /  all correct 140%
 //   Duplicate card   5 coins + 3 XP (cards themselves never shrink)
@@ -11,12 +13,13 @@
 // roughly a week of replays and quests: replaying is worth it, farming is not.
 //
 //   IslandEconomy.npcPayout(npcId, score, total)   what this attempt is worth (before paying)
-//   IslandEconomy.miniPayout(level, ratio)          same for a mini-game (ratio 0-1, default 1)
+//   IslandEconomy.miniPayout(level, ratio, total)   same for a mini-game (ratio 0-1, default 1; total = its question count)
+//   IslandEconomy.miniCards(total)                  how many cards a mini-game can give
 //   IslandEconomy.duplicatePayout(count)            what duplicate cards are worth
 //   IslandEconomy.pay({ coins, xp })                gives it to the player; returns { coins, xp, levelUps }
 
 const ISLAND_ECONOMY = {
-  mini: { coins: 40, xp: 40 },
+  mini: { coins: 40, xp: 40, refQuestions: 8, minSize: 0.4, maxSize: 2, questionsPerCard: 4, maxCards: 4 },
   npc: { coins: 25, xp: 25 },
   // share paid on the 1st, 2nd, 3rd... time; the last number repeats
   decay: [1, 0.6, 0.4, 0.25, 0.15],
@@ -45,9 +48,25 @@ const IslandEconomy = {
     return { ...this.scale(ISLAND_ECONOMY.npc, factor), tier, plays, factor };
   },
 
-  miniPayout(level, ratio = 1) {
+  // A longer game pays more. A game that does not say its length (total) pays the 8-question amount.
+  sizeFor(total) {
+    const m = ISLAND_ECONOMY.mini;
+    const n = Number(total);
+    if (!(n > 0)) return 1;
+    return Math.max(m.minSize, Math.min(m.maxSize, n / m.refQuestions));
+  },
+
+  // How many cards one play of a game can give: 1 per 4 questions, at least 1, at most 4.
+  miniCards(total) {
+    const m = ISLAND_ECONOMY.mini;
+    const n = Number(total);
+    if (!(n > 0)) return 2;
+    return Math.max(1, Math.min(m.maxCards, Math.round(n / m.questionsPerCard)));
+  },
+
+  miniPayout(level, ratio = 1, total) {
     const plays = IslandState.playsOf(`mini:${level}`);
-    const factor = this.decayFor(plays) * (0.4 + 0.6 * Math.max(0, Math.min(1, ratio)));
+    const factor = this.decayFor(plays) * (0.4 + 0.6 * Math.max(0, Math.min(1, ratio))) * this.sizeFor(total);
     return { ...this.scale(ISLAND_ECONOMY.mini, factor), plays, factor };
   },
 

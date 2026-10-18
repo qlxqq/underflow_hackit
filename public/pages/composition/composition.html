@@ -28,9 +28,7 @@
     <div class="app composition-page">
 
         <header class="top-bar has-back">
-            <a href="../../pages/island/island.html" class="icon-btn back-button" aria-label="Go back">
-                &larr;
-            </a>
+            <a href="../island/island.html" class="icon-btn back-button" aria-label="Back to Island"><svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg></a>
 
             <div class="progress-container">
                 <div class="progress-bar">
@@ -38,9 +36,9 @@
                 </div>
             </div>
 
-            <div class="xp-badge">
-                <span>⚡</span>
-                <span id="xpDisplay">0 XP</span>
+            <div class="xp-badge" title="Questions right on the first try">
+                <span aria-hidden="true">✓</span>
+                <span id="xpDisplay">0</span>
             </div>
         </header>
 
@@ -140,6 +138,9 @@
     <!-- Supabase library (same pinned version as island.html), then the shared client, each loaded once -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
     <script src="../../js/shared/supabaseClient.js"></script>
+    <script src="../../js/shared/auth.js"></script>
+    <script src="../../js/shared/streak.js"></script>
+    <script src="../../js/shared/rewards.js"></script>
     <script src="../../js/shared/bottomNav.js"></script>
 
     <!-- Composition feature -->

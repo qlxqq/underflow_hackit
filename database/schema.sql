@@ -201,38 +201,7 @@ FOR SELECT
 TO anon, authenticated
 USING (true);
 
--- Sample questions. ON CONFLICT prevents duplicate samples.
-INSERT INTO public.composition_questions
-    (zone, level, topic, language, prompt, tiles,
-     accepted_answers, explanation, xp)
-SELECT
-    1, 3, 'neighbourhood', 'zh-CN',
-    'Arrange the words to describe what the child is doing.',
-    '["孩子", "在", "公园", "玩耍", "。"]'::jsonb,
-    '["孩子在公园玩耍。"]'::jsonb,
-    '在公园 means "in the park".',
-    10
-WHERE NOT EXISTS (
-    SELECT 1 FROM public.composition_questions
-    WHERE prompt = 'Arrange the words to describe what the child is doing.'
-      AND zone = 1 AND level = 3 AND language = 'zh-CN'
-);
-
-INSERT INTO public.composition_questions
-    (zone, level, topic, language, prompt, tiles,
-     accepted_answers, explanation, xp)
-SELECT
-    1, 3, 'neighbourhood', 'zh-CN',
-    'Arrange the words to describe what you are doing.',
-    '["我", "在", "咖啡店", "吃", "面", "。"]'::jsonb,
-    '["我在咖啡店吃面。"]'::jsonb,
-    '在咖啡店 means "at the coffee shop".',
-    10
-WHERE NOT EXISTS (
-    SELECT 1 FROM public.composition_questions
-    WHERE prompt = 'Arrange the words to describe what you are doing.'
-      AND zone = 1 AND level = 3 AND language = 'zh-CN'
-);
+-- Composition questions are loaded by composition_seed.sql (not here), so running this file never adds old sample rows.
 
 -- ============================================================
 -- PRONUNCIATION: phrase bank for the Pronunciation level of every zone
@@ -393,3 +362,72 @@ insert into island_progress (user_id, language, coins)
   select user_id, 'zh', coins from profiles where coins > 0
   on conflict (user_id, language) do update set coins = greatest(island_progress.coins, excluded.coins);
 update profiles set coins = 0 where coins > 0;
+-- ============================================================
+-- Island content (read-only for players; filled by the island_*_seed.sql files)
+-- ============================================================
+create table if not exists island_zone_words (
+  language text not null, zone text not null, sort integer not null default 0,
+  word text not null, romanization text not null default '', meaning text not null,
+  primary key (language, zone, word)
+);
+create table if not exists island_role_words (
+  language text not null, album text not null, npc_id text not null, npc_label text not null,
+  npc_sort integer not null default 0, sort integer not null default 0,
+  word text not null, romanization text not null default '', meaning text not null,
+  primary key (language, album, npc_id, word)
+);
+create table if not exists island_sentences (
+  word text primary key, sentence text not null, reading text not null default '',
+  english text not null default '', wrong text[] not null default '{}'
+);
+create table if not exists island_zones (id text primary key, name text not null, sort integer not null default 0);
+create table if not exists island_levels (
+  level integer primary key, zone text not null, name text not null, sub text not null default ''
+);
+create table if not exists island_npcs (
+  id text primary key, zone text not null, name text not null, role text not null default '',
+  kind text not null, greeting text not null default '', sort integer not null default 0
+);
+create table if not exists island_shop_categories (id text primary key, name text not null, sort integer not null default 0);
+create table if not exists island_shop_items (
+  id text primary key, name text not null, cat text not null, price integer not null check (price >= 0), sort integer not null default 0
+);
+
+do $$
+declare t text;
+begin
+  foreach t in array array['island_zone_words','island_role_words','island_sentences','island_zones','island_levels','island_npcs','island_shop_categories','island_shop_items']
+  loop
+    execute format('alter table %I enable row level security', t);
+    execute format('grant select on %I to anon, authenticated', t);
+    execute format('drop policy if exists "%s_read" on %I', t, t);
+    execute format('create policy "%s_read" on %I for select using (true)', t, t);
+  end loop;
+end $$;
+-- ============================================================
+-- App content (read-only for players; filled by rewards_seed.sql, cards_seed.sql, capture_seed.sql, profile_seed.sql)
+-- ============================================================
+create table if not exists rarity_tiers (id text primary key, label text not null, xp integer not null check (xp >= 0), sort integer not null default 0);
+create table if not exists rarity_cutoffs (language text not null, tier text not null, last_rank integer not null check (last_rank > 0), primary key (language, tier));
+create table if not exists reward_config (id text primary key, xp integer not null default 0 check (xp >= 0), coins integer not null default 0 check (coins >= 0));
+create table if not exists quest_defs (
+  id text primary key, title text not null, event text not null, target integer not null check (target > 0),
+  xp integer not null default 0, coins integer not null default 0, soon boolean not null default false, sort integer not null default 0
+);
+create table if not exists album_defs (id text primary key, name text not null, sort integer not null default 0);
+create table if not exists evolution_stages (stage integer primary key, label text not null, min_uses integer not null default 0);
+create table if not exists theme_categories (theme text primary key, category text not null);
+create table if not exists filler_words (language text not null, word text not null, primary key (language, word));
+create table if not exists avatar_defs (id text primary key, label text not null, sort integer not null default 0);
+
+do $$
+declare t text;
+begin
+  foreach t in array array['rarity_tiers','rarity_cutoffs','reward_config','quest_defs','album_defs','evolution_stages','theme_categories','filler_words','avatar_defs']
+  loop
+    execute format('alter table %I enable row level security', t);
+    execute format('grant select on %I to anon, authenticated', t);
+    execute format('drop policy if exists "%s_read" on %I', t, t);
+    execute format('create policy "%s_read" on %I for select using (true)', t, t);
+  end loop;
+end $$;
