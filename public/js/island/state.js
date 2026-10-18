@@ -49,6 +49,8 @@ const IslandState = {
     this.where = params.get("start") === "mystery" ? "mystery" : "home";
     // Coming from the Collection's Practise button: go straight to the Mystery Island.
     if (typeof IslandPractice !== "undefined" && IslandPractice.read()) this.where = "mystery";
+    // Coming back from a mini-game: the Mystery Island, where the player was standing (miniGames.js).
+    if (typeof IslandMiniGames !== "undefined" && IslandMiniGames.cameBackFromGame()) this.where = "mystery";
     if (params.get("reveal") === "all") ISLAND_ZONES.forEach((z) => this.zonesRevealed.add(z.id));
     if (params.get("unlock") === "all") ISLAND_LEVELS.forEach((l) => this.levelsDone.add(l.level));
     const gift = Number(params.get("coins"));

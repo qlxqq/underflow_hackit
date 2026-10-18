@@ -5,6 +5,8 @@
 .composition-page {
   display: flex;
   flex-direction: column;
+  /* room for the shared bottom navigation, which is fixed to the bottom of the screen */
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
 }
 
 /* ---------- top bar (base .top-bar) ---------- */
@@ -261,11 +263,11 @@ h1 {
 
 .action-buttons {
   position: sticky;
-  bottom: 0;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
   display: flex;
   gap: 12px;
   margin: auto -20px 0;
-  padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+  padding: 14px 20px 14px;
   border-top: 1px solid var(--line);
   background: var(--white);
 }

@@ -7,7 +7,7 @@
 //   1 matching round (5 words to their meanings or pinyin)
 // The questions are about the NPC's eight ROLE words (roleCards.js) and the
 // player's captured words that belong to the zone (practice.js). Zone words (the
-// mini-game words) are never asked. Words the player got wrong before come first,
+// mini-game words) are only asked when a card's Practise button sends the player here. Words the player got wrong before come first,
 // then role cards not won yet, so every replay has something to win. Get 6 of 8
 // to pass. NPCs without data fall back to three simple questions from the zone list.
 //
@@ -56,8 +56,12 @@ const IslandQuiz = {
     const own = (typeof IslandCards !== "undefined" ? IslandCards.roleList(npc.id) : data.words).map((w) => ({ ...w, npcId: npc.id }));
     const zoneId = typeof ZONE_OF_ALBUM !== "undefined" ? ZONE_OF_ALBUM[data.album] : npc.zone;
     const captured = typeof IslandCaptured !== "undefined" ? IslandCaptured.forZone(zoneId) : [];
-    const everyone = [...own, ...captured];
     const focusWord = opts.focus || null;
+    // Practising a zone card whose mini-game is not built yet: that one word joins this NPC's challenge.
+    const zoneExtra = focusWord && typeof IslandCards !== "undefined"
+      ? IslandCards.zoneList(data.album).filter((w) => w.w === focusWord && !own.some((o) => o.w === w.w)).map((w) => ({ ...w, zoneCard: true }))
+      : [];
+    const everyone = [...own, ...captured, ...zoneExtra];
     const focus = focusWord ? everyone.find((w) => w.w === focusWord) : null;
 
     // 7 different words for the single questions: up to 2 captured words (wrong ones first), the rest role words

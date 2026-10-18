@@ -52,10 +52,11 @@ class IslandScene extends Phaser.Scene {
 
     IslandControls.onAction = () => this.interact();
     Object.assign(window.IslandAPI, {
-      completeLevel: (n, ratio) => this.completeLevel(n, ratio),
+      completeLevel: (n, ratio, total) => this.completeLevel(n, ratio, total),
       isLevelDone: (n) => this.done.has(n),
       levelsDone: () => [...this.done].sort((a, b) => a - b),
       where: () => "mystery",
+      spot: () => ({ x: this.player.x, y: this.player.y }),   // where the player stands (a mini-game remembers it)
     });
     this.updateHud();
     setTimeout(() => buildIslandTexturesLater(this), 1200); // the home island's pictures, while the player plays
@@ -208,7 +209,10 @@ class IslandScene extends Phaser.Scene {
   makePlayer() {
     this.look = currentAvatarLook();
     ensureAvatarTextures(this, this.look);
-    this.player = this.add.image(ISLAND_SPAWN.x, ISLAND_SPAWN.y, avatarKey(this.look, "down", 0)).setOrigin(0.5, 0.92).setScale(1 / ART_SCALE);
+    // back from a mini-game: stand where the player was before it
+    const back = typeof IslandMiniGames !== "undefined" ? IslandMiniGames.takeReturnSpot() : null;
+    const at = back || ISLAND_SPAWN;
+    this.player = this.add.image(at.x, at.y, avatarKey(this.look, "down", 0)).setOrigin(0.5, 0.92).setScale(1 / ART_SCALE);
     this.facingLeft = false;
     this.facing = "down";
   }
@@ -502,14 +506,14 @@ class IslandScene extends Phaser.Scene {
     IslandUI.setCoins(IslandState.coins);
   }
 
-  // Called when a mini-game is finished (a mini-game calls IslandAPI.completeLevel(n, ratio)).
-  // ratio (0-1) is how well it went; leave it out for "completed". The first clear opens the way
+  // Called when a mini-game is finished (a mini-game calls IslandAPI.completeLevel(n, ratio, total)).
+  // ratio (0-1) is how well it went; leave it out for "completed". total = how many questions the game has (longer games pay more). The first clear opens the way
   // on; every play pays coins and XP, a little less each time (economy.js).
-  async completeLevel(n, ratio = 1) {
+  async completeLevel(n, ratio = 1, total) {
     const l = ISLAND_LEVELS.find((x) => x.level === n);
     if (!l) return;
     const first = !this.done.has(n);
-    const pay = IslandEconomy.miniPayout(n, ratio);
+    const pay = IslandEconomy.miniPayout(n, ratio, total);
     IslandState.addPlay(`mini:${n}`);
     if (first) {
       this.done.add(n);

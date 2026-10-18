@@ -1,14 +1,25 @@
-
 document.addEventListener("DOMContentLoaded", function () {
     // Reuse the existing client from shared/supabaseClient.js.
     // Both files must be loaded as regular scripts, not modules.
     const db = window.supabaseClient ||
     (typeof supabase !== "undefined" && supabase.auth ? supabase : null);
 
+    // The island opens this page as  composition.html?zone=2&level=3&island=6
+    //   zone / level = the zone (1-3) and the level inside it (1-3), which pick the questions
+    //   island       = the level's number on the island (1-9). Only present when the island opened the page:
+    //                  then the island pays the reward (coins, XP, cards) when the player goes back to it.
     const params = new URLSearchParams(location.search);
     const zone = Number(params.get("zone")) || 1;
     const level = Number(params.get("level")) || 3;
-    document.querySelector(".session-chip span").textContent = "Level " + level + " · Composition";  
+    const islandLevel = Number(params.get("island")) || 0;
+    const ISLAND_PAGE = "../island/island.html";
+    const LOGIN_PAGE = "../auth/login.html";
+    const RESULT_KEY = "island:minigame-result";   // read by js/island/miniGames.js
+    // The questions are written per language. Only Chinese has any so far (stored as "zh-CN").
+    const QUESTION_LANGUAGE = { zh: "zh-CN" };
+    let player = null;       // the signed-in user
+    let language = "zh";     // the player's Mother Tongue
+    document.querySelector(".session-chip span").textContent = "Level " + level + " · Composition";
 
     const questionPrompt = document.getElementById("questionPrompt");
     const questionHint = document.getElementById("questionHint");
@@ -33,44 +44,52 @@ document.addEventListener("DOMContentLoaded", function () {
     let currentQuestionIndex = 0;
     let selectedTiles = [];
     let answered = false;
-    let earnedSessionXP = 0;
-    let totalXP = 0;
     let completedQuestions = 0;
-    let savingReward = false;
+    let wrongTries = 0;            // wrong checks on the current question
+    let firstTryCount = 0;         // questions got right on the first check: this is the score
+    let firstTryWords = [];        // the words of those questions (they can win zone cards)
+    let finished = false;
+    let streakResult = null;       // set when this visit counted towards the daily streak
+    let streakCounted = false;
+    let returnUrl = ISLAND_PAGE;   // where the "back to the island" button goes
 
     // ----------------------------------
-    // Load the player's existing XP
+    // Who is playing, and in which language
     // ----------------------------------
 
-    async function loadPlayerXP() {
-        const { data: authData, error: authError } =
-            await db.auth.getUser();
+    async function loadPlayer() {
+        player = await getCurrentUser();   // js/shared/auth.js
 
-        if (authError || !authData.user) {
+        if (!player) {
+            location.replace(LOGIN_PAGE);
             throw new Error("Please sign in to play composition.");
         }
 
-        const { data, error } = await db
-            .from("profiles")
-            .select("xp")
-            .eq("user_id", authData.user.id)
-            .single();
-
-        if (error) {
-            throw new Error(
-                "Could not load your profile: " + error.message
-            );
+        try {
+            const code = localStorage.getItem("journeyLanguage:" + player.id);
+            if (code === "zh" || code === "ms" || code === "ta") language = code;
+        } catch (err) {
+            // storage blocked: stay on Chinese
         }
-
-        totalXP = data.xp;
-        updateXPDisplay();
+        updateScoreDisplay();
     }
 
-    function updateXPDisplay() {
-        xpDisplay.textContent = totalXP + " XP";
-        xpDisplay.title =
-            "Total XP: " + totalXP +
-            " | Earned this session: " + earnedSessionXP;
+    // Playing counts towards the daily streak (once per visit; the streak itself grows once a day).
+    async function countStreak() {
+        if (streakCounted || !player || typeof recordStreakActivity !== "function") return;
+        streakCounted = true;
+        try {
+            streakResult = await recordStreakActivity(player.id);   // js/shared/rewards.js
+        } catch (err) {
+            console.error("Could not update the streak:", err);
+        }
+    }
+
+    // The badge in the top bar counts the questions got right first time.
+    function updateScoreDisplay() {
+        const total = questions.length || 0;
+        xpDisplay.textContent = firstTryCount + (total ? "/" + total : "");
+        xpDisplay.title = "Questions right on the first try";
     }
 
     // ----------------------------------
@@ -89,7 +108,12 @@ document.addEventListener("DOMContentLoaded", function () {
         setLoadingState();
 
         try {
-            await loadPlayerXP();
+            await loadPlayer();
+
+            const questionLanguage = QUESTION_LANGUAGE[language];
+            if (!questionLanguage) {
+                throw new Error("Composition questions are not ready in this language yet.");
+            }
 
             const { data, error } = await db
                 .from("composition_questions")
@@ -98,7 +122,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 )
                 .eq("zone", zone)
                 .eq("level", level)
-                .eq("language", "zh-CN")
+                .eq("language", questionLanguage)
                 .order("id");
 
             if (error) {
@@ -109,7 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!data || data.length === 0) {
                 throw new Error(
-                    "No questions found for zone " + zone + ", level " + level + ", zh-CN."
+                    "No questions found for zone " + zone + ", level " + level + "."
                 );
             }
 
@@ -128,11 +152,13 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             currentQuestionIndex = 0;
+            updateScoreDisplay();
             loadQuestion();
         } catch (error) {
             console.error("Composition loading error:", error);
 
             showError("Unable to start practice", error.message);
+            showBackToIsland("Back to the island");
         }
     }
 
@@ -154,7 +180,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         selectedTiles = [];
         answered = false;
-        savingReward = false;
+        wrongTries = 0;
 
         questionPrompt.textContent = question.prompt;
 
@@ -308,7 +334,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function checkAnswer() {
-        if (answered || savingReward) return;
+        if (answered) return;
 
         if (selectedTiles.length === 0) {
             showFeedback(
@@ -336,6 +362,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const correct = acceptedAnswers.includes(userAnswer);
 
         if (!correct) {
+            wrongTries++;
             showFeedback(
                 false,
                 "Not quite!",
@@ -345,89 +372,41 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        // Lock the question before saving rewards.
+        // Lock the question. No XP is paid here: the island pays one reward for the whole
+        // level (coins, XP and cards) when the player goes back to it.
         answered = true;
-        savingReward = true;
 
         checkButton.disabled = true;
         resetButton.disabled = true;
         updateWordBank();
 
-        saveReward(question);
-    }
+        countStreak();   // not awaited: the player is playing
 
-    // ----------------------------------
-    // Award XP through Supabase
-    // ----------------------------------
+        completedQuestions++;
+        const firstTry = wrongTries === 0;
+        if (firstTry) {
+            firstTryCount++;
+            firstTryWords = firstTryWords.concat(question.tiles);
+        }
+        updateScoreDisplay();
 
-    async function saveReward(question) {
-        const xp = Math.max(
-            0,
-            Math.min(500, Math.floor(Number(question.xp) || 0))
+        progressFill.style.width =
+            (completedQuestions / questions.length * 100) + "%";
+
+        showFeedback(
+            true,
+            firstTry ? "Correct! First try" : "Correct!",
+            question.explanation ||
+            "You arranged the sentence correctly."
         );
 
-        try {
-            const { data, error } = await db.rpc("add_rewards", {
-                p_xp: xp,
-                p_coins: 0
-            });
+        checkButton.hidden = true;
+        nextButton.hidden = false;
 
-            if (error) {
-                throw error;
-            }
-
-            if (!data || data.length === 0) {
-                throw new Error(
-                    "No reward result returned. Check your profile."
-                );
-            }
-
-            totalXP = data[0].new_xp;
-            earnedSessionXP += xp;
-            completedQuestions++;
-
-            updateXPDisplay();
-
-            progressFill.style.width =
-                (completedQuestions / questions.length * 100) + "%";
-
-            showFeedback(
-                true,
-                "Correct! +" + xp + " XP",
-                question.explanation ||
-                "You arranged the sentence correctly."
-            );
-
-            checkButton.hidden = true;
-            nextButton.hidden = false;
-
-            nextButton.textContent =
-                currentQuestionIndex === questions.length - 1
-                    ? "Finish practice"
-                    : "Next question →";
-        } catch (error) {
-            console.error("Could not save XP:", error);
-
-            // The answer was correct, but the reward failed.
-            // Do not allow repeated clicks to award duplicate XP.
-            showFeedback(
-                true,
-                "Correct answer!",
-                "However, your XP could not be saved. " +
-                (error.message || "Please try again later.")
-            );
-
-            // Keep this question locked so that the player
-            // cannot repeatedly submit it to farm rewards.
-            nextButton.hidden = false;
-
-            nextButton.textContent =
-                currentQuestionIndex === questions.length - 1
-                    ? "Finish practice"
-                    : "Next question →";
-        } finally {
-            savingReward = false;
-        }
+        nextButton.textContent =
+            currentQuestionIndex === questions.length - 1
+                ? "Finish"
+                : "Next question →";
     }
 
     // ----------------------------------
@@ -471,7 +450,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // ----------------------------------
 
     resetButton.addEventListener("click", function () {
-        if (answered || savingReward || questions.length === 0) {
+        if (answered || questions.length === 0) {
             return;
         }
 
@@ -496,7 +475,12 @@ document.addEventListener("DOMContentLoaded", function () {
     // ----------------------------------
 
     nextButton.addEventListener("click", function () {
-        if (!answered || savingReward) return;
+        if (finished) {
+            location.href = returnUrl;
+            return;
+        }
+
+        if (!answered) return;
 
         if (currentQuestionIndex < questions.length - 1) {
             currentQuestionIndex++;
@@ -507,19 +491,31 @@ document.addEventListener("DOMContentLoaded", function () {
         showCompletion();
     });
 
-    function showCompletion() {
+    async function showCompletion() {
+        finished = true;
+        await countStreak();   // (already counted at the first correct answer, this just makes sure)
+
+        const total = questions.length;
+        const ratio = total ? firstTryCount / total : 0;
+
         questionPrompt.textContent = "Practice completed!";
 
-        questionHint.textContent =
-            "You've finished all the composition questions in this session.";
+        questionHint.textContent = islandLevel
+            ? "Go back to the island to collect your reward."
+            : "You've finished all the composition questions in this session.";
 
-        questionCounter.textContent =
-            questions.length + " of " + questions.length + " completed";
+        questionCounter.textContent = total + " of " + total + " completed";
 
         progressFill.style.width = "100%";
 
         answerArea.replaceChildren();
         wordBank.replaceChildren();
+
+        // The finish screen shows only the result: hide the sentence builder and the intro text.
+        [".answer-section", ".word-bank-section", ".subtitle", "main > h1"].forEach(function (selector) {
+            const part = document.querySelector(selector);
+            if (part) part.hidden = true;
+        });
 
         feedbackBox.hidden = false;
         feedbackBox.className = "feedback-box correct";
@@ -527,12 +523,43 @@ document.addEventListener("DOMContentLoaded", function () {
         feedbackIcon.textContent = "🏆";
         feedbackTitle.textContent = "Well done!";
         feedbackMessage.textContent =
-            "You earned " + earnedSessionXP +
-            " XP in this session. Your total is " + totalXP + " XP.";
+            "You got " + firstTryCount + " of " + total + " right on the first try." +
+            (streakResult && streakResult.changed
+                ? " " + (streakResult.currentStreak === 1 ? "Day 1 of your streak!" : streakResult.currentStreak + " day streak!")
+                : "");
 
         checkButton.hidden = true;
-        nextButton.hidden = true;
         resetButton.hidden = true;
+
+        // Hand the result to the island. It pays coins, XP and cards with its own rules
+        // (less each time a level is replayed) and marks the level as done.
+        if (islandLevel && player) {
+            const result = {
+                userId: player.id,
+                level: islandLevel,
+                language: language,
+                ratio: ratio,
+                total: total,
+                words: firstTryWords,
+                at: Date.now()
+            };
+            // Two ways to hand it over, in case one is blocked: saved on this device, and on the island's address.
+            try {
+                localStorage.setItem(RESULT_KEY, JSON.stringify(result));
+            } catch (err) {
+                console.error("Could not save the result for the island:", err);
+            }
+            returnUrl = ISLAND_PAGE + "?mg=" + encodeURIComponent(JSON.stringify(result));
+        }
+
+        showBackToIsland(islandLevel ? "Collect reward on the island →" : "Back to the island →");
+    }
+
+    // The Next button becomes the way back to the island.
+    function showBackToIsland(text) {
+        finished = true;
+        nextButton.hidden = false;
+        nextButton.textContent = text;
     }
 
     // Start the feature.
