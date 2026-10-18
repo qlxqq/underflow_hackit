@@ -7,7 +7,7 @@
 //
 // A game runs on its own page. It opens with  ?zone=<1-3>&level=<1-3 inside the zone>&island=<1-9>
 // and, when the player finishes, saves its result and sends them back to the island:
-//   localStorage["island:minigame-result"] = { userId, level, language, ratio, total, words, at }
+//   localStorage["island:minigame-result"] = { userId, level, language, ratio, total, words, right, at }
 //     ratio = how well it went (0-1)      total = how many questions the game has
 //     words = zone words the player got right (they can win cards)
 //   Rewards scale with total (economy.js): a longer game pays more coins and XP and can give more cards.
@@ -16,9 +16,183 @@
 //
 // Needs: ui.js (IslandHooks), lang.js (IslandLang), islandData.js, journey/levels.js, save.js (IslandSave).
 
+// The zone words each Pronunciation phrase uses (per language and album). Practise sends a card to the Pronunciation
+// building only if one of its phrases has that word. Generated from the phrase tags in js/pronunciation/lessons.js.
+const ISLAND_PRONUNCIATION_WORDS = {
+ "zh": {
+  "neighbourhood": [
+   "楼下",
+   "请问",
+   "药房",
+   "阿嬷",
+   "吃饱",
+   "最近",
+   "组屋",
+   "邻居",
+   "实习",
+   "期待",
+   "下班",
+   "晚餐",
+   "阿公",
+   "声音",
+   "装修",
+   "社区",
+   "活动"
+  ],
+  "hawker-centre": [
+   "鸡饭",
+   "辣椒",
+   "老板",
+   "咖啡",
+   "糖",
+   "位子",
+   "云吞面",
+   "叉烧面",
+   "排队",
+   "鱼片汤",
+   "手机",
+   "转账",
+   "汤",
+   "付款",
+   "现金",
+   "辣",
+   "换",
+   "粥"
+  ],
+  "public-transport": [
+   "巴士",
+   "地铁站",
+   "下一站",
+   "下车",
+   "坐",
+   "地铁",
+   "故障",
+   "司机",
+   "路口",
+   "转乘",
+   "学校",
+   "挤",
+   "下一班",
+   "交通卡",
+   "充值",
+   "巴士站",
+   "马路",
+   "对面",
+   "提醒"
+  ]
+ },
+ "ms": {
+  "neighbourhood": [
+   "kedai",
+   "blok",
+   "farmasi",
+   "nenek",
+   "kenyang",
+   "drama",
+   "jiran",
+   "latihan industri",
+   "kerja",
+   "makan malam",
+   "atuk",
+   "telefon",
+   "tingkat",
+   "bising",
+   "acara",
+   "pusat komuniti"
+  ],
+  "hawker-centre": [
+   "nasi",
+   "sambal",
+   "kopi",
+   "bungkus",
+   "duduk",
+   "mi goreng",
+   "pesan",
+   "gerai",
+   "beratur",
+   "sup ikan",
+   "kongsi",
+   "bayar",
+   "mi",
+   "kuah",
+   "duit tunai",
+   "pedas",
+   "bubur",
+   "cop"
+  ],
+  "public-transport": [
+   "bas",
+   "stesen",
+   "turun",
+   "perhentian",
+   "pakcik",
+   "berdiri",
+   "rosak",
+   "lambat",
+   "berhenti",
+   "simpang",
+   "tren",
+   "tukar",
+   "sesak",
+   "kad",
+   "tambah nilai",
+   "lintas jalan",
+   "seberang",
+   "terlepas"
+  ]
+ },
+ "ta": {
+  "neighbourhood": [
+   "கடை",
+   "கீழே",
+   "மருந்துக் கடை",
+   "பாட்டி",
+   "தொடர்",
+   "கதை",
+   "மாசம்",
+   "வர்ணம்",
+   "வாரம்",
+   "வேலைப் பயிற்சி",
+   "வேலை",
+   "ராத்திரி",
+   "தாத்தா",
+   "போன்",
+   "சத்தம்",
+   "மேல் வீட்டுக்காரங்க",
+   "நிகழ்ச்சி",
+   "வார இறுதி"
+  ],
+  "hawker-centre": [
+   "கோழி சோறு",
+   "காரம்",
+   "காப்பி",
+   "சர்க்கரை",
+   "தோசை",
+   "இட்லி",
+   "வரிசை",
+   "காசு",
+   "வெங்காயம்",
+   "குழம்பு",
+   "பணம்",
+   "கஞ்சி"
+  ],
+  "public-transport": [
+   "பஸ்",
+   "ரயில்",
+   "வழி",
+   "சந்திப்பு",
+   "நன்றி",
+   "பள்ளி",
+   "அட்டை",
+   "நிறுத்தம்"
+  ]
+ }
+};
+
+// words (optional) = the zone words the game can ask, per language and album. A game without it is assumed to ask every zone word.
 const ISLAND_MINIGAMES = {
   composition: { page: "../composition/composition.html", languages: ["zh"] },
-  // pronunciation: { page: "../pronunciation/pronunciation.html", languages: ["zh", "ms", "ta"] },
+  pronunciation: { page: "../pronunciation/pronunciation.html", languages: ["zh", "ms", "ta"], words: ISLAND_PRONUNCIATION_WORDS },
   // typing: { page: "../typing/typing.html", languages: ["zh", "ms", "ta"] },
 };
 
@@ -78,7 +252,7 @@ const IslandMiniGames = {
     // Practise on a zone card: the game always asks one question with that word
     const p = typeof IslandPractice !== "undefined" ? IslandPractice.pending : null;
     const focus = p && !p.npcId && p.word ? `&focus=${encodeURIComponent(p.word)}` : "";
-    location.href = `${cfg.page}?zone=${pos.zone}&level=${pos.place}&island=${landmark.level}${focus}`;
+    location.href = `${cfg.page}?zone=${pos.zone}&level=${pos.place}&island=${landmark.level}&lang=${encodeURIComponent(IslandLang.code)}${focus}`;
     return true;
   },
 
@@ -232,8 +406,7 @@ IslandHooks.startMiniGame = (landmark) => IslandMiniGames.start(landmark);
 // Which building plays a word? Used by a card's Practise button (practice.js).
 // The zone words are the words of the built games, so a zone word is practised in the zone's
 // building of a game that is built for this language. null = no game yet (an NPC takes it instead).
-// When the pronunciation or typing game is added to ISLAND_MINIGAMES it needs no change here
-// as long as its words are in the zone list.
+// A game with a `words` list in ISLAND_MINIGAMES is only picked for the words it asks; one without a list takes any zone word.
 IslandHooks.findMiniGame = (word, language) => {
   try {
     const albumId = Object.keys(ALBUM_OF_ZONE).map((z) => ALBUM_OF_ZONE[z]).find((a) => IslandCards.zoneList(a).some((w) => w.w === word));
@@ -243,7 +416,8 @@ IslandHooks.findMiniGame = (word, language) => {
     const built = levels.filter((l) => {
       const game = typeof getMiniGameForLevel === "function" ? getMiniGameForLevel(l.level) : null;
       const cfg = game && ISLAND_MINIGAMES[game.id];
-      return cfg && cfg.languages.includes(language);
+      // a game with a word list only counts if it really asks this word
+      return cfg && cfg.languages.includes(language) && (!cfg.words || ((cfg.words[language] || {})[albumId] || []).includes(word));
     });
     return built.length ? built[0].level : null;
   } catch (err) { return null; }

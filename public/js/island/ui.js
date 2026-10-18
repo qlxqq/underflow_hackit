@@ -40,6 +40,7 @@ const IslandUI = {
       waypointLabel: $("waypoint-label"), overlay: $("overlay"), sheet: $("sheet"), mapBtn: $("map-btn"), avatarBtn: $("avatar-btn"), boatBtn: $("boat-btn"),
       coins: $("coin-count"), fade: $("fade"), fadeText: $("fade-text"),
     };
+    this.injectNpcStyles();
     this.el.mapBtn.addEventListener("click", () => { if (this.onMap) this.onMap(); });
     if (this.el.boatBtn) { this.el.boatBtn.addEventListener("click", () => { if (this.onBoat) this.onBoat(); }); this.el.boatBtn.style.display = "none"; }
     if (this.el.avatarBtn) { this.el.avatarBtn.addEventListener("click", () => { if (this.onAvatar) this.onAvatar(); }); this.el.avatarBtn.style.display = "none"; }
@@ -93,6 +94,7 @@ const IslandUI = {
   locked: false,
   openSheet(html, onClose, locked) {
     this.locked = !!locked; // a locked sheet can only be closed by its own button
+    this.el.overlay.classList.remove("npc-full"); // only the NPC challenge takes over the whole screen
     this.el.sheet.innerHTML = html;
     this.el.overlay.hidden = false;
     this.open = true;
@@ -105,6 +107,7 @@ const IslandUI = {
     this.locked = false;
     this.open = false;
     this.el.overlay.hidden = true;
+    this.el.overlay.classList.remove("npc-full");
     this.el.sheet.innerHTML = "";
     IslandControls.setEnabled(true);
     const cb = this.onClose;
@@ -252,6 +255,50 @@ const IslandUI = {
     });
   },
 
+  // ---------- full-screen look of the NPC challenge (same as the Pronunciation and Composition games) ----------
+  // The challenge fills the screen: top bar with a back button, one progress segment per question and the language
+  // chip; a zone pill row; white cards. The styles are added here, so this file is all that has to change.
+  injectNpcStyles() {
+    if (document.getElementById("npc-full-style")) return;
+    const css = `
+#overlay.npc-full { position: fixed !important; inset: 0 !important; display: flex !important; align-items: stretch !important; justify-content: center !important; padding: 0 !important; background: #e8ecf4 !important; }
+#overlay.npc-full[hidden] { display: none !important; }
+#overlay.npc-full #sheet { width: min(100%, 460px) !important; max-width: 460px !important; height: 100% !important; max-height: none !important; margin: 0 !important; padding: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: var(--bg, #f3f6fb) !important; overflow-y: auto !important; transform: none !important; animation: none !important; }
+.npc-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--white, #fff); border-bottom: 1px solid var(--line, #e2e8f0); }
+.npc-progress { flex: 1; display: flex; gap: 6px; min-width: 0; }
+.npc-progress span { flex: 1; height: 8px; border-radius: 999px; background: var(--lock-bg, #e2e8f0); transition: background 0.3s; }
+.npc-progress span.is-done { background: #2e9e5b; }
+.npc-progress span.is-current { background: var(--amber, #f2a93b); }
+.npc-progress span.is-weak { background: var(--amber-bd, #f3d9a4); }
+.npc-lang { cursor: default; pointer-events: none; padding: 0 16px; font-family: var(--font-cjk, inherit), var(--font-ui, inherit); }
+.npc-main { display: flex; flex-direction: column; gap: 14px; padding: 16px 16px 32px; }
+.npc-zone-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.npc-zone-pill { color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 0.8px; padding: 8px 14px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+.npc-zone-label { font-size: 14px; font-weight: 700; color: var(--muted, #6b7a90); text-align: right; }
+.npc-card { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 20px; text-align: center; background: var(--white, #fff); border: 1px solid var(--line, #e2e8f0); border-radius: var(--radius-lg, 22px); }
+.npc-card > * { margin-top: 0; margin-bottom: 0; }
+.npc-card .sheet-title { margin: 0; }
+.npc-card .q-part { margin: 0; }
+.npc-full .q-options { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+.npc-full .q-feedback { margin: 0; text-align: center; }
+.npc-full .npc-main > .btn-block { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) { .npc-progress span { transition: none; } }`;
+    const tag = document.createElement("style");
+    tag.id = "npc-full-style";
+    tag.textContent = css;
+    document.head.appendChild(tag);
+  },
+  // top bar of the full-screen challenge. marks[i] = "ok" | "weak" for answered questions; current = the question on screen (-1 = none)
+  npcBar(total, marks, current) {
+    const segs = Array.from({ length: total }, (_, i) => `<span class="${marks[i] === "ok" ? "is-done" : marks[i] === "weak" ? "is-weak" : i === current ? "is-current" : ""}"></span>`).join("");
+    const lang = { zh: "中文", ms: "Melayu", ta: "தமிழ்" }[IslandLang.code] || "";
+    return `<header class="npc-top"><button class="icon-btn" data-close type="button" aria-label="Leave the challenge"><svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><div class="npc-progress" aria-hidden="true">${segs}</div><span class="chip npc-lang">${lang}</span></header>`;
+  },
+  npcZoneRow(zone, label) {
+    const n = ISLAND_ZONES.findIndex((z) => z.id === zone.id) + 1;
+    return `<div class="npc-zone-row"><span class="npc-zone-pill" style="background:${zone.accent}">ZONE ${n}&nbsp;&nbsp;${this.esc(String(zone.name).toUpperCase())}</span><span class="npc-zone-label">${this.esc(label)}</span></div>`;
+  },
+
   // ---------- NPC challenge ----------
   // opts: { done, progress(): {album, have, total, owned, of}, onResult(score, total) -> reward (may be a promise) }
   openNpc(npc, onClose, opts = {}) {
@@ -270,6 +317,7 @@ const IslandUI = {
     }
     let index = 0;
     let score = 0;
+    const marks = [];   // "ok" = right, "weak" = wrong, per question (the progress bar)
 
     const intro = () => {
       const pr = opts.progress ? opts.progress() : null;
@@ -280,21 +328,28 @@ const IslandUI = {
         : "";
       const focusLine = focus ? `<p class="sheet-note">Practising <b lang="${IslandLang.code}">${this.esc(focus)}</b>: it is in this challenge.</p>` : "";
       this.openSheet(
-        `${this.head(`${npc.role || zone.name}`, zone.accent)}
-         <h2 class="sheet-title">${this.esc(npc.name)}</h2>
-         <p class="sheet-sub">${this.esc(npc.greeting)}</p>
-         <p class="intro-rule">${total} questions. Get ${pass} right to pass.</p>
-         ${cardLine}
-         ${focusLine}
-         <button class="btn btn-primary btn-block" id="npc-go" type="button">Let's go</button>`,
+        `${this.npcBar(total, marks, -1)}
+         <div class="npc-main">
+           ${this.npcZoneRow(zone, npc.role || "Challenge")}
+           <section class="npc-card">
+             <h2 class="sheet-title">${this.esc(npc.name)}</h2>
+             <p class="sheet-sub">${this.esc(npc.greeting)}</p>
+             <p class="intro-rule">${total} questions. Get ${pass} right to pass.</p>
+             ${cardLine}
+             ${focusLine}
+           </section>
+           <button class="btn btn-primary btn-block" id="npc-go" type="button">Let's go</button>
+         </div>`,
         onClose
       );
+      this.el.overlay.classList.add("npc-full");
       document.getElementById("npc-go").addEventListener("click", ask);
     };
 
     const goNext = () => { index++; if (index < total) ask(); else finish(); };
     const nextButton = () => `<button class="btn btn-primary btn-block" id="q-next" type="button" hidden>${index + 1 < total ? "Next" : "See result"}</button>`;
-    const header = (q) => `${this.head(`${npc.name} · ${index + 1} of ${total}`, zone.accent)}<p class="q-part">${partText[q.kind] || "Question"}</p>`;
+    const header = (q) => `${this.npcBar(total, marks, index)}<div class="npc-main">${this.npcZoneRow(zone, `${npc.name} · ${index + 1} of ${total}`)}`;
+    const tag = (q) => `<p class="q-part">${partText[q.kind] || "Question"}</p>`;
 
     const ask = () => {
       const q = steps[index];
@@ -310,11 +365,16 @@ const IslandUI = {
           : `<div class="q-word${q.bigIsEnglish ? " is-english" : ""}" ${q.bigIsEnglish ? "" : `lang="${IslandLang.code}"`}>${this.esc(q.big)}</div>`;
       this.el.sheet.innerHTML =
         `${header(q)}
-         <p class="sheet-sub">${this.esc(q.prompt)}</p>
-         ${stem}
-         <div class="q-options">${q.options.map((o) => `<button class="q-opt" type="button" ${o.lang ? `lang="${IslandLang.code}"` : ""} data-opt="${this.esc(o.value)}">${this.esc(o.label)}</button>`).join("")}</div>
-         <p class="q-feedback" id="q-feedback" role="status"></p>
-         ${nextButton()}`;
+           <section class="npc-card">
+             ${tag(q)}
+             <p class="sheet-sub">${this.esc(q.prompt)}</p>
+             ${stem}
+           </section>
+           <div class="q-options">${q.options.map((o) => `<button class="q-opt" type="button" ${o.lang ? `lang="${IslandLang.code}"` : ""} data-opt="${this.esc(o.value)}">${this.esc(o.label)}</button>`).join("")}</div>
+           <p class="q-feedback" id="q-feedback" role="status"></p>
+           ${nextButton()}
+         </div>`;
+      this.el.sheet.scrollTop = 0;
       if (listen) {
         const play = () => { if (!IslandQuiz.speak(q.speak)) document.getElementById("q-nosound").hidden = false; };
         document.getElementById("q-play").addEventListener("click", play);
@@ -323,6 +383,9 @@ const IslandUI = {
       this.el.sheet.querySelectorAll(".q-opt").forEach((btn) => btn.addEventListener("click", () => {
         const correct = btn.dataset.opt === q.answer;
         if (correct) { score++; if (q.word) right.add(q.word); } else if (q.word) missed.add(q.word);
+        marks[index] = correct ? "ok" : "weak";
+        const seg = this.el.sheet.querySelectorAll(".npc-progress span")[index];
+        if (seg) seg.className = correct ? "is-done" : "is-weak";
         this.el.sheet.querySelectorAll(".q-opt").forEach((b) => {
           b.disabled = true;
           if (b.dataset.opt === q.answer) b.classList.add("is-right");
@@ -350,13 +413,18 @@ const IslandUI = {
       let matched = 0;
       this.el.sheet.innerHTML =
         `${header(q)}
-         <p class="sheet-sub">${this.esc(q.prompt)}</p>
+         <section class="npc-card">
+           ${tag(q)}
+           <p class="sheet-sub">${this.esc(q.prompt)}</p>
+         </section>
          <div class="match-grid">
            <div class="match-col">${pairs.map((p, i) => `<button class="match-opt" type="button" data-side="w" data-i="${i}" lang="${IslandLang.code}"><b>${this.esc(p.word)}</b>${q.side === "pinyin" || !p.pinyin ? "" : `<small>${this.esc(p.pinyin)}</small>`}</button>`).join("")}</div>
            <div class="match-col">${meanings.map((m) => `<button class="match-opt" type="button" data-side="m" data-i="${m.i}">${this.esc(m.text)}</button>`).join("")}</div>
          </div>
          <p class="q-feedback" id="q-feedback" role="status">Tap a word, then its meaning.</p>
-         ${nextButton()}`;
+         ${nextButton()}
+         </div>`;
+      this.el.sheet.scrollTop = 0;
       const sheet = this.el.sheet;
       const btn = (side, i) => sheet.querySelector(`.match-opt[data-side="${side}"][data-i="${i}"]`);
       sheet.querySelectorAll(".match-opt").forEach((b) => b.addEventListener("click", () => {
@@ -375,6 +443,9 @@ const IslandUI = {
           if (matched === pairs.length) {
             const good = mistakes <= q.allowedMistakes;
             if (good) { score++; q.words.forEach((w) => right.add(w)); }
+            marks[index] = good ? "ok" : "weak";
+            const seg = sheet.querySelectorAll(".npc-progress span")[index];
+            if (seg) seg.className = good ? "is-done" : "is-weak";
             document.getElementById("q-feedback").textContent = mistakes === 0 ? "All matched with no mistakes!" : good ? `All matched (${mistakes} mistake${mistakes > 1 ? "s" : ""}).` : `All matched, but with ${mistakes} mistakes.`;
             const next = document.getElementById("q-next");
             next.hidden = false;
@@ -394,7 +465,7 @@ const IslandUI = {
 
     const finish = async () => {
       const passed = score >= pass;
-      this.el.sheet.innerHTML = `${this.head(npc.name, zone.accent)}<h2 class="sheet-title">${score} / ${total}</h2><p class="sheet-sub">Collecting your reward...</p>`;
+      this.el.sheet.innerHTML = `${this.npcBar(total, marks, -1)}<div class="npc-main"><section class="npc-card"><h2 class="sheet-title">${score} / ${total}</h2><p class="sheet-sub">Collecting your reward...</p></section></div>`;
       let reward = null;
       try { reward = opts.onResult ? await opts.onResult(score, total, [...right], [...asked], [...missed]) : null; } catch (err) { console.error(err); }
       reward = reward || { coins: 0, xp: 0, cards: [], dupes: [] };
@@ -418,18 +489,24 @@ const IslandUI = {
       const noRole = passed && !cards.some((c) => c.kind === "role")
         ? `<p class="sheet-sub">${reward.roleLeft > 0 ? "No new role cards this time. Get the words you have not won yet right to win them." : "You already have every role card here."}</p>` : "";
       this.el.sheet.innerHTML =
-        `${this.head(npc.name, zone.accent)}
-         <h2 class="sheet-title">${score} / ${total}</h2>
-         <p class="sheet-sub">${msg}</p>
-         ${earned ? `<p class="reward-line">${earned}</p>` : ""}
-         ${reward.levelUps ? '<p class="album-done">Level up! Check your profile.</p>' : ""}
-         ${cardsHtml}
-         ${dupeHtml}
-         ${noRole}
-         ${passed ? albumHtml : ""}
-         ${(reward.practised || []).length ? `<p class="sheet-sub">Practised: ${reward.practised.map((p) => `<b lang="${IslandLang.code}">${this.esc(p.word)}</b>${p.evolved ? " (evolved!)" : ""}`).join(", ")}</p>` : ""}
-         ${reward.masterDone ? '<p class="album-done">Every card in this album is yours! Open Collection for the shiny badge.</p>' : reward.zoneDone ? '<p class="album-done">All zone cards collected! Open Collection to claim your badge.</p>' : ""}
-         <button class="btn btn-primary btn-block" data-close type="button">Done</button>`;
+        `${this.npcBar(total, marks, -1)}
+         <div class="npc-main">
+           ${this.npcZoneRow(zone, npc.name)}
+           <section class="npc-card">
+             <h2 class="sheet-title">${score} / ${total}</h2>
+             <p class="sheet-sub">${msg}</p>
+             ${earned ? `<p class="reward-line">${earned}</p>` : ""}
+             ${reward.levelUps ? '<p class="album-done">Level up! Check your profile.</p>' : ""}
+             ${cardsHtml}
+             ${dupeHtml}
+             ${noRole}
+             ${passed ? albumHtml : ""}
+             ${(reward.practised || []).length ? `<p class="sheet-sub">Practised: ${reward.practised.map((p) => `<b lang="${IslandLang.code}">${this.esc(p.word)}</b>${p.evolved ? " (evolved!)" : ""}`).join(", ")}</p>` : ""}
+             ${reward.masterDone ? '<p class="album-done">Every card in this album is yours! Open Collection for the shiny badge.</p>' : reward.zoneDone ? '<p class="album-done">All zone cards collected! Open Collection to claim your badge.</p>' : ""}
+           </section>
+           <button class="btn btn-primary btn-block" data-close type="button">Done</button>
+         </div>`;
+      this.el.sheet.scrollTop = 0;
     };
 
     intro();

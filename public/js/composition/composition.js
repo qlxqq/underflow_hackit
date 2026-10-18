@@ -54,7 +54,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let player = null;       // the signed-in user
     let language = "zh";     // the player's Mother Tongue
-    document.querySelector(".session-chip span").textContent = "Composition";
+    // The page header matches the Pronunciation game: language chip, zone pill, one progress segment per question.
+    const ZONE_LOOK = { 1: { name: "NEIGHBOURHOOD", color: "#2e9e5b" }, 2: { name: "HAWKER CENTRE", color: "#c2611a" }, 3: { name: "PUBLIC TRANSPORT", color: "#2f6fd6" } };
+    const LANG_LABELS = { zh: "\u4e2d\u6587", ms: "Melayu", ta: "\u0ba4\u0bae\u0bbf\u0bb4\u0bcd" };
+    const zonePill = document.getElementById("zonePill");
+    const langBadge = document.getElementById("langBadge");
+    const progressBar = document.getElementById("progress");
+    if (zonePill && ZONE_LOOK[zone]) {
+        zonePill.textContent = "ZONE " + zone + "\u00a0\u00a0" + ZONE_LOOK[zone].name;
+        zonePill.style.background = ZONE_LOOK[zone].color;
+    }
+    document.title = "Composition";
+    let questionResults = [];      // per question: "ok" (right first time) or "weak" (right after a mistake)
 
     const questionPrompt = document.getElementById("questionPrompt");
     const questionHint = document.getElementById("questionHint");
@@ -63,8 +74,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const emptyPlaceholder = document.getElementById("emptyPlaceholder");
 
     const questionCounter = document.getElementById("questionCounter");
-    const progressFill = document.getElementById("progressFill");
-    const xpDisplay = document.getElementById("xpDisplay");
+    const xpDisplay = document.getElementById("xpDisplay") || { textContent: "", title: "" };   // the page has no score badge any more
 
     const checkButton = document.getElementById("checkButton");
     const resetButton = document.getElementById("resetButton");
@@ -93,6 +103,18 @@ document.addEventListener("DOMContentLoaded", function () {
     // Who is playing, and in which language
     // ----------------------------------
 
+    // One segment per question: green = right first time, pale amber = right after a mistake, orange = the one you are on.
+    function renderProgress() {
+        if (!progressBar) return;
+        progressBar.replaceChildren();
+        for (let i = 0; i < questions.length; i++) {
+            const seg = document.createElement("span");
+            if (questionResults[i]) seg.className = questionResults[i] === "ok" ? "is-done" : "is-weak";
+            else if (i === currentQuestionIndex && !finished) seg.className = "is-current";
+            progressBar.appendChild(seg);
+        }
+    }
+
     async function loadPlayer() {
         player = await getCurrentUser();   // js/shared/auth.js
 
@@ -108,6 +130,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // storage blocked: stay on Chinese
         }
         updateScoreDisplay();
+        if (langBadge) langBadge.textContent = LANG_LABELS[language] || LANG_LABELS.zh;
     }
 
     // Playing counts towards the daily streak (once per visit; the streak itself grows once a day).
@@ -329,11 +352,10 @@ document.addEventListener("DOMContentLoaded", function () {
             : "Arrange the words in the correct order.");
 
         questionCounter.textContent =
-            "Question " + (currentQuestionIndex + 1) +
+            "Composition \u00b7 " + (currentQuestionIndex + 1) +
             " of " + questions.length;
 
-        progressFill.style.width =
-            (completedQuestions / questions.length * 100) + "%";
+        renderProgress();
 
         answerArea.replaceChildren();
         wordBank.replaceChildren();
@@ -534,8 +556,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         updateScoreDisplay();
 
-        progressFill.style.width =
-            (completedQuestions / questions.length * 100) + "%";
+        questionResults[currentQuestionIndex] = firstTry ? "ok" : "weak";
+        renderProgress();
 
         showFeedback(
             true,
@@ -649,9 +671,9 @@ document.addEventListener("DOMContentLoaded", function () {
             ? "Go back to the island to collect your reward."
             : "You've finished all the composition questions in this session.";
 
-        questionCounter.textContent = total + " of " + total + " completed";
+        questionCounter.textContent = "Composition \u00b7 done";
 
-        progressFill.style.width = "100%";
+        renderProgress();
 
         answerArea.replaceChildren();
         wordBank.replaceChildren();

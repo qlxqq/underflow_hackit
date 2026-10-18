@@ -204,17 +204,17 @@ USING (true);
 -- Composition questions are loaded by composition_seed.sql (not here), so running this file never adds old sample rows.
 
 -- ============================================================
--- PRONUNCIATION: phrase bank for the Pronunciation level of every zone
+-- PRONUNCIATION: question bank for the Pronunciation game of every zone
 -- ============================================================
 -- One row per phrase, in Chinese (zh), Malay (ms) and Tamil (ta), using the same language codes
--- as journey_progress and island_progress. level = the level inside the zone (Pronunciation is 1).
--- The phrases are added by database/pronunciation_questions.sql (run that after this file).
+-- as journey_progress and island_progress. There are no levels: each run asks random phrases from the
+-- zone's bank. The phrases are added by database/pronunciation_questions.sql (run that after this file;
+-- it also upgrades an older table that still has a "level" column).
 -- Same for every player: anyone can read them, nobody can change them from the app.
 
 CREATE TABLE IF NOT EXISTS public.pronunciation_questions (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     zone INTEGER NOT NULL,
-    level INTEGER NOT NULL DEFAULT 1,
     topic TEXT NOT NULL,
     language VARCHAR(10) NOT NULL,
     phrase TEXT NOT NULL,          -- what the player says
@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS public.pronunciation_questions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT unique_pronunciation_phrase
-        UNIQUE (zone, level, language, phrase)
+        UNIQUE (zone, language, phrase)
 );
 
 ALTER TABLE public.pronunciation_questions

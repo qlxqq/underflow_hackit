@@ -1,123 +1,74 @@
-/* Composition practice. Builds on the tokens and components in
-   css/shared/base.css (load base.css first). Same IDs and class names as
-   before, so composition.js needs no changes. */
+/* Composition practice. Same look as the Pronunciation game (css/pronunciation/style.css):
+   segmented progress in the top bar, language chip, zone pill row, white cards on the page background.
+   Builds on the tokens and components in css/shared/base.css (load base.css first).
+   There is no bottom navigation on mini-game pages. */
 
 .composition-page {
   display: flex;
   flex-direction: column;
-  /* room for the shared bottom navigation, which is fixed to the bottom of the screen */
-  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* ---------- top bar (base .top-bar) ---------- */
-
-.back-button {
-  color: var(--muted);
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1;
+/* ---------- top bar (same as pronunciation) ---------- */
+.pr-top { gap: 10px; }
+.back-button { color: var(--muted); }
+.pr-progress { flex: 1; display: flex; gap: 6px; min-width: 0; }
+.pr-progress span {
+  flex: 1; height: 8px; border-radius: 999px;
+  background: var(--lock-bg); transition: background 0.3s;
 }
+.pr-progress span.is-done { background: #2e9e5b; }          /* right the first time */
+.pr-progress span.is-current { background: var(--amber); }
+.pr-progress span.is-weak { background: var(--amber-bd); }  /* right, but not the first time */
+.pr-lang { cursor: default; padding: 0 16px; font-family: var(--font-cjk), var(--font-ui); pointer-events: none; }
 
-.progress-container {
-  flex: 1;
-  min-width: 0;
-}
-
-.progress-bar {
-  height: 12px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--lock-bg);
-}
-
-.progress-fill {
-  width: 0;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #17a596, #2f6fd6);
-  transition: width 0.3s ease;
-}
-
-.xp-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: var(--white);
-  font-size: 15px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-/* ---------- sheet ---------- */
-
+/* ---------- content ---------- */
 .composition-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-top: 14px;
-  padding: 18px 20px 0;
-  border-radius: 26px 26px 0 0;
+  gap: 14px;
+}
+.pr-main { padding: 16px 16px 32px; }
+.pr-zone-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pr-zone-pill {
+  background: #2e9e5b; color: var(--white);
+  font-size: 12px; font-weight: 800; letter-spacing: 0.8px;
+  padding: 8px 14px; border-radius: 999px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.pr-level { font-size: 14px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.pr-card {
   background: var(--white);
-  box-shadow: 0 -4px 24px rgba(14, 22, 40, 0.06);
-}
-
-.session-chip {
-  align-self: flex-start;
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 14px;
   border: 1px solid var(--line);
-  border-left: 5px solid var(--teal);
-  border-radius: 14px;
-  background: var(--bg);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
+  border-radius: var(--radius-lg);
+  padding: 20px;
 }
+.pr-prompt { margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); }
 
-h1 {
-  margin: 18px 0 2px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.subtitle {
-  margin: 0;
-  color: var(--muted);
-  font-size: 17px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-/* ---------- question ---------- */
-
+/* ---------- question card ---------- */
 .question-card {
-  margin: 22px 0 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 20px;
   text-align: center;
 }
 
 .question-card h2 {
   margin: 0;
-  font-size: clamp(26px, 8vw, 34px);
-  font-weight: 800;
-  line-height: 1.3;
+  font-size: clamp(22px, 7vw, 30px);
+  font-weight: 700;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
 .question-hint {
-  margin: 8px 0 0;
+  margin: 0;
   color: var(--muted);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 500;
   line-height: 1.5;
 }
 
@@ -125,11 +76,7 @@ h1 {
 
 .answer-section,
 .word-bank-section {
-  margin-top: 22px;
-}
-
-.word-bank-section {
-  padding-bottom: 24px;
+  margin: 0;
 }
 
 .section-heading {
@@ -161,7 +108,7 @@ h1 {
   padding: 14px;
   border: 2px dashed var(--line);
   border-radius: var(--radius-md);
-  background: var(--bg);
+  background: var(--white);
 }
 
 .empty-placeholder {
@@ -259,27 +206,11 @@ h1 {
   overflow-wrap: anywhere;
 }
 
-/* ---------- action bar (base .btn classes) ---------- */
+/* ---------- action buttons (same row as pronunciation) ---------- */
 
-.action-buttons {
-  position: sticky;
-  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
-  display: flex;
-  gap: 12px;
-  margin: auto -20px 0;
-  padding: 14px 20px 14px;
-  border-top: 1px solid var(--line);
-  background: var(--white);
-}
-
-.reset-button {
-  flex: none;
-}
-
-.check-button,
-.next-button {
-  flex: 1;
-}
+.pr-actions { display: flex; gap: 10px; }
+.pr-actions .btn { flex: 1; }
+.pr-actions .reset-button { flex: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .progress-fill,
