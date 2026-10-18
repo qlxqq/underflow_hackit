@@ -642,6 +642,7 @@ async function enterApp() {
     return;
   }
   appSection.hidden = false;
+  await IslandContent.ready; // the words and text the Collection shows come from Supabase too
   if (PACK_ON_CAPTURE) showStatus("Pack test is on for captured words. Open the page with ?pack=0 on the end to turn it off.", "info");
   // Capture uses the player's Mother Tongue and nothing else.
   setLanguageTint(getMotherTongue());
