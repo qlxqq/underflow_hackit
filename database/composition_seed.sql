@@ -3,6 +3,69 @@
 -- It first removes any zone 2 and zone 3 questions (including the test row), then adds all 24,
 -- so running it twice never leaves duplicates. Only run it if zones 2 and 3 hold nothing else.
 
+DELETE FROM public.composition_questions WHERE zone = 1;
+
+INSERT INTO public.composition_questions
+    (zone, level, topic, language, prompt, tiles, accepted_answers, explanation, xp)
+VALUES
+-- ===== Neighbourhood, level 1 =====
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say you live in an HDB flat.',
+  '["我", "住在", "组屋", "。"]'::jsonb, '["我住在组屋。"]'::jsonb,
+  '组屋 means "HDB flat".', 10),
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say this is my home.',
+  '["这", "是", "我", "家", "。"]'::jsonb, '["这是我家。"]'::jsonb,
+  '家 means "home".', 10),
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say there is a supermarket downstairs.',
+  '["楼下", "有", "超市", "。"]'::jsonb, '["楼下有超市。"]'::jsonb,
+  '楼下 means "downstairs".', 10),
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say you are going to the park.',
+  '["我", "去", "公园", "。"]'::jsonb, '["我去公园。"]'::jsonb,
+  '公园 means "park".', 10),
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say the neighbours are nice.',
+  '["邻居", "很", "好", "。"]'::jsonb, '["邻居很好。"]'::jsonb,
+  '邻居 means "neighbour".', 10),
+(1, 1, 'neighbourhood', 'zh-CN', 'Arrange the words to say you take the lift.',
+  '["我", "坐", "电梯", "。"]'::jsonb, '["我坐电梯。"]'::jsonb,
+  '电梯 means "lift".', 10),
+-- ===== Neighbourhood, level 2 =====
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to say your home is on the third floor.',
+  '["我家", "在", "三楼", "。"]'::jsonb, '["我家在三楼。"]'::jsonb,
+  '三楼 means "third floor".', 10),
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to ask where the lift is.',
+  '["请问", "电梯", "在", "哪里", "？"]'::jsonb, '["请问电梯在哪里？"]'::jsonb,
+  '请问 means "excuse me, may I ask".', 10),
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to say you are going downstairs to buy groceries.',
+  '["我", "要", "去", "楼下", "买菜", "。"]'::jsonb, '["我要去楼下买菜。"]'::jsonb,
+  '买菜 means "buy groceries".', 10),
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to say there is a playground here.',
+  '["这里", "有", "一个", "游乐场", "。"]'::jsonb, '["这里有一个游乐场。"]'::jsonb,
+  '游乐场 means "playground".', 10),
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to say your neighbour is an elderly person.',
+  '["我的", "邻居", "是", "老人", "。"]'::jsonb, '["我的邻居是老人。"]'::jsonb,
+  '老人 means "elderly person".', 10),
+(1, 2, 'neighbourhood', 'zh-CN', 'Arrange the words to say we take a walk in the park.',
+  '["我们", "在", "公园", "散步", "。"]'::jsonb, '["我们在公园散步。"]'::jsonb,
+  '散步 means "take a walk".', 10),
+-- ===== Neighbourhood, level 3 =====
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to ask where the nearest supermarket is.',
+  '["请问", "最近", "的", "超市", "在", "哪里", "？"]'::jsonb, '["请问最近的超市在哪里？"]'::jsonb,
+  '最近的 means "the nearest".', 10),
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to say you jog in the park downstairs every morning.',
+  '["我", "每天", "早上", "在", "楼下", "的", "公园", "跑步", "。"]'::jsonb, '["我每天早上在楼下的公园跑步。"]'::jsonb,
+  '每天早上 means "every morning".', 10),
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to say your neighbour often helps you collect parcels.',
+  '["我的", "邻居", "常常", "帮", "我", "拿", "包裹", "。"]'::jsonb, '["我的邻居常常帮我拿包裹。"]'::jsonb,
+  '帮我 means "help me".', 10),
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to say the lift is broken, so please use the stairs.',
+  '["电梯", "坏了", "，", "请", "走", "楼梯", "。"]'::jsonb, '["电梯坏了，请走楼梯。"]'::jsonb,
+  '坏了 means "broken".', 10),
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to ask people to be quieter at night because neighbours are sleeping.',
+  '["晚上", "请", "小声", "一点", "，", "邻居", "在", "睡觉", "。"]'::jsonb, '["晚上请小声一点，邻居在睡觉。"]'::jsonb,
+  '小声一点 means "a bit quieter".', 10),
+(1, 3, 'neighbourhood', 'zh-CN', 'Arrange the words to say this neighbourhood is quiet and clean.',
+  '["这个", "社区", "很", "安静", "，", "也", "很", "干净", "。"]'::jsonb, '["这个社区很安静，也很干净。"]'::jsonb,
+  '社区 means "neighbourhood".', 10);
+  
 DELETE FROM public.composition_questions WHERE zone IN (2, 3);
 
 INSERT INTO public.composition_questions
