@@ -1,0 +1,751 @@
+/* Duel page. Builds on the tokens in css/shared/base.css and topbar.css
+   (load them first). Every colour falls back to a sensible value, so the
+   page still looks right if a token has a different name. */
+
+.duel-app {
+  --d-me: #2f6fd6;
+  --d-me-soft: #e8f0fd;
+  --d-me-line: #b9d0f5;
+  --d-them: #e8772e;
+  --d-them-soft: #fff1e6;
+  --d-them-line: #f7cba6;
+  --d-good: #17a596;
+  --d-bad: var(--danger, #d64545);
+  --d-ink: var(--ink, #1c2433);
+  --d-muted: var(--muted, #6b7488);
+  --d-line: var(--line, #e3e7ee);
+  --d-white: var(--white, #ffffff);
+
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* flex/grid rules below must never beat the hidden attribute */
+.duel-app [hidden] { display: none !important; }
+
+.back-button {
+  color: var(--d-muted);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* ---------- shared bits ---------- */
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 800;
+  text-transform: uppercase;
+  border: 2px solid transparent;
+}
+
+.avatar-me { background: var(--d-me-soft); border-color: var(--d-me-line); color: var(--d-me); }
+.avatar-them { background: var(--d-them-soft); border-color: var(--d-them-line); color: var(--d-them); }
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 4px solid var(--d-line);
+  border-top-color: var(--d-me);
+  border-radius: 50%;
+  animation: duel-spin 0.8s linear infinite;
+}
+
+@keyframes duel-spin { to { transform: rotate(360deg); } }
+
+/* ---------- plain screens (loading, lobby, ended) ---------- */
+
+.duel-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 24px 40px;
+  text-align: center;
+  overflow-y: auto;
+}
+
+.screen-text {
+  margin: 0;
+  max-width: 320px;
+  color: var(--d-muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.lobby-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 4px;
+}
+
+.lobby-player { width: 96px; }
+
+.lobby-player .avatar {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 8px;
+  font-size: 30px;
+}
+
+.lobby-name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lobby-vs-badge {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--d-ink);
+  color: var(--d-white);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  animation: duel-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes duel-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+.lobby-info {
+  margin: 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--lock-bg, #eef1f6);
+  color: var(--d-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.lobby-title {
+  margin: 4px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.lobby-timer {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.lobby-timer:empty { display: none; }
+
+.lobby-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+  margin-top: 8px;
+}
+
+.lobby-actions .btn { width: 100%; }
+
+.end-icon { font-size: 54px; line-height: 1; }
+
+/* ---------- arena ---------- */
+
+.arena {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 10px 16px 12px;
+}
+
+.side-them {
+  flex: 0.85 1 0;
+  background: var(--d-them-soft);
+  border-bottom: 1px solid var(--d-them-line);
+}
+
+.side-me {
+  flex: 1.3 1 0;
+  background: var(--d-white);
+  overflow-y: auto;
+}
+
+.side-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.side-head .avatar { width: 38px; height: 38px; font-size: 16px; }
+
+.side-who { flex: 1; min-width: 0; }
+
+.side-name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.side-sub {
+  margin: 0;
+  color: var(--d-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.wrong-badge {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(214, 69, 69, 0.1);
+  color: var(--d-bad);
+  font-size: 12.5px;
+  font-weight: 800;
+  transition: transform 0.2s;
+}
+
+.wrong-badge.bump { animation: duel-pop 0.35s ease; }
+
+@keyframes duel-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+/* question progress dots */
+.pips { display: flex; gap: 6px; }
+
+.pip {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(28, 36, 51, 0.12);
+  transition: background 0.3s;
+}
+
+.side-me .pip.done { background: var(--d-me); }
+.side-them .pip.done { background: var(--d-them); }
+
+.pip.now { animation: duel-blink 1.2s ease-in-out infinite; }
+.side-me .pip.now { background: var(--d-me-line); }
+.side-them .pip.now { background: var(--d-them-line); }
+
+@keyframes duel-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* ---------- friend's live status ---------- */
+
+.them-status {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 8px 12px;
+  min-height: 84px;
+  border: 2px dashed var(--d-them-line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.them-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  min-height: 26px;
+}
+
+.them-tile {
+  width: 30px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--d-them);
+  opacity: 0.85;
+  animation: duel-tile-in 0.18s ease-out;
+}
+
+@keyframes duel-tile-in {
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 0.85; }
+}
+
+.them-text {
+  margin: 0;
+  color: var(--d-muted);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.them-status.is-wrong {
+  border-style: solid;
+  border-color: var(--d-bad);
+  background: rgba(214, 69, 69, 0.1);
+}
+
+.them-status.is-wrong .them-text { color: var(--d-bad); }
+
+.them-status.is-wrong.shake { animation: duel-shake 0.45s ease; }
+
+.them-status.is-done {
+  border-style: solid;
+  border-color: var(--d-good);
+  background: rgba(23, 165, 150, 0.1);
+}
+
+.them-status.is-done .them-text { color: var(--d-good); font-size: 16px; font-weight: 800; }
+
+@keyframes duel-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-9px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(4px); }
+}
+
+/* ---------- VS bar ---------- */
+
+.vs-bar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  height: 0;
+}
+
+.vs-line { flex: 1; }
+
+.vs-badge {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border: 3px solid var(--d-white);
+  border-radius: 999px;
+  background: var(--d-ink);
+  color: var(--d-white);
+  font-weight: 800;
+  box-shadow: 0 3px 10px rgba(14, 22, 40, 0.25);
+}
+
+.vs-label {
+  color: #ffd166;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.vs-timer {
+  min-width: 52px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* ---------- my game ---------- */
+
+.prompt {
+  margin: 2px 0 0;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.answer-area {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  min-height: 58px;
+  padding: 8px;
+  border: 2px dashed var(--d-me-line);
+  border-radius: 14px;
+  background: var(--d-me-soft);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.answer-placeholder {
+  align-self: center;
+  width: 100%;
+  color: var(--d-muted);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.answer-area.is-wrong {
+  border-style: solid;
+  border-color: var(--d-bad);
+  background: rgba(214, 69, 69, 0.08);
+  animation: duel-shake 0.45s ease;
+}
+
+.word-bank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 48px;
+}
+
+.tile {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 2px solid var(--d-line);
+  border-bottom-width: 4px;
+  border-radius: 12px;
+  background: var(--d-white);
+  color: var(--d-ink);
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.08s, opacity 0.15s;
+}
+
+.tile:active:not(:disabled) { transform: translateY(2px); }
+.tile:disabled { cursor: default; opacity: 0.45; }
+
+.tile.in-answer {
+  border-color: var(--d-me);
+  background: var(--d-me-soft);
+  color: var(--d-me);
+  animation: duel-tile-pop 0.15s ease-out;
+}
+
+.answer-area.is-wrong .tile.in-answer {
+  border-color: var(--d-bad);
+  background: var(--d-white);
+  color: var(--d-bad);
+}
+
+.tile.is-used { visibility: hidden; }
+
+@keyframes duel-tile-pop {
+  from { transform: scale(0.8); }
+  to { transform: scale(1); }
+}
+
+.me-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.me-actions .btn { min-height: 38px; }
+
+/* shown over my side during the 3 second penalty */
+.lock-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(214, 69, 69, 0.92);
+  color: #fff;
+  text-align: center;
+  animation: duel-fade-in 0.15s ease;
+}
+
+.lock-title { margin: 0; font-size: 18px; font-weight: 800; }
+
+.lock-count {
+  margin: 0;
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.lock-bar {
+  width: 70%;
+  max-width: 240px;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.lock-bar span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: #fff;
+}
+
+.lock-hint { margin: 0; font-size: 13.5px; font-weight: 700; opacity: 0.9; }
+
+@keyframes duel-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- countdown ---------- */
+
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(14, 22, 40, 0.92);
+  color: #fff;
+  text-align: center;
+}
+
+.countdown-vs {
+  margin: 0;
+  max-width: 90%;
+  font-size: 18px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.countdown-number {
+  margin: 0;
+  font-size: 140px;
+  font-weight: 800;
+  line-height: 1;
+  color: #ffd166;
+}
+
+.countdown-number.tick { animation: duel-countdown 0.9s ease-out; }
+
+@keyframes duel-countdown {
+  0% { transform: scale(2); opacity: 0; }
+  30% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.7; }
+}
+
+.countdown-hint { margin: 0; font-size: 14px; font-weight: 700; opacity: 0.75; }
+
+/* ---------- result ---------- */
+
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(14, 22, 40, 0.7);
+  overflow: hidden;
+}
+
+.result-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 360px;
+  padding: 24px 20px 18px;
+  border-radius: 24px;
+  background: var(--d-white);
+  color: var(--d-ink);
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(14, 22, 40, 0.35);
+  animation: duel-card-in 0.4s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+@keyframes duel-card-in {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.result-emoji { font-size: 58px; line-height: 1; }
+
+.result-title { margin: 6px 0 4px; font-size: 28px; font-weight: 800; }
+.result-title.win { color: var(--d-good); }
+.result-title.lose { color: var(--d-bad); }
+
+.result-sub {
+  margin: 0 0 14px;
+  color: var(--d-muted);
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.result-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--d-line);
+  border-radius: 14px;
+  text-align: left;
+}
+
+.result-row.is-winner { border-color: var(--d-good); background: rgba(23, 165, 150, 0.08); }
+
+.result-row .avatar { width: 34px; height: 34px; font-size: 15px; }
+
+.result-who { flex: 1; min-width: 0; }
+
+.result-who strong {
+  display: block;
+  overflow: hidden;
+  font-size: 14.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-who span { color: var(--d-muted); font-size: 12.5px; font-weight: 700; }
+
+.result-time {
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-xp {
+  margin: 0 0 14px;
+  color: var(--amber-txt, #9a5b00);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.result-xp:empty { display: none; }
+
+.result-actions { display: flex; flex-direction: column; gap: 10px; }
+.result-actions .btn { width: 100%; }
+
+.result-card .status-message { margin: 10px 0 0; }
+
+/* confetti for the winner */
+.confetti { position: absolute; inset: 0; pointer-events: none; }
+
+.confetti i {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: duel-confetti linear forwards;
+}
+
+@keyframes duel-confetti {
+  0% { transform: translateY(0) rotate(0); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0.9; }
+}
+
+/* ---------- confirm pop-up (same look as the Friends page) ---------- */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(14, 22, 40, 0.66);
+}
+
+.confirm-card {
+  width: 100%;
+  max-width: 340px;
+  padding: 24px 20px 18px;
+  border-radius: 22px;
+  background: var(--d-white);
+  color: var(--d-ink);
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(14, 22, 40, 0.35);
+  animation: duel-card-in 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.confirm-title { margin: 0 0 6px; font-size: 20px; font-weight: 800; line-height: 1.25; }
+.confirm-text { margin: 0 0 18px; color: var(--d-muted); font-size: 14.5px; line-height: 1.5; }
+.confirm-actions { display: flex; flex-direction: column; gap: 10px; }
+.confirm-actions .btn { width: 100%; }
+.btn-danger { background: var(--d-bad); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .duel-app *, .duel-app *::before, .duel-app *::after,
+  .result-card, .confirm-card, .confetti i {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* very short phones: tighten the layout so the word bank still fits */
+@media (max-height: 640px) {
+  .side { padding: 8px 12px 10px; gap: 6px; }
+  .them-status { padding: 4px 8px; }
+  .tile { min-height: 40px; font-size: 17px; }
+  .lock-count { font-size: 48px; }
+}
+
+/* ---------- small message at the bottom ---------- */
+
+.duel-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 120;
+  max-width: 88%;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: var(--d-ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  transform: translateX(-50%);
+  box-shadow: 0 6px 20px rgba(14, 22, 40, 0.3);
+  animation: duel-fade-in 0.2s ease;
+}
