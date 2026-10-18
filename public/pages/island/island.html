@@ -80,6 +80,11 @@
         </div>
         <div class="tour-top-actions"><button type="button" class="tour-help" aria-label="Guide for this page" title="Guide for this page">?</button><button type="button" id="open-profile" class="avatar-btn" aria-label="Your profile and picture"></button></div>
       </header>
+<div id="festival-badge" class="festival-badge" hidden>
+  <a class="fb-link" href="../festival/festival.html" aria-label="Festival treasure hunt"><span class="fb-icon"></span><span class="fb-label">Hunt</span></a>
+  <button type="button" class="fb-hide" aria-label="Hide the treasure hunt icon">×</button>
+</div>
+<button type="button" id="festival-tab" class="festival-tab" aria-label="Show the treasure hunt icon" hidden></button>
       <div id="journey-quests" class="quests-panel" aria-label="Daily quests" hidden></div>
       <!-- The island is mounted here by js/island/app.js -->
       <div id="map" class="island-wrap"></div>
@@ -105,6 +110,7 @@
   <script src="../../js/shared/auth.js"></script>
   <script src="../../js/shared/streak.js"></script>
   <script src="../../js/shared/rewards.js"></script>
+  <script src="../../js/shared/festival.js"></script>
   <script src="../../js/shared/profile.js"></script>
   <script src="../../js/cards/quests.js"></script>
   <!-- the card chain, in the same order as the Capture/Collection page, for the pack opening -->

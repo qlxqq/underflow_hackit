@@ -191,6 +191,57 @@ async function mountIsland(language) {
   }
 }
 
+// The festival icon on the island. While a hunt is live the player can hide it (x) and bring it back (the small tab);
+// the choice is remembered per event, so a new festival shows its icon again.
+// When no hunt is live, the tab stays on the edge showing the NEXT festival's icon. It is locked: it only
+// tells the player when that hunt opens, and the icon cannot open until that day.
+function festivalHiddenKey(eventId) { return `festival:badge-hidden:${eventId}`; }
+function festivalIsHidden(eventId) {
+  try { return localStorage.getItem(festivalHiddenKey(eventId)) === "1"; } catch (e) { return false; }
+}
+function festivalSetHidden(eventId, hidden) {
+  try { hidden ? localStorage.setItem(festivalHiddenKey(eventId), "1") : localStorage.removeItem(festivalHiddenKey(eventId)); } catch (e) { /* not saved, still works this visit */ }
+  $("festival-badge").hidden = hidden;
+  $("festival-tab").hidden = !hidden;
+}
+function festivalTip(tab, text) {
+  document.querySelectorAll(".festival-tip").forEach((n) => n.remove());
+  const tip = document.createElement("div");
+  tip.className = "festival-tip"; tip.setAttribute("role", "status"); tip.textContent = text;
+  tab.insertAdjacentElement("afterend", tip);
+  setTimeout(() => tip.remove(), 3000);
+}
+async function showFestivalBadge(language) {
+  const badge = $("festival-badge"), tab = $("festival-tab");
+  const none = () => { badge.hidden = true; tab.hidden = true; };
+  try {
+    const all = await Festival.events(language);
+    const live = all.find((e) => e.live);
+    if (live) {
+      tab.classList.remove("is-locked");
+      badge.querySelector(".fb-icon").replaceChildren(Festival.iconSvg(live.icon, 30));
+      tab.replaceChildren(Festival.iconSvg(live.icon, 20));
+      badge.querySelector(".fb-link").setAttribute("aria-label", `${live.name}. ${live.daysLeft} days left`);
+      badge.querySelector(".fb-hide").onclick = () => festivalSetHidden(live.id, true);
+      tab.onclick = () => festivalSetHidden(live.id, false);
+      tab.setAttribute("aria-label", `Show the ${live.name} icon`);
+      festivalSetHidden(live.id, festivalIsHidden(live.id));
+      return;
+    }
+    const next = all.find((e) => e.upcoming);
+    if (!next) { none(); return; }
+    badge.hidden = true; tab.hidden = false;
+    tab.classList.add("is-locked");
+    tab.replaceChildren(Festival.iconSvg(next.icon, 20));
+    const when = next.daysToStart <= 1 ? "tomorrow" : `in ${next.daysToStart} days`;
+    const msg = `${next.name} opens ${when}`;
+    tab.setAttribute("aria-label", msg);
+    tab.onclick = () => festivalTip(tab, msg);
+  } catch (err) {
+    none(); // the hunt is a bonus: never block the island on it
+  }
+}
+
 async function startIslandFor(language) {
   // The island is built for one language at a time, so changing language starts the page again.
   // The choice is saved first, and the page opens straight into the new island.
@@ -203,6 +254,7 @@ async function startIslandFor(language) {
   writeSavedLanguage(getStorage(), currentUser.id, language);
   renderLanguageChip();
   showScreen("journey");
+  showFestivalBadge(language); // not awaited
   try {
     await mountIsland(language);
   } catch (err) {

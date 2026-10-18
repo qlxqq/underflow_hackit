@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="../../manifest.webmanifest" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="apple-touch-icon" href="../../icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Mother Tongue" />
+  <title>Treasure Hunt - Underflow Hackit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@500;700;800&family=Noto+Sans+Tamil:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../css/shared/base.css" />
+  <link rel="stylesheet" href="../../css/shared/topbar.css" />
+  <link rel="stylesheet" href="../../css/shared/rewards.css" />
+  <link rel="stylesheet" href="../../css/festival/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+</head>
+<body>
+  <div class="app fest-app">
+    <header class="top-bar has-back">
+      <a class="icon-btn" href="../island/island.html" aria-label="Back to Island"><svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg></a>
+      <h1 class="top-title">Treasure Hunt</h1>
+    </header>
+
+    <main id="fest-main" hidden>
+      <section id="fest-live" class="fest-hero" hidden>
+        <div class="fest-hero-top">
+          <span id="fest-icon" class="fest-hero-icon"></span>
+          <div>
+            <h2 id="fest-name" class="fest-name"></h2>
+            <p id="fest-native" class="fest-native"></p>
+          </div>
+        </div>
+        <p id="fest-blurb" class="fest-blurb"></p>
+        <div class="fest-meta"><span id="fest-days" class="fest-pill"></span><span id="fest-points" class="fest-pill"></span></div>
+        <div class="fest-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><span id="fest-fill"></span></div>
+        <p id="fest-progress" class="fest-progress"></p>
+
+        <p class="fest-rule">Photograph a real decoration or object. Drawings, printed pictures and screens do not count. Then name it in Chinese to collect it.</p>
+        <div class="fest-actions">
+          <label class="btn btn-primary fest-camera" for="fest-photo">Take a photo</label>
+          <input id="fest-photo" class="visually-hidden" type="file" accept="image/*" capture="environment" />
+        </div>
+        <div id="fest-status" class="status-message" role="status" aria-live="polite"></div>
+
+        <h3 class="fest-h3">Words to find</h3>
+        <ul id="fest-words" class="fest-words"></ul>
+      </section>
+
+      <section id="fest-none" class="fest-empty" hidden>
+        <h2>No treasure hunt right now</h2>
+        <p>Treasure hunts open on festivals. Here is what is coming up.</p>
+      </section>
+
+      <section id="fest-upcoming-wrap" hidden>
+        <h3 class="fest-h3">Coming up</h3>
+        <ul id="fest-upcoming" class="fest-upcoming"></ul>
+      </section>
+    </main>
+  </div>
+
+  <div id="fest-ask" class="fest-ask" role="dialog" aria-modal="true" aria-labelledby="ask-text" hidden>
+    <form id="ask-form" class="fest-ask-card" autocomplete="off">
+      <img id="ask-photo" class="ask-photo" alt="Your photo" hidden />
+      <p id="ask-text" class="ask-text"></p>
+      <input id="ask-input" class="field ask-input" type="text" lang="zh" placeholder="Type the Chinese word" aria-label="The Chinese word" />
+      <div id="ask-status" class="status-message" role="status" aria-live="polite"></div>
+      <div class="ask-actions">
+        <button type="button" id="ask-later" class="btn btn-outline">Later</button>
+        <button type="submit" class="btn btn-primary">Check</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="../../js/shared/supabaseClient.js"></script>
+  <script src="../../js/shared/auth.js"></script>
+  <script src="../../js/shared/streak.js"></script>
+  <script src="../../js/shared/rewards.js"></script>
+  <script src="../../js/cards/quests.js"></script>
+  <script src="../../js/storeVocab/scan/ocr.js"></script>
+  <script src="../../js/shared/festival.js"></script>
+  <script src="../../js/festival/script.js"></script>
+</body>
+</html>
