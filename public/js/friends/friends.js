@@ -19,10 +19,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const friendsCount = document.getElementById("friendsCount");
     const friendsEmpty = document.getElementById("friendsEmpty");
 
-    const leaderboardSection = document.getElementById("leaderboardSection");
-    const leaderboardList = document.getElementById("leaderboardList");
-
     const searchResults = document.getElementById("searchResults");
+
+    const duelSection = document.getElementById("duelSection");
+    const duelList = document.getElementById("duelList");
+    const duelCount = document.getElementById("duelCount");
+
+    const DUEL_PAGE = "../duel/duel.html";
+    const ZONE_NAMES = { 1: "Neighbourhood", 2: "Hawker centre", 3: "Public transport" };
 
     let busy = false;
     let signedIn = false;
@@ -86,58 +90,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         render(data || []);
-        loadLeaderboard();
-    }
-
-    // ----------------------------------
-    // Streak leaderboard: you and your friends, longest streak first
-    // ----------------------------------
-
-    async function loadLeaderboard() {
-        const { data, error } = await db.rpc("friends_leaderboard");
-
-        // Nothing to compare until you have at least one friend.
-        if (error || !data || data.length < 2) {
-            leaderboardSection.hidden = true;
-            return;
-        }
-
-        leaderboardList.replaceChildren();
-
-        let rank = 1;
-
-        data.forEach(function (row, index) {
-            // Players with the same streak share a rank.
-            if (index > 0 && row.lb_streak !== data[index - 1].lb_streak) {
-                rank = index + 1;
-            }
-
-            const item = document.createElement("li");
-            item.className = "friend-row" + (row.lb_is_me ? " is-me" : "");
-
-            const badge = document.createElement("div");
-            badge.className = "rank";
-            badge.textContent = String(rank);
-
-            const info = document.createElement("div");
-            info.className = "friend-info";
-
-            const name = document.createElement("p");
-            name.className = "friend-name";
-            name.textContent = row.lb_username + (row.lb_is_me ? " (you)" : "");
-
-            info.appendChild(name);
-
-            const streak = document.createElement("div");
-            streak.className = "rank-streak";
-            streak.textContent = "🔥 " + row.lb_streak;
-            streak.setAttribute("aria-label", row.lb_streak + " day streak");
-
-            item.append(badge, info, streak);
-            leaderboardList.appendChild(item);
-        });
-
-        leaderboardSection.hidden = false;
+        loadDuels();
     }
 
     function render(rows) {
@@ -177,10 +130,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         friends.forEach(function (row) {
             friendsList.appendChild(makeRow(row, friendMeta(row), [
+                makeButton("⚔ Duel", "btn btn-primary", function () {
+                    challengeFriend(row);
+                }),
                 makeButton("Remove", "btn btn-outline btn-danger-text", function () {
                     removeFriend(row, true);
                 })
-            ], togetherText(row)));
+            ]));
         });
 
         const requestTotal = incoming.length + sent.length;
@@ -193,27 +149,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function friendMeta(row) {
-        const streak = Number(row.friend_streak) || 0;
         const xp = Number(row.friend_xp) || 0;
 
-        return "🔥 " + streak + " day" + (streak === 1 ? "" : "s") +
-            " · ⚡ " + xp + " XP";
-    }
-
-    // The streak you share with this friend: days in a row you both opened the app.
-    function togetherText(row) {
-        const together = Number(row.shared_streak) || 0;
-
-        if (together === 0) return "";
-
-        let text = "🤝 " + together + " day" + (together === 1 ? "" : "s") + " together";
-
-        // The streak only continues if they open the app today as well.
-        if (!row.friend_visited_today) {
-            text += " · waiting for " + row.friend_username + " today";
-        }
-
-        return text;
+        return "⚡ " + xp + " XP";
     }
 
     // ----------------------------------
@@ -303,7 +241,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Build elements (textContent only, never innerHTML)
     // ----------------------------------
 
-    function makeRow(row, metaText, buttons, extraText) {
+    function makeRow(row, metaText, buttons) {
         const item = document.createElement("li");
         item.className = "friend-row";
 
@@ -326,13 +264,6 @@ document.addEventListener("DOMContentLoaded", function () {
             meta.className = "friend-meta";
             meta.textContent = metaText;
             info.appendChild(meta);
-        }
-
-        if (extraText) {
-            const extra = document.createElement("p");
-            extra.className = "friend-meta friend-together";
-            extra.textContent = extraText;
-            info.appendChild(extra);
         }
 
         const actions = document.createElement("div");
@@ -392,7 +323,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const confirmButton = document.createElement("button");
             confirmButton.type = "button";
-            confirmButton.className = "btn btn-danger";
+            confirmButton.className = options.confirmClass || "btn btn-danger";
             confirmButton.textContent = options.confirmLabel || "Confirm";
 
             const cancelButton = document.createElement("button");
@@ -401,7 +332,13 @@ document.addEventListener("DOMContentLoaded", function () {
             cancelButton.textContent = options.cancelLabel || "Cancel";
 
             actions.append(confirmButton, cancelButton);
-            card.append(title, text, actions);
+
+            if (options.extra) {
+                card.append(title, text, options.extra, actions);
+            } else {
+                card.append(title, text, actions);
+            }
+
             overlay.appendChild(card);
             document.body.appendChild(overlay);
 
@@ -498,11 +435,199 @@ document.addEventListener("DOMContentLoaded", function () {
             : "Request declined.");
     }
 
+    // ----------------------------------
+    // Duels (1v1 races with a friend)
+    // ----------------------------------
+
+    function zoneName(zone) {
+        return ZONE_NAMES[zone] || "Zone " + zone;
+    }
+
+    // Open duels: challenges sent to me, challenges I sent, and races in progress.
+    // If duels.sql has not been run yet the call fails and the section stays hidden.
+    async function loadDuels() {
+        if (!db || !signedIn) return;
+
+        const { data, error } = await db.rpc("duel_my_open");
+
+        if (error) {
+            duelSection.hidden = true;
+            return;
+        }
+
+        renderDuels(data || []);
+    }
+
+    function renderDuels(rows) {
+        duelList.replaceChildren();
+
+        rows.forEach(function (duel) {
+            const topic = zoneName(duel.zone);
+            const person = { friend_username: duel.other_username };
+            const page = DUEL_PAGE + "?id=" + encodeURIComponent(duel.duel_id);
+
+            if (duel.status === "active") {
+                duelList.appendChild(makeRow(person, "Duel in progress · " + topic, [
+                    makeButton("Rejoin", "btn btn-primary", function () {
+                        window.location.href = page;
+                    })
+                ]));
+            } else if (duel.is_incoming) {
+                duelList.appendChild(makeRow(person, "Challenged you · " + topic, [
+                    makeButton("Accept", "btn btn-primary", function () {
+                        answerChallenge(duel, true, page);
+                    }),
+                    makeButton("Decline", "btn btn-outline", function () {
+                        answerChallenge(duel, false, page);
+                    })
+                ]));
+            } else {
+                duelList.appendChild(makeRow(person, "Waiting for a reply · " + topic, [
+                    makeButton("Open", "btn btn-outline", function () {
+                        window.location.href = page;
+                    }),
+                    makeButton("Cancel", "btn btn-outline btn-danger-text", function () {
+                        cancelChallenge(duel);
+                    })
+                ]));
+            }
+        });
+
+        duelSection.hidden = rows.length === 0;
+        duelCount.textContent = rows.length ? String(rows.length) : "";
+    }
+
+    async function answerChallenge(duel, accept, page) {
+        if (busy) return;
+        busy = true;
+        clearStatus();
+
+        try {
+            const { error } = await db.rpc("duel_respond", {
+                p_duel: duel.duel_id,
+                p_accept: accept
+            });
+
+            if (error) {
+                showStatus("error", friendlyError(error));
+                loadDuels();
+                return;
+            }
+
+            if (accept) {
+                window.location.href = page;
+                return;
+            }
+
+            await loadDuels();
+            showStatus("success", "Challenge declined.");
+        } finally {
+            busy = false;
+        }
+    }
+
+    async function cancelChallenge(duel) {
+        if (busy) return;
+        busy = true;
+        clearStatus();
+
+        try {
+            const { error } = await db.rpc("duel_cancel", { p_duel: duel.duel_id });
+
+            if (error) {
+                showStatus("error", friendlyError(error));
+            } else {
+                showStatus("success", "Challenge cancelled.");
+            }
+
+            await loadDuels();
+        } finally {
+            busy = false;
+        }
+    }
+
+    function makeSelect(options, selected) {
+        const select = document.createElement("select");
+
+        select.className = "field";
+
+        options.forEach(function (option) {
+            const item = document.createElement("option");
+
+            item.value = option[0];
+            item.textContent = option[1];
+            item.selected = option[0] === selected;
+            select.appendChild(item);
+        });
+
+        return select;
+    }
+
+    function pickerField(labelText, select) {
+        const wrap = document.createElement("label");
+        const label = document.createElement("span");
+
+        label.textContent = labelText;
+        wrap.append(label, select);
+
+        return wrap;
+    }
+
+    async function challengeFriend(row) {
+        if (busy) return;
+
+        const zoneSelect = makeSelect([
+            ["1", "Neighbourhood"],
+            ["2", "Hawker centre"],
+            ["3", "Public transport"]
+        ], "1");
+
+        const picker = document.createElement("div");
+
+        picker.className = "duel-pick";
+        picker.append(pickerField("Topic", zoneSelect));
+
+        const confirmed = await confirmDialog({
+            title: "Duel " + row.friend_username + "?",
+            text: "You both race on the same 5 random questions from the topic. A wrong sentence locks you out for 3 seconds.",
+            confirmLabel: "Send challenge",
+            confirmClass: "btn btn-primary",
+            cancelLabel: "Not now",
+            extra: picker
+        });
+
+        if (!confirmed) return;
+
+        busy = true;
+        clearStatus();
+
+        try {
+            const { data, error } = await db.rpc("duel_challenge", {
+                p_friend_id: row.friend_id,
+                p_zone: Number(zoneSelect.value)
+            });
+
+            if (error) {
+                showStatus("error", friendlyError(error));
+                return;
+            }
+
+            window.location.href = DUEL_PAGE + "?id=" + encodeURIComponent(data);
+        } finally {
+            busy = false;
+        }
+    }
+
+    // Look for new challenges every few seconds while the page is open.
+    setInterval(function () {
+        if (!document.hidden && signedIn && !busy) loadDuels();
+    }, 4000);
+
     async function removeFriend(row, isFriend) {
         if (isFriend) {
             const confirmed = await confirmDialog({
                 title: "Remove " + row.friend_username + "?",
-                text: "You will no longer see each other's streak and XP. You can send a new request later.",
+                text: "You will no longer see each other's XP. You can send a new request later.",
                 confirmLabel: "Remove friend",
                 cancelLabel: "Keep friend"
             });
@@ -543,19 +668,5 @@ document.addEventListener("DOMContentLoaded", function () {
         addFriendButton.disabled = false;
     });
 
-    // Opening this page counts as today's visit, then the lists load.
-    // (Opening any page that calls record_visit does the same.)
-    async function start() {
-        if (db) {
-            const { data: sessionData } = await db.auth.getSession();
-
-            if (sessionData && sessionData.session) {
-                await db.rpc("record_visit");
-            }
-        }
-
-        loadFriends();
-    }
-
-    start();
+    loadFriends();
 });

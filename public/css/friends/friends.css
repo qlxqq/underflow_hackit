@@ -210,41 +210,6 @@
   .confirm-card { animation: none; }
 }
 
-/* ---------- streaks and leaderboard ---------- */
-
-.friend-together {
-  color: var(--amber-txt);
-  font-weight: 700;
-}
-
-.friend-row.is-me {
-  background: var(--amber-bg);
-  border-color: var(--amber-bd);
-}
-
-.rank {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--lock-bg);
-  color: var(--ink);
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.friend-row.is-me .rank {
-  background: var(--amber);
-}
-
-.rank-streak {
-  flex: none;
-  font-size: 16px;
-  font-weight: 800;
-}
-
 /* ---------- search results (under the add-friend box) ---------- */
 
 .search-results {
@@ -257,4 +222,36 @@
 
 .search-results .empty-state {
   margin: 4px 0;
+}
+
+/* ---------- duels ---------- */
+
+.duel-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 18px;
+  text-align: left;
+}
+
+.duel-pick label {
+  display: block;
+}
+
+.duel-pick span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.duel-pick .field {
+  width: 100%;
+}
+
+/* a row with two buttons: keep both on screen on narrow phones */
+.friend-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
