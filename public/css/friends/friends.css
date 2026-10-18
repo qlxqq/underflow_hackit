@@ -143,3 +143,69 @@
 .btn-danger-text {
   color: var(--danger);
 }
+
+/* ---------- confirmation pop-up ----------
+   Same look as the welcome pop-up (tour.css) and celebration pop-up (rewards.css):
+   dark backdrop, white rounded card, full-width stacked buttons. */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(14, 22, 40, 0.66);
+}
+
+.confirm-card {
+  width: 100%;
+  max-width: 340px;
+  padding: 24px 20px 18px;
+  border-radius: 22px;
+  background: var(--white);
+  color: var(--ink);
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(14, 22, 40, 0.35);
+  animation: confirm-pop 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+.confirm-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.confirm-text {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.confirm-actions .btn {
+  width: 100%;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: var(--white);
+}
+
+@keyframes confirm-pop {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-card { animation: none; }
+}

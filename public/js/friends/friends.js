@@ -177,6 +177,106 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ----------------------------------
+    // Confirmation pop-up
+    // ----------------------------------
+
+    // Shows the pop-up and resolves to true (confirmed) or false (cancelled).
+    // Escape, tapping the dark background, or the cancel button all cancel.
+    function confirmDialog(options) {
+        return new Promise(function (resolve) {
+            const previouslyFocused = document.activeElement;
+
+            const overlay = document.createElement("div");
+            overlay.className = "confirm-overlay";
+
+            const card = document.createElement("div");
+            card.className = "confirm-card";
+            card.setAttribute("role", "alertdialog");
+            card.setAttribute("aria-modal", "true");
+            card.setAttribute("aria-labelledby", "confirmTitle");
+            card.setAttribute("aria-describedby", "confirmText");
+
+            const title = document.createElement("h2");
+            title.className = "confirm-title";
+            title.id = "confirmTitle";
+            title.textContent = options.title;
+
+            const text = document.createElement("p");
+            text.className = "confirm-text";
+            text.id = "confirmText";
+            text.textContent = options.text;
+
+            const actions = document.createElement("div");
+            actions.className = "confirm-actions";
+
+            const confirmButton = document.createElement("button");
+            confirmButton.type = "button";
+            confirmButton.className = "btn btn-danger";
+            confirmButton.textContent = options.confirmLabel || "Confirm";
+
+            const cancelButton = document.createElement("button");
+            cancelButton.type = "button";
+            cancelButton.className = "btn btn-outline";
+            cancelButton.textContent = options.cancelLabel || "Cancel";
+
+            actions.append(confirmButton, cancelButton);
+            card.append(title, text, actions);
+            overlay.appendChild(card);
+            document.body.appendChild(overlay);
+
+            function close(result) {
+                document.removeEventListener("keydown", onKeydown);
+                overlay.remove();
+
+                if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+                    previouslyFocused.focus();
+                }
+
+                resolve(result);
+            }
+
+            function onKeydown(event) {
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    close(false);
+                    return;
+                }
+
+                // Keep Tab inside the pop-up.
+                if (event.key === "Tab") {
+                    const first = confirmButton;
+                    const last = cancelButton;
+
+                    if (event.shiftKey && document.activeElement === first) {
+                        event.preventDefault();
+                        last.focus();
+                    } else if (!event.shiftKey && document.activeElement === last) {
+                        event.preventDefault();
+                        first.focus();
+                    }
+                }
+            }
+
+            confirmButton.addEventListener("click", function () {
+                close(true);
+            });
+
+            cancelButton.addEventListener("click", function () {
+                close(false);
+            });
+
+            overlay.addEventListener("click", function (event) {
+                if (event.target === overlay) close(false);
+            });
+
+            document.addEventListener("keydown", onKeydown);
+
+            // Start on the safe choice so Enter cannot remove a friend by accident.
+            cancelButton.focus();
+        });
+    }
+
+    // ----------------------------------
     // Actions
     // ----------------------------------
 
@@ -217,9 +317,16 @@ document.addEventListener("DOMContentLoaded", function () {
             : "Request declined.");
     }
 
-    function removeFriend(row, isFriend) {
-        if (isFriend && !window.confirm("Remove " + row.friend_username + " from your friends?")) {
-            return;
+    async function removeFriend(row, isFriend) {
+        if (isFriend) {
+            const confirmed = await confirmDialog({
+                title: "Remove " + row.friend_username + "?",
+                text: "You will no longer see each other's streak and XP. You can send a new request later.",
+                confirmLabel: "Remove friend",
+                cancelLabel: "Keep friend"
+            });
+
+            if (!confirmed) return;
         }
 
         runAction(function () {
