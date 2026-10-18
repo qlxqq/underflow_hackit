@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Typing</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="apple-touch-icon" href="../../icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Mother Tongue">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@500;700&family=Noto+Sans+Tamil:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Shared tokens first, then this page. There is no bottom navigation on mini-game pages. -->
+  <link rel="stylesheet" href="../../css/shared/base.css">
+  <link rel="stylesheet" href="../../css/shared/topbar.css">
+  <link rel="stylesheet" href="../../css/typing/typing.css">
+</head>
+<body>
+<div class="app ty-page pr-page">
+
+  <header class="top-bar has-back pr-top">
+    <button type="button" class="icon-btn back-button" id="backBtn" aria-label="Back to the island">
+      <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <!-- one segment per sentence and stage (filled in by typing.js) -->
+    <div class="pr-progress" id="progress" aria-hidden="true"></div>
+    <span class="chip pr-lang" id="langBadge" aria-label="Practising in">中文</span>
+  </header>
+
+  <main class="pr-main">
+    <div class="pr-zone-row">
+      <span class="pr-zone-pill" id="zonePill">ZONE 1&nbsp;&nbsp;NEIGHBOURHOOD</span>
+      <span class="pr-level" id="counter">Loading sentences...</span>
+    </div>
+
+    <div class="pr-notice" id="notice" role="status" hidden></div>
+
+    <!-- The round -->
+    <div class="ty" id="game" hidden>
+      <section class="pr-card ty-card">
+        <div class="ty-stage" id="stageLabel"></div>
+        <div id="ty-english" class="ty-row ty-english"></div>
+        <div id="ty-pinyin" class="ty-row ty-pinyin"></div>
+        <div id="ty-chinese" class="ty-row ty-chinese"></div>
+      </section>
+
+      <input type="text" id="ty-input" class="ty-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
+      <div id="ty-feedback" class="ty-feedback" role="status" aria-live="polite"></div>
+
+      <div class="pr-actions">
+        <button type="button" class="btn btn-outline" id="ty-hear">Hear it</button>
+        <button type="button" class="btn btn-outline" id="ty-show">Show me</button>
+      </div>
+      <label class="ty-switch" id="ty-switch-wrap"><input type="checkbox" id="ty-pinyin-mode"> <span id="ty-switch-text">Type pinyin instead</span></label>
+    </div>
+
+    <!-- End of the round -->
+    <section class="pr-card ty-done" id="done" hidden>
+      <div class="ty-done-emoji" aria-hidden="true">🎉</div>
+      <h2 id="doneTitle">Well done!</h2>
+      <p class="ty-done-sub" id="doneSub"></p>
+      <p class="ty-streak" id="doneStreak" hidden></p>
+      <div class="ty-done-list" id="doneList"></div>
+      <button type="button" class="btn btn-primary btn-block" id="doneBack" disabled>Collect reward on the island →</button>
+      <button type="button" class="btn btn-outline btn-block" id="doneAgain" hidden>Play again</button>
+    </section>
+  </main>
+
+</div>
+
+<!-- Supabase library (same pinned version as the other pages), then the shared client, each loaded once -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+<script src="../../js/shared/supabaseClient.js"></script>
+
+<!-- Shared app code: sign-in (getCurrentUser), then the streak and rewards helpers -->
+<script src="../../js/shared/auth.js"></script>
+<script src="../../js/shared/streak.js"></script>
+<script src="../../js/shared/rewards.js"></script>
+
+<!-- Order matters: settings → fallback sentences → saving → page logic -->
+<script src="../../js/typing/config.js"></script>
+<script src="../../js/typing/typingData.js"></script>
+<script src="../../js/typing/save.js"></script>
+<script src="../../js/typing/typing.js"></script>
+</body>
+</html>

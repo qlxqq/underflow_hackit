@@ -1,21 +1,47 @@
-/* Typing mini-game (typing.js in this folder). Lives inside the island's pop-up sheet,
-   so it uses the shared tokens from css/shared/base.css. */
+/* Typing mini-game (js/typing/typing.js). Same look as the Pronunciation and Composition games:
+   segmented progress in the top bar, language chip, zone pill row, white cards on the page background.
+   Builds on the tokens and components in css/shared/base.css (load base.css first).
+   There is no bottom navigation on mini-game pages. */
 
-.ty { display: flex; flex-direction: column; gap: 12px; }
+.ty-page { display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom); }
 
-.ty-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.ty-leave {
-  min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--line);
-  background: var(--white); color: var(--muted); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+/* ---------- top bar (same as pronunciation) ---------- */
+.pr-top { gap: 10px; }
+.back-button { color: var(--muted); }
+.pr-progress { flex: 1; display: flex; gap: 4px; min-width: 0; }
+.pr-progress span {
+  flex: 1; height: 8px; border-radius: 999px;
+  background: var(--lock-bg); transition: background 0.3s;
 }
+.pr-progress span.is-done { background: #2e9e5b; }          /* done with no "Show me" */
+.pr-progress span.is-current { background: var(--amber); }
+.pr-progress span.is-weak { background: var(--amber-bd); }  /* done after "Show me" */
+.pr-lang { cursor: default; padding: 0 16px; font-family: var(--font-cjk), var(--font-ui); pointer-events: none; }
 
-.ty-progress { height: 8px; border-radius: 4px; background: var(--lock-bg); overflow: hidden; }
-.ty-progress i { display: block; height: 100%; width: 0; border-radius: 4px; background: var(--teal); transition: width 0.3s ease; }
+/* ---------- content ---------- */
+.pr-main { display: flex; flex-direction: column; gap: 14px; padding: 16px 16px 32px; }
+.pr-zone-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pr-zone-pill {
+  background: #2e9e5b; color: var(--white);
+  font-size: 12px; font-weight: 800; letter-spacing: 0.8px;
+  padding: 8px 14px; border-radius: 999px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.pr-level { font-size: 14px; font-weight: 700; color: var(--muted); text-align: right; }
+.pr-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+.pr-notice { padding: 12px 14px; border-radius: var(--radius-md); background: var(--amber-bg); border: 1px solid var(--amber-bd); color: var(--amber-txt); font-weight: 700; }
+.pr-notice[hidden] { display: none; }
 
-.ty-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 700; white-space: nowrap; }
-.ty-stage { text-align: right; color: var(--amber-txt); }
+/* ---------- the round ---------- */
+.ty { display: flex; flex-direction: column; gap: 12px; }
+.ty[hidden], .ty-done[hidden] { display: none; }
 
-.ty-card { padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--line); background: var(--bg); }
+.ty-stage { margin-bottom: 10px; color: var(--amber-txt); font-size: 13px; font-weight: 800; }
 .ty-row { min-height: 1.4em; }
 .ty-row + .ty-row { margin-top: 8px; }
 .ty-english { font-size: 17px; font-weight: 800; line-height: 1.35; color: var(--ink); }
@@ -42,18 +68,26 @@
 .ty-feedback { min-height: 1.4em; font-size: 14px; font-weight: 700; color: var(--amber-txt); }
 .ty-feedback.is-good { color: var(--green-txt); }
 
-.ty-actions { display: flex; gap: 10px; }
-.ty-actions .btn { flex: 1; }
+.pr-actions { display: flex; gap: 10px; }
+.pr-actions .btn { flex: 1; }
+.pr-actions [hidden] { display: none; }
 
 .ty-switch { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+.ty-switch[hidden] { display: none; }
 .ty-switch input { width: 18px; height: 18px; accent-color: var(--teal); }
 
 /* ---------- end of round ---------- */
 .ty-done { text-align: center; }
 .ty-done-emoji { font-size: 44px; line-height: 1; margin-bottom: 4px; }
-.ty-gain { display: inline-block; margin: 0 0 14px; padding: 8px 16px; border-radius: 20px; background: var(--amber-bg); color: var(--amber-txt); font-weight: 800; }
+.ty-done h2 { margin: 0 0 6px; font-size: 24px; font-weight: 800; }
+.ty-done-sub { margin: 0 0 14px; color: var(--muted); font-weight: 600; line-height: 1.4; }
+.ty-streak { display: inline-block; margin: 0 0 14px; padding: 8px 16px; border-radius: 20px; background: var(--amber-bg); color: var(--amber-txt); font-weight: 800; }
+.ty-streak[hidden] { display: none; }
 .ty-done-list { margin: 0 0 16px; text-align: left; border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
 .ty-done-list div { padding: 10px 14px; border-top: 1px solid var(--line); }
 .ty-done-list div:first-child { border-top: 0; }
 .ty-done-list span { display: block; font-family: var(--font-cjk); font-size: 18px; font-weight: 700; }
 .ty-done-list small { color: var(--muted); font-size: 13px; font-weight: 600; }
+.ty-done .btn + .btn { margin-top: 10px; }
+.ty-done .btn[hidden] { display: none; }
+.pr-progress span.is-bonus { box-shadow: 0 0 0 2px #e0a800 inset; }  /* the bonus question */
