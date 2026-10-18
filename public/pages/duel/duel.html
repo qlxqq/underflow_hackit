@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <title>Duel</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- Shared styles first, then this page -->
+    <link rel="stylesheet" href="../../css/shared/base.css">
+    <link rel="stylesheet" href="../../css/shared/topbar.css">
+    <link rel="stylesheet" href="../../css/duel/duel.css">
+</head>
+
+<body data-page="duel">
+    <div class="app duel-app">
+
+        <header class="top-bar has-back">
+            <button type="button" class="icon-btn back-button" id="backButton" aria-label="Back">&larr;</button>
+            <h1 class="top-title" id="topTitle">Duel</h1>
+        </header>
+
+        <!-- Loading -->
+        <section class="duel-screen" id="screenLoading">
+            <div class="spinner" aria-hidden="true"></div>
+            <p class="screen-text" id="loadingText">Loading duel...</p>
+        </section>
+
+        <!-- Lobby: waiting for the friend (challenger) or answering a challenge (opponent) -->
+        <section class="duel-screen" id="screenLobby" hidden>
+            <div class="lobby-vs">
+                <div class="lobby-player">
+                    <div class="avatar avatar-me" id="lobbyAvatarMe">?</div>
+                    <p class="lobby-name" id="lobbyNameMe">You</p>
+                </div>
+                <div class="lobby-vs-badge">VS</div>
+                <div class="lobby-player">
+                    <div class="avatar avatar-them" id="lobbyAvatarThem">?</div>
+                    <p class="lobby-name" id="lobbyNameThem">Friend</p>
+                </div>
+            </div>
+
+            <p class="lobby-info" id="lobbyInfo"></p>
+            <h2 class="lobby-title" id="lobbyTitle"></h2>
+            <p class="screen-text" id="lobbyText"></p>
+            <p class="lobby-timer" id="lobbyTimer"></p>
+
+            <div class="lobby-actions">
+                <button type="button" class="btn btn-primary" id="lobbyAccept" hidden>Accept and race</button>
+                <button type="button" class="btn btn-outline" id="lobbyDecline" hidden>Decline</button>
+                <button type="button" class="btn btn-outline" id="lobbyCancel" hidden>Cancel challenge</button>
+            </div>
+        </section>
+
+        <!-- Challenge declined, cancelled or expired, or an error -->
+        <section class="duel-screen" id="screenEnd" hidden>
+            <div class="end-icon" id="endIcon" aria-hidden="true">⌛</div>
+            <h2 class="lobby-title" id="endTitle"></h2>
+            <p class="screen-text" id="endText"></p>
+            <div class="lobby-actions">
+                <a class="btn btn-primary" href="../friends/friends.html">Back to friends</a>
+            </div>
+        </section>
+
+        <!-- The race: opponent on top, you at the bottom -->
+        <main class="arena" id="screenArena" hidden>
+
+            <section class="side side-them" id="themPanel" aria-label="Your friend's progress">
+                <div class="side-head">
+                    <div class="avatar avatar-them" id="themAvatar">?</div>
+                    <div class="side-who">
+                        <p class="side-name" id="themName">Friend</p>
+                        <p class="side-sub" id="themProgressText">Question 1 of 5</p>
+                    </div>
+                    <span class="wrong-badge" id="themWrong" title="Wrong sentences">✕ 0</span>
+                </div>
+
+                <div class="pips" id="themPips" aria-hidden="true"></div>
+
+                <div class="them-status" id="themStatus" role="status" aria-live="polite">
+                    <div class="them-tiles" id="themTiles" aria-hidden="true"></div>
+                    <p class="them-text" id="themText">Getting ready...</p>
+                </div>
+            </section>
+
+            <div class="vs-bar">
+                <span class="vs-line" aria-hidden="true"></span>
+                <div class="vs-badge" id="vsBadge">
+                    <span class="vs-label">VS</span>
+                    <span class="vs-timer" id="vsTimer">0.0s</span>
+                </div>
+                <span class="vs-line" aria-hidden="true"></span>
+            </div>
+
+            <section class="side side-me" id="mePanel" aria-label="Your game">
+                <div class="side-head">
+                    <div class="avatar avatar-me" id="meAvatar">?</div>
+                    <div class="side-who">
+                        <p class="side-name" id="meName">You</p>
+                        <p class="side-sub" id="meProgressText">Question 1 of 5</p>
+                    </div>
+                    <span class="wrong-badge" id="meWrong" title="Wrong sentences">✕ 0</span>
+                </div>
+
+                <div class="pips" id="mePips" aria-hidden="true"></div>
+
+                <p class="prompt" id="promptText">Get ready...</p>
+
+                <div class="answer-area" id="answerArea" aria-label="Your sentence" aria-live="polite">
+                    <span class="answer-placeholder" id="answerPlaceholder">Tap the words in order</span>
+                </div>
+
+                <div class="word-bank" id="wordBank"></div>
+
+                <div class="me-actions">
+                    <button type="button" class="btn btn-outline btn-sm" id="resetButton" disabled>Reset</button>
+                </div>
+
+                <!-- Shown for 3 seconds after a wrong sentence -->
+                <div class="lock-overlay" id="lockOverlay" hidden>
+                    <p class="lock-title">Wrong sentence</p>
+                    <p class="lock-count" id="lockCount">3</p>
+                    <div class="lock-bar"><span id="lockBar"></span></div>
+                    <p class="lock-hint">Locked, get ready to try again</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- 3, 2, 1, GO -->
+        <div class="countdown-overlay" id="countdownOverlay" hidden>
+            <p class="countdown-vs" id="countdownVs"></p>
+            <p class="countdown-number" id="countdownNumber">3</p>
+            <p class="countdown-hint">Same questions, first to finish wins</p>
+        </div>
+
+        <!-- Result -->
+        <div class="result-overlay" id="resultOverlay" hidden>
+            <div class="confetti" id="confetti" aria-hidden="true"></div>
+            <div class="result-card" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+                <div class="result-emoji" id="resultEmoji" aria-hidden="true">🏆</div>
+                <h2 class="result-title" id="resultTitle">Victory!</h2>
+                <p class="result-sub" id="resultSub"></p>
+
+                <div class="result-table" id="resultTable"></div>
+
+                <p class="result-xp" id="resultXp"></p>
+
+                <div class="result-actions">
+                    <button type="button" class="btn btn-primary" id="rematchButton">Rematch</button>
+                    <a class="btn btn-outline" href="../friends/friends.html">Back to friends</a>
+                </div>
+                <p class="status-message" id="resultStatus" role="status" aria-live="polite"></p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Supabase library (same pinned version as island.html), then the shared client, each loaded once -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+    <script src="../../js/shared/supabaseClient.js"></script>
+
+    <!-- Duel feature -->
+    <script src="../../js/duel/duel.js"></script>
+</body>
+</html>
