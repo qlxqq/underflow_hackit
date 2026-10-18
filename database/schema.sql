@@ -544,3 +544,47 @@ begin
     execute format('create policy "%s_read" on %I for select using (true)', t, t);
   end loop;
 end $$;
+
+-- ============================================================
+-- FRIEND SEARCH: find players by part of their username
+-- Run after friends.sql. Paste into the Supabase SQL Editor (New query) and run.
+-- Safe to run again: the function is replaced.
+-- ============================================================
+
+-- search_players: up to 10 players whose username contains the text you typed.
+--   * needs at least 2 characters, so nobody can list everyone
+--   * leaves out you, your friends, and anyone you already have a request with
+--   * best matches first: exact name, then names that start with the text, then the rest
+--   * only returns the player id and username (never email or anything else)
+-- % and _ typed by the player are treated as normal characters, not wildcards.
+create or replace function public.search_players(p_query text)
+returns table (player_id uuid, player_username varchar)
+language plpgsql stable security definer set search_path = public as $$
+declare
+  v_uid  uuid := auth.uid();
+  v_raw  text := lower(trim(coalesce(p_query, '')));
+  v_like text;
+begin
+  if v_uid is null then raise exception 'not signed in'; end if;
+  if length(v_raw) < 2 then return; end if;
+
+  v_like := replace(replace(replace(v_raw, '\', '\\'), '%', '\%'), '_', '\_');
+
+  return query
+  select p.user_id, p.username
+    from public.profiles p
+   where p.user_id <> v_uid
+     and lower(p.username) like '%' || v_like || '%'
+     and not exists (
+           select 1 from public.friendships f
+            where (f.requester_id = v_uid and f.addressee_id = p.user_id)
+               or (f.requester_id = p.user_id and f.addressee_id = v_uid))
+   order by (lower(p.username) = v_raw) desc,
+            (lower(p.username) like v_like || '%') desc,
+            lower(p.username),
+            p.username
+   limit 10;
+end $$;
+
+revoke all on function public.search_players(text) from public, anon;
+grant execute on function public.search_players(text) to authenticated;

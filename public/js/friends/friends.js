@@ -19,7 +19,15 @@ document.addEventListener("DOMContentLoaded", function () {
     const friendsCount = document.getElementById("friendsCount");
     const friendsEmpty = document.getElementById("friendsEmpty");
 
+    const leaderboardSection = document.getElementById("leaderboardSection");
+    const leaderboardList = document.getElementById("leaderboardList");
+
+    const searchResults = document.getElementById("searchResults");
+
     let busy = false;
+    let signedIn = false;
+    let searchTimer = null;
+    let searchToken = 0;
 
     // ----------------------------------
     // Status message
@@ -58,6 +66,18 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        // Only ask the database when someone is signed in (a signed-out request is
+        // refused with a 401 error).
+        const { data: sessionData } = await db.auth.getSession();
+
+        if (!sessionData || !sessionData.session) {
+            showStatus("error", "Please sign in first (open the Island page and sign in).");
+            addFriendButton.disabled = true;
+            return;
+        }
+
+        signedIn = true;
+
         const { data, error } = await db.rpc("my_friendships");
 
         if (error) {
@@ -66,6 +86,58 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         render(data || []);
+        loadLeaderboard();
+    }
+
+    // ----------------------------------
+    // Streak leaderboard: you and your friends, longest streak first
+    // ----------------------------------
+
+    async function loadLeaderboard() {
+        const { data, error } = await db.rpc("friends_leaderboard");
+
+        // Nothing to compare until you have at least one friend.
+        if (error || !data || data.length < 2) {
+            leaderboardSection.hidden = true;
+            return;
+        }
+
+        leaderboardList.replaceChildren();
+
+        let rank = 1;
+
+        data.forEach(function (row, index) {
+            // Players with the same streak share a rank.
+            if (index > 0 && row.lb_streak !== data[index - 1].lb_streak) {
+                rank = index + 1;
+            }
+
+            const item = document.createElement("li");
+            item.className = "friend-row" + (row.lb_is_me ? " is-me" : "");
+
+            const badge = document.createElement("div");
+            badge.className = "rank";
+            badge.textContent = String(rank);
+
+            const info = document.createElement("div");
+            info.className = "friend-info";
+
+            const name = document.createElement("p");
+            name.className = "friend-name";
+            name.textContent = row.lb_username + (row.lb_is_me ? " (you)" : "");
+
+            info.appendChild(name);
+
+            const streak = document.createElement("div");
+            streak.className = "rank-streak";
+            streak.textContent = "🔥 " + row.lb_streak;
+            streak.setAttribute("aria-label", row.lb_streak + " day streak");
+
+            item.append(badge, info, streak);
+            leaderboardList.appendChild(item);
+        });
+
+        leaderboardSection.hidden = false;
     }
 
     function render(rows) {
@@ -108,7 +180,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 makeButton("Remove", "btn btn-outline btn-danger-text", function () {
                     removeFriend(row, true);
                 })
-            ]));
+            ], togetherText(row)));
         });
 
         const requestTotal = incoming.length + sent.length;
@@ -128,11 +200,110 @@ document.addEventListener("DOMContentLoaded", function () {
             " · ⚡ " + xp + " XP";
     }
 
+    // The streak you share with this friend: days in a row you both opened the app.
+    function togetherText(row) {
+        const together = Number(row.shared_streak) || 0;
+
+        if (together === 0) return "";
+
+        let text = "🤝 " + together + " day" + (together === 1 ? "" : "s") + " together";
+
+        // The streak only continues if they open the app today as well.
+        if (!row.friend_visited_today) {
+            text += " · waiting for " + row.friend_username + " today";
+        }
+
+        return text;
+    }
+
+    // ----------------------------------
+    // Search players by part of a username
+    // ----------------------------------
+
+    function hideSearch() {
+        searchToken++; // ignore any search that is still waiting for its answer
+        searchResults.hidden = true;
+        searchResults.replaceChildren();
+    }
+
+    async function runSearch(query) {
+        const token = ++searchToken;
+
+        const { data, error } = await db.rpc("search_players", { p_query: query });
+
+        // A newer search started, or the box was cleared: ignore this answer.
+        if (token !== searchToken) return;
+
+        if (error) {
+            console.error("Player search failed:", error);
+            hideSearch();
+            return;
+        }
+
+        searchResults.replaceChildren();
+
+        if (!data || data.length === 0) {
+            const empty = document.createElement("li");
+            empty.className = "empty-state";
+            empty.textContent =
+                "No players found. Check the spelling, or ask your friend for their username.";
+            searchResults.appendChild(empty);
+        } else {
+            data.forEach(function (player) {
+                searchResults.appendChild(makeRow(
+                    { friend_username: player.player_username },
+                    "",
+                    [
+                        makeButton("Add", "btn btn-primary", function () {
+                            addPlayer(player.player_username);
+                        })
+                    ]
+                ));
+            });
+        }
+
+        searchResults.hidden = false;
+    }
+
+    // Sends a request to a player picked from the search results.
+    function addPlayer(username) {
+        runAction(function () {
+            return db.rpc("send_friend_request", { p_username: username });
+        }, function (result) {
+            usernameInput.value = "";
+            hideSearch();
+
+            return result === "accepted"
+                ? "You and " + username + " are now friends."
+                : "Request sent to " + username + ".";
+        });
+    }
+
+    usernameInput.addEventListener("input", function () {
+        clearTimeout(searchTimer);
+
+        const query = usernameInput.value.trim();
+
+        if (!db || !signedIn || query.length < 2) {
+            hideSearch();
+            return;
+        }
+
+        // Wait a moment after the last key press instead of searching on every letter.
+        searchTimer = setTimeout(function () {
+            runSearch(query);
+        }, 250);
+    });
+
+    usernameInput.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") hideSearch();
+    });
+
     // ----------------------------------
     // Build elements (textContent only, never innerHTML)
     // ----------------------------------
 
-    function makeRow(row, metaText, buttons) {
+    function makeRow(row, metaText, buttons, extraText) {
         const item = document.createElement("li");
         item.className = "friend-row";
 
@@ -148,11 +319,21 @@ document.addEventListener("DOMContentLoaded", function () {
         name.className = "friend-name";
         name.textContent = row.friend_username;
 
-        const meta = document.createElement("p");
-        meta.className = "friend-meta";
-        meta.textContent = metaText;
+        info.appendChild(name);
 
-        info.append(name, meta);
+        if (metaText) {
+            const meta = document.createElement("p");
+            meta.className = "friend-meta";
+            meta.textContent = metaText;
+            info.appendChild(meta);
+        }
+
+        if (extraText) {
+            const extra = document.createElement("p");
+            extra.className = "friend-meta friend-together";
+            extra.textContent = extraText;
+            info.appendChild(extra);
+        }
 
         const actions = document.createElement("div");
         actions.className = "friend-actions";
@@ -352,6 +533,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return db.rpc("send_friend_request", { p_username: username });
         }, function (result) {
             usernameInput.value = "";
+            hideSearch();
 
             return result === "accepted"
                 ? "You and " + username + " are now friends."
@@ -361,5 +543,19 @@ document.addEventListener("DOMContentLoaded", function () {
         addFriendButton.disabled = false;
     });
 
-    loadFriends();
+    // Opening this page counts as today's visit, then the lists load.
+    // (Opening any page that calls record_visit does the same.)
+    async function start() {
+        if (db) {
+            const { data: sessionData } = await db.auth.getSession();
+
+            if (sessionData && sessionData.session) {
+                await db.rpc("record_visit");
+            }
+        }
+
+        loadFriends();
+    }
+
+    start();
 });

@@ -209,3 +209,52 @@
 @media (prefers-reduced-motion: reduce) {
   .confirm-card { animation: none; }
 }
+
+/* ---------- streaks and leaderboard ---------- */
+
+.friend-together {
+  color: var(--amber-txt);
+  font-weight: 700;
+}
+
+.friend-row.is-me {
+  background: var(--amber-bg);
+  border-color: var(--amber-bd);
+}
+
+.rank {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--lock-bg);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.friend-row.is-me .rank {
+  background: var(--amber);
+}
+
+.rank-streak {
+  flex: none;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+/* ---------- search results (under the add-friend box) ---------- */
+
+.search-results {
+  margin-top: 10px;
+}
+
+.search-results .friend-row {
+  padding: 10px 14px;
+}
+
+.search-results .empty-state {
+  margin: 4px 0;
+}

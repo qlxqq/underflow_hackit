@@ -40,7 +40,7 @@
                         class="field"
                         id="friendUsername"
                         type="text"
-                        placeholder="Their username"
+                        placeholder="Search by username"
                         maxlength="50"
                         autocapitalize="none"
                         spellcheck="false"
@@ -49,11 +49,19 @@
                 </div>
             </form>
 
+            <!-- Players matching what is typed above (filled in by friends.js) -->
+            <ul class="friend-list search-results" id="searchResults" aria-label="Matching players" hidden></ul>
+
             <div id="statusMessage" class="status-message" role="status" aria-live="polite"></div>
 
             <section class="friends-section" id="requestsSection" hidden>
                 <h2 class="section-title">Requests <span class="count" id="requestsCount"></span></h2>
                 <ul class="friend-list" id="requestsList"></ul>
+            </section>
+
+            <section class="friends-section" id="leaderboardSection" hidden>
+                <h2 class="section-title">Streak leaderboard</h2>
+                <ul class="friend-list" id="leaderboardList"></ul>
             </section>
 
             <section class="friends-section">
