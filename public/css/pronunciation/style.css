@@ -1,0 +1,169 @@
+/* Pronunciation level (pages/pronunciation/pronunciation.html).
+   Uses the tokens and components in css/shared/base.css:
+   .app, .top-bar, .icon-btn, .chip, .btn, [hidden], --ink, --muted, --teal ...
+   Everything defined here starts with "pr-" so it never clashes with other pages. */
+
+.pr-page {
+  /* page-only colours that base.css doesn't have */
+  --pr-green: #2e9e5b;
+  --pr-teal-soft: #d6f0ec;
+}
+
+/* ---------- top bar ---------- */
+.pr-top { gap: 10px; }
+.pr-progress { flex: 1; display: flex; gap: 6px; }
+.pr-progress span {
+  flex: 1; height: 8px; border-radius: 999px;
+  background: var(--lock-bg); transition: background 0.3s;
+}
+.pr-progress span.is-done { background: var(--pr-green); }
+.pr-progress span.is-current { background: var(--amber); }
+.pr-progress span.is-weak { background: var(--amber-bd); }     /* tried, but below the pass mark */
+.pr-progress span.is-skipped { background: var(--lock-ic); opacity: 0.35; }
+
+/* Language is fixed for the level (chosen before starting), so this is a label, not a control */
+.pr-lang { cursor: default; padding: 0 16px; font-family: var(--font-cjk), var(--font-ui); pointer-events: none; }
+
+/* ---------- content ---------- */
+.pr-main {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 16px 16px 32px;
+}
+.pr-zone-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pr-zone-pill {
+  background: var(--pr-green); color: var(--white);
+  font-size: 12px; font-weight: 800; letter-spacing: 0.8px;
+  padding: 8px 14px; border-radius: 999px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.pr-level { font-size: 14px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+
+.pr-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+/* ---------- phrase card ---------- */
+.pr-phrase-card {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; padding: 24px 20px; text-align: center;
+}
+.pr-context {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  background: var(--green-bg); color: var(--green-txt);
+  font-size: 13px; font-weight: 700;
+}
+.pr-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.pr-review-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  background: var(--amber-bg); color: var(--amber-txt);
+  font-size: 13px; font-weight: 700;
+}
+/* line on the end screen saying how many reward cards the run earned */
+.pr-cards {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px; border-radius: 999px;
+  background: var(--amber-bg); border: 1px solid var(--amber-bd); color: var(--amber-txt);
+  font-size: 14px; font-weight: 800;
+}
+.pr-prompt { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.pr-phrase {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 4px;
+  font-size: 34px; font-weight: 700; line-height: 1.35;
+}
+.pr-phrase.lang-zh,
+.pr-phrase.lang-ta { font-family: var(--font-cjk); }
+.pr-phrase.lang-zh { gap: 0; }
+.pr-phrase.lang-zh .pr-tok { padding: 0 1px; }
+.pr-phrase.is-long { font-size: 26px; }
+.pr-phrase.is-xlong { font-size: 21px; line-height: 1.5; }
+.pr-tok { padding: 0 3px; border-radius: 8px; transition: background 0.3s, color 0.3s; }
+.pr-tok.is-ok { background: var(--green-bg); color: var(--green-txt); }
+.pr-tok.is-miss { background: var(--danger-bg); color: var(--danger); }
+.pr-roman { font-size: 17px; font-weight: 600; color: var(--teal); }
+.pr-meaning { font-size: 15px; color: var(--muted); }
+.pr-listen-row { display: flex; gap: 10px; margin-top: 6px; }
+
+/* ---------- notice ---------- */
+.pr-notice {
+  padding: 12px 14px; border-radius: var(--radius-sm);
+  background: var(--amber-bg); border: 1px solid var(--amber-bd); color: var(--amber-txt);
+  font-size: 14px; font-weight: 700; line-height: 1.4;
+}
+
+/* ---------- mic ---------- */
+.pr-mic-zone { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 8px 0 4px; }
+.pr-mic-wrap { position: relative; width: 96px; height: 96px; }
+.pr-pulse {
+  position: absolute; inset: -10px; border-radius: 50%;
+  background: var(--amber); opacity: 0; transform: scale(0.8);
+}
+.pr-mic-zone.is-listening .pr-pulse { animation: pr-pulse 1.4s ease-out infinite; }
+@keyframes pr-pulse {
+  0% { opacity: 0.35; transform: scale(0.8); }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+.pr-mic-btn {
+  position: relative; width: 96px; height: 96px; border-radius: 50%; border: 0;
+  display: grid; place-items: center; cursor: pointer;
+  background: var(--amber); color: var(--ink);
+  box-shadow: 0 0 0 6px var(--white), 0 10px 22px rgba(242, 169, 59, 0.35);
+  transition: transform 0.15s;
+}
+.pr-mic-btn:active { transform: scale(0.95); }
+.pr-mic-zone.is-listening .pr-mic-btn {
+  background: var(--danger); color: var(--white);
+  box-shadow: 0 0 0 6px var(--white), 0 10px 22px rgba(179, 38, 30, 0.3);
+}
+.pr-mic-hint { font-size: 14px; font-weight: 800; }
+.pr-heard { min-height: 20px; font-size: 14px; color: var(--muted); text-align: center; }
+
+/* ---------- result ---------- */
+.pr-result { display: flex; align-items: center; gap: 16px; }
+.pr-ring { position: relative; width: 72px; height: 72px; flex-shrink: 0; }
+.pr-ring > svg { transform: rotate(-90deg); }
+.pr-ring-track { stroke: var(--pr-teal-soft); }
+.pr-ring-arc { stroke: var(--teal); transition: stroke-dashoffset 0.8s ease; }
+.pr-ring-num { position: absolute; inset: 0; display: grid; place-items: center; font-size: 20px; font-weight: 800; }
+.pr-result-text { display: flex; flex-direction: column; gap: 4px; }
+.pr-result-title { font-size: 17px; font-weight: 800; }
+.pr-result-sub { font-size: 14px; color: var(--muted); line-height: 1.4; }
+.pr-xp { color: var(--amber-txt); font-weight: 800; }
+
+.pr-compare { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.pr-compare-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.pr-compare-tip { margin: 0; font-size: 13px; color: var(--muted); text-align: center; line-height: 1.4; }
+.pr-actions { display: flex; gap: 10px; }
+.pr-actions .btn { flex: 1; }
+.pr-skip {
+  align-self: center; min-height: 44px; border: 0; background: none; cursor: pointer;
+  font: 700 14px var(--font-ui); color: var(--muted);
+}
+
+/* ---------- done screen ---------- */
+.pr-done {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 32px 20px; text-align: center;
+}
+.pr-done h2 { margin: 0; font-size: 24px; font-weight: 800; }
+.pr-done .pr-ring-track { stroke: var(--green-bg); }
+.pr-done .pr-ring-arc { stroke: var(--pr-green); }
+.pr-done .pr-ring-num { color: var(--pr-green); }
+/* "not yet" version of the end screen */
+.pr-done.is-failed .pr-ring-track { stroke: var(--amber-bg); }
+.pr-done.is-failed .pr-ring-arc { stroke: var(--amber); }
+.pr-done.is-failed .pr-ring-num { color: var(--amber-txt); }
+.pr-save { margin: 0; font-size: 13px; font-weight: 700; color: var(--muted); text-align: center; }
+.pr-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
+.pr-stat { display: flex; flex-direction: column; gap: 2px; padding: 14px; border-radius: var(--radius-md); background: var(--bg); }
+.pr-stat b { font-size: 22px; }
+.pr-stat span { font-size: 13px; font-weight: 600; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pr-mic-zone.is-listening .pr-pulse { animation: none; opacity: 0.25; }
+  .pr-ring-arc, .pr-tok, .pr-progress span { transition: none; }
+}

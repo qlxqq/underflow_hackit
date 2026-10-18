@@ -3,7 +3,8 @@
 -- Paste into the Supabase SQL Editor and run. Safe to run again:
 -- tables and columns are skipped, policies and functions are replaced.
 -- Sections: profiles, journey_progress, vocabulary, album_cards, daily_quests,
--- user_badges, add_rewards, island_progress, island_earn / island_spend.
+-- user_badges, add_rewards, composition_questions, pronunciation_questions,
+-- island_progress, island_earn / island_spend.
 -- ============================================================
 
 -- ---------- profiles: one row per player ----------
@@ -201,6 +202,42 @@ TO anon, authenticated
 USING (true);
 
 -- Composition questions are loaded by composition_seed.sql (not here), so running this file never adds old sample rows.
+
+-- ============================================================
+-- PRONUNCIATION: phrase bank for the Pronunciation level of every zone
+-- ============================================================
+-- One row per phrase, in Chinese (zh), Malay (ms) and Tamil (ta), using the same language codes
+-- as journey_progress and island_progress. level = the level inside the zone (Pronunciation is 1).
+-- The phrases are added by database/pronunciation_questions.sql (run that after this file).
+-- Same for every player: anyone can read them, nobody can change them from the app.
+
+CREATE TABLE IF NOT EXISTS public.pronunciation_questions (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    zone INTEGER NOT NULL,
+    level INTEGER NOT NULL DEFAULT 1,
+    topic TEXT NOT NULL,
+    language VARCHAR(10) NOT NULL,
+    phrase TEXT NOT NULL,          -- what the player says
+    romanization TEXT,             -- pinyin / Tamil romanization (empty for Malay)
+    meaning TEXT NOT NULL,         -- English meaning
+    context TEXT,                  -- where you'd say it, e.g. 'At the void deck'
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT unique_pronunciation_phrase
+        UNIQUE (zone, level, language, phrase)
+);
+
+ALTER TABLE public.pronunciation_questions
+ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can read pronunciation questions"
+ON public.pronunciation_questions;
+
+CREATE POLICY "Anyone can read pronunciation questions"
+ON public.pronunciation_questions
+FOR SELECT
+TO anon, authenticated
+USING (true);
 
 -- ============================================================
 -- ISLAND

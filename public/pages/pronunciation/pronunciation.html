@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="../../manifest.webmanifest">
+<meta name="theme-color" content="#ffffff">
+<link rel="apple-touch-icon" href="../../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mother Tongue">
+<title>Pronunciation · Level 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@500;700&family=Noto+Sans+Tamil:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../css/shared/base.css">
+<link rel="stylesheet" href="../../css/shared/topbar.css">
+<link rel="stylesheet" href="../../css/pronunciation/style.css">
+</head>
+<body>
+<div class="app pr-page">
+
+  <header class="top-bar has-back pr-top">
+    <button class="icon-btn" id="backBtn" type="button" aria-label="Back to journey">
+      <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="pr-progress" id="progress" aria-hidden="true"></div>
+    <span class="chip pr-lang" id="langBadge" aria-label="Practising in">中文</span>
+  </header>
+
+  <main class="pr-main">
+    <div class="pr-zone-row">
+      <span class="pr-zone-pill" id="zonePill">ZONE 1 &nbsp;NEIGHBOURHOOD</span>
+      <span class="pr-level" id="levelLabel">Level 1 · Pronunciation</span>
+    </div>
+
+    <!-- Lesson -->
+    <div id="lesson" class="pr-main" style="padding: 0">
+      <section class="pr-card pr-phrase-card">
+        <div class="pr-tags">
+          <span class="pr-context">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            <span id="contextText"></span>
+          </span>
+          <span class="pr-review-tag" id="reviewTag" hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+            Missed last time
+          </span>
+        </div>
+        <div class="pr-prompt">Say this out loud</div>
+        <div class="pr-phrase" id="phrase"></div>
+        <div class="pr-roman" id="roman"></div>
+        <div class="pr-meaning" id="meaning"></div>
+        <div class="pr-listen-row">
+          <button class="chip" id="listenBtn" type="button">
+            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+            Listen
+          </button>
+          <button class="chip" id="slowBtn" type="button">
+            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            Slow
+          </button>
+        </div>
+      </section>
+
+      <div class="pr-notice" id="notice" role="status" hidden></div>
+
+      <section class="pr-mic-zone" id="micZone">
+        <div class="pr-mic-wrap">
+          <div class="pr-pulse"></div>
+          <button class="pr-mic-btn" id="micBtn" type="button" aria-label="Start speaking">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+          </button>
+        </div>
+        <div class="pr-mic-hint" id="micHint">Tap to speak</div>
+        <div class="pr-heard" id="heard"></div>
+      </section>
+
+      <section class="pr-card pr-result" id="result" aria-live="polite" hidden>
+        <div class="pr-ring">
+          <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+            <circle class="pr-ring-track" cx="36" cy="36" r="30" fill="none" stroke-width="8"/>
+            <circle class="pr-ring-arc" id="ringArc" cx="36" cy="36" r="30" fill="none" stroke-width="8" stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+          </svg>
+          <div class="pr-ring-num" id="scoreNum">0</div>
+        </div>
+        <div class="pr-result-text">
+          <div class="pr-result-title" id="resultTitle"></div>
+          <div class="pr-result-sub" id="resultSub"></div>
+        </div>
+      </section>
+
+      <!-- Hear your own attempt, then the correct version -->
+      <div class="pr-compare" id="compare" hidden>
+        <div class="pr-compare-btns">
+          <button class="chip" id="playMineBtn" type="button">
+            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+            My voice
+          </button>
+          <button class="chip" id="compareBtn" type="button">
+            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/></svg>
+            Compare
+          </button>
+        </div>
+        <p class="pr-compare-tip" id="compareTip">Compare plays your voice, then the correct one. Listen for the tones and rhythm.</p>
+      </div>
+
+      <div class="pr-actions" id="actions" hidden>
+        <button class="btn btn-outline" id="retryBtn" type="button">Try again</button>
+        <button class="btn btn-primary" id="nextBtn" type="button">Continue</button>
+      </div>
+      <button class="pr-skip" id="skipBtn" type="button">Can't speak now? Skip</button>
+    </div>
+
+    <!-- Level complete -->
+    <section class="pr-card pr-done" id="done" hidden>
+      <div class="pr-ring">
+        <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+          <circle class="pr-ring-track" cx="36" cy="36" r="30" fill="none" stroke-width="8"/>
+          <circle class="pr-ring-arc" cx="36" cy="36" r="30" fill="none" stroke-width="8"/>
+        </svg>
+        <div class="pr-ring-num">
+          <!-- shown when the level is cleared -->
+          <svg id="doneIconPass" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+          <!-- shown when not enough phrases were passed -->
+          <svg id="doneIconRetry" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        </div>
+      </div>
+      <h2 id="doneTitle">Level 1 complete!</h2>
+      <div class="pr-meaning" id="doneMsg">Nobody heard your mistakes but you. Steady lah.</div>
+      <div class="pr-cards" id="doneCards" hidden></div>
+      <div class="pr-stats">
+        <div class="pr-stat"><b class="pr-xp" id="doneXp">+0 XP</b><span>Earned</span></div>
+        <div class="pr-stat"><b id="donePassed">0 / 6</b><span>Phrases passed</span></div>
+      </div>
+      <!-- "+15 coins · Saved to your progress" etc. (filled in by script.js) -->
+      <p class="pr-save" id="saveStatus" hidden></p>
+      <button class="btn btn-primary btn-block" id="retryLevelBtn" type="button" hidden>Try this level again</button>
+      <button class="btn btn-primary btn-block" id="finishBtn" type="button">Back to journey</button>
+    </section>
+  </main>
+
+</div>
+
+<!-- Shared app code for saving progress (same as the other pages).
+     If journey.html loads Supabase with a different <script> line, use that one here too. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+<script src="../../js/shared/supabaseClient.js"></script>
+<script src="../../js/shared/streak.js"></script>
+<script src="../../js/shared/rewards.js"></script>
+
+<!-- Order matters: data → helpers → speech → saving → page logic -->
+<script src="../../js/pronunciation/lessons.js"></script>
+<script src="../../js/pronunciation/scoring.js"></script>
+<script src="../../js/pronunciation/speech.js"></script>
+<script src="../../js/pronunciation/save.js"></script>
+<script src="../../js/pronunciation/script.js"></script>
+</body>
+</html>
