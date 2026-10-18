@@ -1,0 +1,145 @@
+/* Friends page. Builds on the tokens and components in css/shared/base.css
+   (load base.css, topbar.css and bottomnav.css first). */
+
+.friends-page {
+  padding-bottom: var(--nav-h);
+}
+
+.friends-main {
+  padding: 16px 20px 24px;
+}
+
+/* ---------- add a friend ---------- */
+
+.add-friend-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.add-friend-row {
+  display: flex;
+  gap: 10px;
+}
+
+.add-friend-row .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-friend-row .btn {
+  flex: none;
+  min-height: 48px;
+}
+
+/* the shared status message has its own side margins, so line it up with the page */
+.friends-main .status-message {
+  margin: 12px 0 0;
+}
+
+/* ---------- sections ---------- */
+
+.friends-section {
+  margin-top: 24px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.count {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--lock-bg);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.count:empty {
+  display: none;
+}
+
+.friends-main .empty-state {
+  margin: 20px 0;
+}
+
+/* ---------- rows ---------- */
+
+.friend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--white);
+}
+
+.friend-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-bd);
+  color: var(--amber-txt);
+  font-size: 18px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.friend-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.friend-name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-meta {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.friend-actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.friend-actions .btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.btn-danger-text {
+  color: var(--danger);
+}

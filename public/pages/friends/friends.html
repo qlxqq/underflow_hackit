@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <title>Friends</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- Shared styles first, then this page -->
+    <link rel="stylesheet" href="../../css/shared/base.css">
+    <link rel="stylesheet" href="../../css/shared/topbar.css">
+    <link rel="stylesheet" href="../../css/shared/bottomnav.css">
+    <link rel="stylesheet" href="../../css/friends/friends.css">
+</head>
+
+<body data-page="friends">
+    <div class="app friends-page">
+
+        <header class="top-bar">
+            <h1 class="top-title">Friends</h1>
+        </header>
+
+        <main class="friends-main">
+
+            <form class="add-friend" id="addFriendForm" autocomplete="off">
+                <label class="add-friend-label" for="friendUsername">Add a friend</label>
+                <div class="add-friend-row">
+                    <input
+                        class="field"
+                        id="friendUsername"
+                        type="text"
+                        placeholder="Their username"
+                        maxlength="50"
+                        autocapitalize="none"
+                        spellcheck="false"
+                    >
+                    <button type="submit" class="btn btn-primary btn-sm" id="addFriendButton">Send request</button>
+                </div>
+            </form>
+
+            <div id="statusMessage" class="status-message" role="status" aria-live="polite"></div>
+
+            <section class="friends-section" id="requestsSection" hidden>
+                <h2 class="section-title">Requests <span class="count" id="requestsCount"></span></h2>
+                <ul class="friend-list" id="requestsList"></ul>
+            </section>
+
+            <section class="friends-section">
+                <h2 class="section-title">Your friends <span class="count" id="friendsCount"></span></h2>
+                <ul class="friend-list" id="friendsList"></ul>
+                <p class="empty-state" id="friendsEmpty" hidden>
+                    No friends yet. Type a username above to send your first request.
+                </p>
+            </section>
+
+        </main>
+
+        <!-- Bottom navigation (same markup as island.html, with Friends switched on) -->
+        <nav id="bottom-nav" class="bottom-nav" aria-label="Main" data-active="friends">
+            <a class="nav-tab" data-nav="journey" href="../island/island.html"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></svg><span>Island</span></a>
+            <button class="nav-tab" type="button" disabled title="Coming soon"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 4v-4H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" /></svg><span>Scenarios</span></button>
+            <div class="nav-capture"><a class="nav-capture-btn" data-nav="capture" href="../storeVocab/storeVocab.html#capture" aria-label="Capture words"><svg class="icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg></a><span class="nav-capture-label">Capture</span></div>
+            <a class="nav-tab" data-nav="collection" href="../storeVocab/storeVocab.html#collection"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="6" width="12" height="15" rx="2" /><path d="M8 3h11a1 1 0 0 1 1 1v14" /></svg><span>Collection</span></a>
+            <a class="nav-tab" data-nav="friends" href="../friends/friends.html"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5" /><circle cx="17.5" cy="9" r="2.5" /><path d="M17 14.5c2.6 0 4.2 1.4 4.8 4.5" /></svg><span>Friends</span></a>
+        </nav>
+
+    </div>
+
+    <!-- Supabase library (same pinned version as island.html), then the shared client, each loaded once -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+    <script src="../../js/shared/supabaseClient.js"></script>
+    <script src="../../js/shared/bottomNav.js"></script>
+
+    <!-- Friends feature -->
+    <script src="../../js/friends/friends.js"></script>
+</body>
+</html>
