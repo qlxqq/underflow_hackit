@@ -1,54 +1,43 @@
 -- database/island_words_seed.sql
--- The words of the three island zones (what the mini-games teach), per language.
--- Safe to run again: it updates what is already there. Run schema.sql first.
+-- The words of the three island zones: every content word used in the mini-games, per language.
+-- Chinese: the words of the composition questions (zone by zone). Add the words of the other mini-games when they are ready.
+-- Malay and Tamil: still the placeholder lists until their games have content.
+-- Safe to run again. It REPLACES the table's content, so a word removed here is removed from the database too.
+-- Run schema.sql first.
 
-
+begin;
+delete from island_zone_words;
 insert into island_zone_words (language, zone, sort, word, romanization, meaning) values
-  ('zh', 'neighbourhood', 1, '小孩', 'xiǎohái', 'child'),
-  ('zh', 'neighbourhood', 2, '打招呼', 'dǎ zhāohu', 'say hello'),
-  ('zh', 'neighbourhood', 3, '游乐场', 'yóulèchǎng', 'playground'),
-  ('zh', 'neighbourhood', 4, '公园', 'gōngyuán', 'park'),
-  ('zh', 'neighbourhood', 5, '散步', 'sànbù', 'go for a walk'),
-  ('zh', 'neighbourhood', 6, '活动', 'huódòng', 'activity'),
-  ('zh', 'neighbourhood', 7, '下棋', 'xiàqí', 'play chess'),
-  ('zh', 'neighbourhood', 8, '乘凉', 'chéngliáng', 'enjoy the cool air'),
-  ('zh', 'neighbourhood', 9, '老人', 'lǎorén', 'elderly person'),
-  ('zh', 'neighbourhood', 10, '聊天', 'liáotiān', 'chat'),
-  ('zh', 'neighbourhood', 11, '邻居', 'línjū', 'neighbour'),
-  ('zh', 'neighbourhood', 12, '社区', 'shèqū', 'community'),
-  ('zh', 'neighbourhood', 13, '组屋', 'zǔwū', 'HDB flat'),
-  ('zh', 'neighbourhood', 14, '电梯', 'diàntī', 'lift'),
-  ('zh', 'neighbourhood', 15, '便利店', 'biànlìdiàn', 'convenience store'),
+  ('zh', 'neighbourhood', 1, '孩子', 'háizi', 'child'),
+  ('zh', 'neighbourhood', 2, '公园', 'gōngyuán', 'park'),
+  ('zh', 'neighbourhood', 3, '玩耍', 'wánshuǎ', 'play'),
+  ('zh', 'neighbourhood', 4, '咖啡店', 'kāfēidiàn', 'coffee shop'),
+  ('zh', 'neighbourhood', 5, '吃', 'chī', 'eat'),
   ('zh', 'hawker-centre', 1, '鸡饭', 'jīfàn', 'chicken rice'),
-  ('zh', 'hawker-centre', 2, '菜单', 'càidān', 'menu'),
-  ('zh', 'hawker-centre', 3, '打包', 'dǎbāo', 'take away'),
-  ('zh', 'hawker-centre', 4, '辣椒', 'làjiāo', 'chilli'),
-  ('zh', 'hawker-centre', 5, '筷子', 'kuàizi', 'chopsticks'),
-  ('zh', 'hawker-centre', 6, '饮料', 'yǐnliào', 'drink'),
-  ('zh', 'hawker-centre', 7, '付钱', 'fùqián', 'pay'),
-  ('zh', 'hawker-centre', 8, '零钱', 'língqián', 'small change'),
-  ('zh', 'hawker-centre', 9, '排队', 'páiduì', 'queue'),
-  ('zh', 'hawker-centre', 10, '美味', 'měiwèi', 'delicious'),
-  ('zh', 'hawker-centre', 11, '小贩', 'xiǎofàn', 'hawker'),
-  ('zh', 'hawker-centre', 12, '摊位', 'tānwèi', 'stall'),
-  ('zh', 'hawker-centre', 13, '拥挤', 'yōngjǐ', 'crowded'),
-  ('zh', 'hawker-centre', 14, '座位', 'zuòwèi', 'seat'),
-  ('zh', 'hawker-centre', 15, '好吃', 'hǎochī', 'tasty'),
+  ('zh', 'hawker-centre', 2, '冰咖啡', 'bīng kāfēi', 'iced coffee'),
+  ('zh', 'hawker-centre', 3, '云吞面', 'yúntūnmiàn', 'wanton noodles'),
+  ('zh', 'hawker-centre', 4, '炒面', 'chǎomiàn', 'fried noodles'),
+  ('zh', 'hawker-centre', 5, '辣椒', 'làjiāo', 'chilli'),
+  ('zh', 'hawker-centre', 6, '吃辣', 'chī là', 'eat spicy food'),
+  ('zh', 'hawker-centre', 7, '老板', 'lǎobǎn', 'boss / stallholder'),
+  ('zh', 'hawker-centre', 8, '好吃', 'hǎochī', 'tasty'),
+  ('zh', 'hawker-centre', 9, '付钱', 'fùqián', 'pay'),
+  ('zh', 'hawker-centre', 10, '手机', 'shǒujī', 'mobile phone'),
+  ('zh', 'hawker-centre', 11, '放', 'fàng', 'put in / add'),
   ('zh', 'public-transport', 1, '地铁', 'dìtiě', 'MRT / subway'),
-  ('zh', 'public-transport', 2, '月台', 'yuètái', 'platform'),
-  ('zh', 'public-transport', 3, '出口', 'chūkǒu', 'exit'),
-  ('zh', 'public-transport', 4, '刷卡', 'shuākǎ', 'tap a card'),
-  ('zh', 'public-transport', 5, '转乘', 'zhuǎnchéng', 'transfer'),
-  ('zh', 'public-transport', 6, '巴士', 'bāshì', 'bus'),
-  ('zh', 'public-transport', 7, '乘客', 'chéngkè', 'passenger'),
-  ('zh', 'public-transport', 8, '上车', 'shàngchē', 'board'),
-  ('zh', 'public-transport', 9, '下车', 'xiàchē', 'get off'),
-  ('zh', 'public-transport', 10, '车站', 'chēzhàn', 'station / stop'),
-  ('zh', 'public-transport', 11, '德士', 'déshì', 'taxi'),
-  ('zh', 'public-transport', 12, '司机', 'sījī', 'driver'),
-  ('zh', 'public-transport', 13, '车费', 'chēfèi', 'fare'),
-  ('zh', 'public-transport', 14, '路线', 'lùxiàn', 'route'),
-  ('zh', 'public-transport', 15, '迟到', 'chídào', 'be late'),
+  ('zh', 'public-transport', 2, '巴士', 'bāshì', 'bus'),
+  ('zh', 'public-transport', 3, '机场', 'jīchǎng', 'airport'),
+  ('zh', 'public-transport', 4, '多美歌', 'Duōměigē', 'Dhoby Ghaut'),
+  ('zh', 'public-transport', 5, '转车', 'zhuǎnchē', 'change trains'),
+  ('zh', 'public-transport', 6, '刷卡', 'shuākǎ', 'tap a card'),
+  ('zh', 'public-transport', 7, '座位', 'zuòwèi', 'seat'),
+  ('zh', 'public-transport', 8, '老人', 'lǎorén', 'elderly person'),
+  ('zh', 'public-transport', 9, '几号', 'jǐ hào', 'which number'),
+  ('zh', 'public-transport', 10, '五分钟', 'wǔ fēnzhōng', 'five minutes'),
+  ('zh', 'public-transport', 11, '三十分钟', 'sānshí fēnzhōng', 'thirty minutes'),
+  ('zh', 'public-transport', 12, '让给', 'ràng gěi', 'give up to'),
+  ('zh', 'public-transport', 13, '大约', 'dàyuē', 'about'),
+  ('zh', 'public-transport', 14, '坐', 'zuò', 'travel by'),
   ('ms', 'neighbourhood', 1, 'jiran', '', 'neighbour'),
   ('ms', 'neighbourhood', 2, 'kejiranan', '', 'neighbourhood'),
   ('ms', 'neighbourhood', 3, 'blok', '', 'block'),
@@ -138,5 +127,5 @@ insert into island_zone_words (language, zone, sort, word, romanization, meaning
   ('ta', 'public-transport', 12, 'ஏறுதல்', 'eruthal', 'boarding'),
   ('ta', 'public-transport', 13, 'இறங்குதல்', 'irangudhal', 'getting off'),
   ('ta', 'public-transport', 14, 'தாமதம்', 'thaamadham', 'delay'),
-  ('ta', 'public-transport', 15, 'சாலை', 'saalai', 'road')
-on conflict (language, zone, word) do update set sort = excluded.sort, romanization = excluded.romanization, meaning = excluded.meaning;
+  ('ta', 'public-transport', 15, 'சாலை', 'saalai', 'road');
+commit;

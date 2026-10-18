@@ -146,9 +146,22 @@ const IslandCards = {
   // Cards for a mini-game: `words` are zone words of `albumId` the player got right.
   // New ones are saved (and shown in the Collection); words already owned are returned
   // as dupes. Used by IslandAPI.awardWords, which also opens the pack.
-  async awardWords(albumId, words) {
+  // opts.max = at most this many cards (a short game gives few). The cards are drawn from the words
+  // answered right, unowned ones more likely, so a draw can still be a duplicate.
+  async awardWords(albumId, words, opts = {}) {
     const zone = new Map(this.zoneList(albumId).map((w) => [w.w, w]));
-    const picked = [...new Set(words || [])].map((w) => zone.get(w)).filter(Boolean);
+    let picked = [...new Set(words || [])].map((w) => zone.get(w)).filter(Boolean);
+    const max = Number(opts && opts.max);
+    if (max > 0 && picked.length > max) {
+      const pool = picked.slice();
+      picked = [];
+      while (picked.length < max && pool.length) {
+        const weights = pool.map((w) => (this.have.has(this.key(albumId, w.w)) ? 1 : ZONE_UNOWNED_WEIGHT));
+        let r = Math.random() * weights.reduce((a, b) => a + b, 0), i = 0;
+        for (; i < pool.length - 1; i++) { r -= weights[i]; if (r < 0) break; }
+        picked.push(pool.splice(i, 1)[0]);
+      }
+    }
     const fresh = picked.filter((w) => !this.have.has(this.key(albumId, w.w)));
     const dupes = picked.filter((w) => this.have.has(this.key(albumId, w.w)));
     fresh.forEach((w) => this.have.add(this.key(albumId, w.w)));

@@ -77,7 +77,7 @@ const IslandPractice = {
   // Mini-games and NPC challenges that contain the word are all candidates; the one the player
   // has played the LEAST wins (a tie goes to the mini-game). Captured words are mixed into the NPC
   // challenges of their zone, so they always have somewhere to go. Role cards go to their own NPC.
-  // A zone card with no mini-game wired yet has no place: the caller says so.
+  // Only a card that belongs to no mini-game and no NPC has no place: the caller says so.
   find(word, album) {
     const options = [];
     try {
@@ -88,6 +88,13 @@ const IslandPractice = {
     Object.entries(data).forEach(([id, d]) => {
       if (d.words.some((w) => w.w === word) && (!album || d.album === album)) options.push({ npcId: id, plays: IslandState.playsOf(`npc:${id}`) });
     });
+    // A zone card whose mini-game is not built yet (another language, or a game still to come) has no
+    // building to go to, so an NPC of its zone asks it instead (quiz.js adds it to that challenge).
+    if (!options.length && typeof IslandCards !== "undefined") {
+      const albums = album ? [album] : Object.keys(ALBUM_OF_ZONE).map((z) => ALBUM_OF_ZONE[z]);
+      const home = albums.find((a) => IslandCards.zoneList(a).some((w) => w.w === word));
+      if (home) ISLAND_NPCS.filter((n) => ZONE_OF_ALBUM[home] === n.zone).forEach((n) => options.push({ npcId: n.id, plays: IslandState.playsOf(`npc:${n.id}`) }));
+    }
     if (!options.some((o) => o.npcId) && !options.length) {
       const row = IslandCaptured.find(word);
       if (row) ISLAND_NPCS.filter((n) => n.zone === IslandCaptured.zoneOf(row)).forEach((n) => options.push({ npcId: n.id, plays: IslandState.playsOf(`npc:${n.id}`) }));
