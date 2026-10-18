@@ -19,6 +19,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const friendsCount = document.getElementById("friendsCount");
     const friendsEmpty = document.getElementById("friendsEmpty");
 
+    const leaderboardSection = document.getElementById("leaderboardSection");
+    const leaderboardList = document.getElementById("leaderboardList");
+
     let busy = false;
 
     // ----------------------------------
@@ -58,6 +61,16 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        // Only ask the database when someone is signed in (a signed-out request is
+        // refused with a 401 error).
+        const { data: sessionData } = await db.auth.getSession();
+
+        if (!sessionData || !sessionData.session) {
+            showStatus("error", "Please sign in first (open the Island page and sign in).");
+            addFriendButton.disabled = true;
+            return;
+        }
+
         const { data, error } = await db.rpc("my_friendships");
 
         if (error) {
@@ -66,6 +79,58 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         render(data || []);
+        loadLeaderboard();
+    }
+
+    // ----------------------------------
+    // Streak leaderboard: you and your friends, longest streak first
+    // ----------------------------------
+
+    async function loadLeaderboard() {
+        const { data, error } = await db.rpc("friends_leaderboard");
+
+        // Nothing to compare until you have at least one friend.
+        if (error || !data || data.length < 2) {
+            leaderboardSection.hidden = true;
+            return;
+        }
+
+        leaderboardList.replaceChildren();
+
+        let rank = 1;
+
+        data.forEach(function (row, index) {
+            // Players with the same streak share a rank.
+            if (index > 0 && row.lb_streak !== data[index - 1].lb_streak) {
+                rank = index + 1;
+            }
+
+            const item = document.createElement("li");
+            item.className = "friend-row" + (row.lb_is_me ? " is-me" : "");
+
+            const badge = document.createElement("div");
+            badge.className = "rank";
+            badge.textContent = String(rank);
+
+            const info = document.createElement("div");
+            info.className = "friend-info";
+
+            const name = document.createElement("p");
+            name.className = "friend-name";
+            name.textContent = row.lb_username + (row.lb_is_me ? " (you)" : "");
+
+            info.appendChild(name);
+
+            const streak = document.createElement("div");
+            streak.className = "rank-streak";
+            streak.textContent = "🔥 " + row.lb_streak;
+            streak.setAttribute("aria-label", row.lb_streak + " day streak");
+
+            item.append(badge, info, streak);
+            leaderboardList.appendChild(item);
+        });
+
+        leaderboardSection.hidden = false;
     }
 
     function render(rows) {
@@ -108,7 +173,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 makeButton("Remove", "btn btn-outline btn-danger-text", function () {
                     removeFriend(row, true);
                 })
-            ]));
+            ], togetherText(row)));
         });
 
         const requestTotal = incoming.length + sent.length;
@@ -128,11 +193,27 @@ document.addEventListener("DOMContentLoaded", function () {
             " · ⚡ " + xp + " XP";
     }
 
+    // The streak you share with this friend: days in a row you both opened the app.
+    function togetherText(row) {
+        const together = Number(row.shared_streak) || 0;
+
+        if (together === 0) return "";
+
+        let text = "🤝 " + together + " day" + (together === 1 ? "" : "s") + " together";
+
+        // The streak only continues if they open the app today as well.
+        if (!row.friend_visited_today) {
+            text += " · waiting for " + row.friend_username + " today";
+        }
+
+        return text;
+    }
+
     // ----------------------------------
     // Build elements (textContent only, never innerHTML)
     // ----------------------------------
 
-    function makeRow(row, metaText, buttons) {
+    function makeRow(row, metaText, buttons, extraText) {
         const item = document.createElement("li");
         item.className = "friend-row";
 
@@ -153,6 +234,13 @@ document.addEventListener("DOMContentLoaded", function () {
         meta.textContent = metaText;
 
         info.append(name, meta);
+
+        if (extraText) {
+            const extra = document.createElement("p");
+            extra.className = "friend-meta friend-together";
+            extra.textContent = extraText;
+            info.appendChild(extra);
+        }
 
         const actions = document.createElement("div");
         actions.className = "friend-actions";
@@ -361,5 +449,19 @@ document.addEventListener("DOMContentLoaded", function () {
         addFriendButton.disabled = false;
     });
 
-    loadFriends();
+    // Opening this page counts as today's visit, then the lists load.
+    // (Opening any page that calls record_visit does the same.)
+    async function start() {
+        if (db) {
+            const { data: sessionData } = await db.auth.getSession();
+
+            if (sessionData && sessionData.session) {
+                await db.rpc("record_visit");
+            }
+        }
+
+        loadFriends();
+    }
+
+    start();
 });
