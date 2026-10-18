@@ -24,7 +24,8 @@ const ISLAND_MINIGAMES = {
 
 const ISLAND_MINIGAME_RESULT_KEY = "island:minigame-result";
 const ISLAND_MINIGAME_RESULT_MAX_AGE = 30 * 60 * 1000; // a result older than this is ignored
-const ISLAND_RETURN_SPOT_KEY = "island:return-spot";      // where the player stood before the game
+const ISLAND_RETURN_SPOT_KEY = "island:return-spot";      // where the player stood when they left the island page
+const ISLAND_RETURN_SPOT_MAX_AGE = 6 * 60 * 60 * 1000;
 
 const IslandMiniGames = {
   // Where a level sits in its zone: zone 1-3 and place 1-3 (the number the games use to pick questions).
@@ -36,27 +37,34 @@ const IslandMiniGames = {
     return { zone: zoneIndex + 1, place: inZone.findIndex((l) => l.level === levelNumber) + 1, level };
   },
 
-  // Remember where the player stands, so the island puts them back there after the game.
+  // Remember which island the player is on and where they stand, so that coming back from another
+  // page (the Collection, a mini-game...) puts them there. Kept for this browser tab only, so
+  // opening the app fresh still starts on the home island.
   saveReturnSpot() {
     try {
-      const spot = window.IslandAPI && window.IslandAPI.spot ? window.IslandAPI.spot() : null;
-      if (spot) localStorage.setItem(ISLAND_RETURN_SPOT_KEY, JSON.stringify({ x: spot.x, y: spot.y, userId: IslandSave.userId || null, at: Date.now() }));
+      const api = window.IslandAPI;
+      const spot = api && api.spot && api.where ? api.spot() : null;
+      if (spot && Number.isFinite(spot.x) && Number.isFinite(spot.y)) {
+        sessionStorage.setItem(ISLAND_RETURN_SPOT_KEY, JSON.stringify({ where: api.where(), x: spot.x, y: spot.y, userId: IslandSave.userId || null, at: Date.now() }));
+      }
     } catch (err) { /* storage blocked: the player starts at the usual place */ }
   },
   readReturnSpot() {
     try {
-      const s = JSON.parse(localStorage.getItem(ISLAND_RETURN_SPOT_KEY));
-      const ok = s && Number.isFinite(s.x) && Number.isFinite(s.y) && Date.now() - (s.at || 0) <= ISLAND_MINIGAME_RESULT_MAX_AGE && (s.userId || null) === (IslandSave.userId || null);
+      const s = JSON.parse(sessionStorage.getItem(ISLAND_RETURN_SPOT_KEY));
+      const ok = s && (s.where === "home" || s.where === "mystery") && Number.isFinite(s.x) && Number.isFinite(s.y)
+        && Date.now() - (s.at || 0) <= ISLAND_RETURN_SPOT_MAX_AGE && (s.userId || null) === (IslandSave.userId || null);
       return ok ? s : null;
     } catch (err) { return null; }
   },
-  hasReturnSpot() { return !!this.readReturnSpot(); },
-  // true when the page was opened by a finished (or just left) mini-game
-  cameBackFromGame() { return this.hasReturnSpot() || !!this.readResult(); },
-  takeReturnSpot() {
+  // a finished mini-game is waiting to be paid
+  hasPendingResult() { return !!this.readResult(); },
+  // The spot for this island, once (the scene puts the player there). null = start at the usual place.
+  takeReturnSpot(where) {
     const s = this.readReturnSpot();
-    try { localStorage.removeItem(ISLAND_RETURN_SPOT_KEY); } catch (err) { /* ignore */ }
-    return s ? { x: s.x, y: s.y } : null;
+    if (!s || s.where !== where) return null;
+    try { sessionStorage.removeItem(ISLAND_RETURN_SPOT_KEY); } catch (err) { /* ignore */ }
+    return { x: s.x, y: s.y };
   },
 
   start(landmark) {
@@ -147,3 +155,7 @@ IslandHooks.findMiniGame = (word, language) => {
 
 // Take back a finished game as soon as the page has loaded (waits inside until the island is ready).
 window.addEventListener("load", () => { IslandMiniGames.collect(); });
+
+// Leaving the island page for any reason (Collection, Profile, a game...): remember where the player is.
+window.addEventListener("pagehide", () => IslandMiniGames.saveReturnSpot());
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") IslandMiniGames.saveReturnSpot(); });

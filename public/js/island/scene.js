@@ -210,7 +210,7 @@ class IslandScene extends Phaser.Scene {
     this.look = currentAvatarLook();
     ensureAvatarTextures(this, this.look);
     // back from a mini-game: stand where the player was before it
-    const back = typeof IslandMiniGames !== "undefined" ? IslandMiniGames.takeReturnSpot() : null;
+    const back = typeof IslandMiniGames !== "undefined" ? IslandMiniGames.takeReturnSpot("mystery") : null;
     const at = back || ISLAND_SPAWN;
     this.player = this.add.image(at.x, at.y, avatarKey(this.look, "down", 0)).setOrigin(0.5, 0.92).setScale(1 / ART_SCALE);
     this.facingLeft = false;
