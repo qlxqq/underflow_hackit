@@ -146,20 +146,30 @@ const IslandCards = {
   // Cards for a mini-game: `words` are zone words of `albumId` the player got right.
   // New ones are saved (and shown in the Collection); words already owned are returned
   // as dupes. Used by IslandAPI.awardWords, which also opens the pack.
-  // opts.max = at most this many cards (a short game gives few). The cards are drawn from the words
-  // answered right, unowned ones more likely, so a draw can still be a duplicate.
+  // opts.max  = this many cards (what the game earned). They are drawn from the words answered right,
+  //             unowned ones more likely, so a draw can still be a duplicate.
+  // opts.fill = if fewer words than that were answered right (or fit the zone), the rest are drawn from the
+  //             zone's other words, so a game that earned 4 cards always gives 4.
   async awardWords(albumId, words, opts = {}) {
     const zone = new Map(this.zoneList(albumId).map((w) => [w.w, w]));
     let picked = [...new Set(words || [])].map((w) => zone.get(w)).filter(Boolean);
     const max = Number(opts && opts.max);
-    if (max > 0 && picked.length > max) {
-      const pool = picked.slice();
-      picked = [];
-      while (picked.length < max && pool.length) {
+    const draw = (pool, count) => {
+      const out = [];
+      pool = pool.slice();
+      while (out.length < count && pool.length) {
         const weights = pool.map((w) => (this.have.has(this.key(albumId, w.w)) ? 1 : ZONE_UNOWNED_WEIGHT));
         let r = Math.random() * weights.reduce((a, b) => a + b, 0), i = 0;
         for (; i < pool.length - 1; i++) { r -= weights[i]; if (r < 0) break; }
-        picked.push(pool.splice(i, 1)[0]);
+        out.push(pool.splice(i, 1)[0]);
+      }
+      return out;
+    };
+    if (max > 0) {
+      picked = draw(picked, max);
+      if (opts.fill && picked.length < max) {
+        const taken = new Set(picked.map((w) => w.w));
+        picked = [...picked, ...draw(this.zoneList(albumId).filter((w) => !taken.has(w.w)), max - picked.length)];
       }
     }
     const fresh = picked.filter((w) => !this.have.has(this.key(albumId, w.w)));

@@ -52,7 +52,7 @@ class IslandScene extends Phaser.Scene {
 
     IslandControls.onAction = () => this.interact();
     Object.assign(window.IslandAPI, {
-      completeLevel: (n, ratio, total) => this.completeLevel(n, ratio, total),
+      completeLevel: (n, ratio, total, opts) => this.completeLevel(n, ratio, total, opts),
       isLevelDone: (n) => this.done.has(n),
       levelsDone: () => [...this.done].sort((a, b) => a - b),
       where: () => "mystery",
@@ -509,9 +509,11 @@ class IslandScene extends Phaser.Scene {
   // Called when a mini-game is finished (a mini-game calls IslandAPI.completeLevel(n, ratio, total)).
   // ratio (0-1) is how well it went; leave it out for "completed". total = how many questions the game has (longer games pay more). The first clear opens the way
   // on; every play pays coins and XP, a little less each time (economy.js).
-  async completeLevel(n, ratio = 1, total) {
+  // opts.quiet = no banner (the caller shows its own result sheet). Returns what was paid:
+  // { coins, xp, levelUps, first, title, note }
+  async completeLevel(n, ratio = 1, total, opts = {}) {
     const l = ISLAND_LEVELS.find((x) => x.level === n);
-    if (!l) return;
+    if (!l) return null;
     const first = !this.done.has(n);
     const pay = IslandEconomy.miniPayout(n, ratio, total);
     IslandState.addPlay(`mini:${n}`);
@@ -527,14 +529,17 @@ class IslandScene extends Phaser.Scene {
     const zone = ISLAND_ZONES.find((z) => z.id === l.zone);
     const before = IslandWorld.locked.size;
     this.refreshLocks(false);
+    let title, note, sub;
     if (first && IslandWorld.locked.size < before) {
       const next = ISLAND_ZONES[ISLAND_ZONES.indexOf(zone) + 1];
-      IslandUI.banner(`${zone.name} complete`, `${gain} · the gate to ${next.name} is open`);
+      title = `${zone.name} complete`; note = `The gate to ${next.name} is open.`; sub = `${gain} · the gate to ${next.name} is open`;
     } else if (first) {
-      IslandUI.banner(`${l.name} complete`, `${gain} · ${this.zoneDoneCount(l.zone)}/${this.zoneLevels(l.zone).length} in ${zone.name}`);
+      title = `${l.name} complete`; note = `${this.zoneDoneCount(l.zone)}/${this.zoneLevels(l.zone).length} done in ${zone.name}.`; sub = `${gain} · ${this.zoneDoneCount(l.zone)}/${this.zoneLevels(l.zone).length} in ${zone.name}`;
     } else {
-      IslandUI.banner(`${l.name} played again`, gain || "Nice practice!");
+      title = `${l.name} played again`; note = ""; sub = gain || "Nice practice!";
     }
+    if (!(opts && opts.quiet)) IslandUI.banner(title, sub);
+    return { coins: paid.coins, xp: paid.xp, levelUps: paid.levelUps || 0, first, title, note };
   }
 
   // Closes the gates for zones that are not finished, and builds or removes the barriers.

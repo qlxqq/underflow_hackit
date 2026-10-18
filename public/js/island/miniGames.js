@@ -124,15 +124,106 @@ const IslandMiniGames = {
       return;
     }
     this.clearResult(); // before paying, so a reload can never pay twice
-    const ratio = Math.max(0, Math.min(1, Number(result.ratio)));
+    const ratioNum = Number(result.ratio);
+    const ratio = Number.isFinite(ratioNum) ? Math.max(0, Math.min(1, ratioNum)) : 1;
     const total = Math.max(0, Math.round(Number(result.total))) || undefined;
-    const score = total && Number.isFinite(ratio) ? Math.round(ratio * total) : undefined;   // questions right first time
-    try { await window.IslandAPI.completeLevel(level.level, Number.isFinite(ratio) ? ratio : 1, total); } catch (err) { console.error("Island: could not finish the level.", err); }
+    const score = total ? Math.round(ratio * total) : undefined;   // questions right first time
     const album = typeof ALBUM_OF_ZONE !== "undefined" ? ALBUM_OF_ZONE[level.zone] : null;
-    const cardCount = IslandEconomy.miniCards(total, score);   // all right = half the questions, a pass = one fewer, a fail = none
-    if (album && cardCount > 0 && Array.isArray(result.words) && result.words.length && window.IslandAPI.awardWords) {
-      try { await window.IslandAPI.awardWords(album, result.words, null, { max: cardCount }); } catch (err) { console.error("Island: could not award cards.", err); }
+    const cardCount = IslandEconomy.miniCards(total, score);       // all right = half the questions, a pass = one fewer, a fail = none
+    console.info("Island: mini-game result", { economyCardsPerQuestion: (typeof ISLAND_ECONOMY !== "undefined" && ISLAND_ECONOMY.mini) ? ISLAND_ECONOMY.mini.cardsPerQuestion : "OLD economy.js", level: level.level, questions: total, right: score, cardsAllowed: cardCount, wordsRight: (result.words || []).length });
+    if (!total) console.warn("Island: the game did not send its question count (total), so the standard reward is used. Is composition.js up to date?");
+
+    // coins, XP and the level itself (no banner: the result sheet below tells the story)
+    let paid = null;
+    try { paid = await window.IslandAPI.completeLevel(level.level, ratio, total, { quiet: true }); } catch (err) { console.error("Island: could not finish the level.", err); }
+
+    // Cards the player already owns (captured words, and island album cards) whose word was in a question
+    // answered right the first time get +1 practice, so they can evolve. This runs BEFORE the new cards
+    // are saved, so a card won just now does not count as practised.
+    let practised = [];
+    const rightWords = Array.isArray(result.right) ? result.right : (Array.isArray(result.words) ? result.words : []);
+    if (rightWords.length && window.IslandAPI.recordPractice) {
+      try { practised = (await window.IslandAPI.recordPractice(rightWords)) || []; } catch (err) { console.error("Island: could not record practice.", err); }
     }
+    if (practised.length && IslandHooks.onPractice) { try { IslandHooks.onPractice(practised); } catch (err) { console.error(err); } }
+
+    // cards: zone cards only, drawn from the words answered right; owned ones are duplicates
+    const before = album ? IslandCards.albumInfo(album) : null;
+    let won = { cards: [], dupes: [] };
+    if (album && cardCount > 0 && Array.isArray(result.words) && result.words.length) {
+      try { won = await IslandCards.awardWords(album, result.words, { max: cardCount, fill: true }); } catch (err) { console.error("Island: could not award cards.", err); }
+    }
+    console.info("Island: mini-game cards", { allowed: cardCount, newCards: won.cards.length, duplicates: won.dupes.length });
+    // a duplicate turns into coins and XP, the same as in an NPC challenge
+    const dupePay = won.dupes.length ? IslandEconomy.duplicatePayout(won.dupes.length) : null;
+    let paidDupes = { coins: 0, xp: 0, levelUps: 0 };
+    if (dupePay) { try { paidDupes = await IslandEconomy.pay(dupePay); } catch (err) { console.error("Island: could not pay for duplicates.", err); } }
+
+    const info = {
+      level, total, score, album, before, won, dupePay, practised, bonus: result.bonus || null,
+      coins: (paid ? paid.coins : 0) + paidDupes.coins,
+      xp: (paid ? paid.xp : 0) + paidDupes.xp,
+      levelUps: (paid ? paid.levelUps : 0) + (paidDupes.levelUps || 0),
+      title: paid ? paid.title : "", note: paid ? paid.note : "",
+    };
+    // new cards arrive in a pack, then the summary
+    if ((won.cards.length || won.dupes.length) && typeof IslandPack !== "undefined") {
+      const lines = [info.coins ? `+${info.coins} coins` : "", info.xp ? `+${info.xp} XP` : "",
+        won.dupes.length ? `${won.dupes.length} duplicate${won.dupes.length > 1 ? "s" : ""} turned into coins and XP` : "",
+        info.practised.some((p) => p && p.evolved) ? `${info.practised.filter((p) => p && p.evolved).length} card${info.practised.filter((p) => p && p.evolved).length > 1 ? "s" : ""} evolved` : ""].filter(Boolean);
+      try { await IslandPack.show(won.cards, lines, won.dupes); } catch (err) { console.error("Island: could not open the pack.", err); }
+    }
+    this.showSummary(info);
+  },
+
+  // The result sheet: score, what was earned, the cards, and what the duplicates became.
+  showSummary(info) {
+    if (typeof IslandUI === "undefined" || !IslandUI.openSheet) return;
+    const esc = (t) => IslandUI.esc(t);
+    const zone = ISLAND_ZONES.find((z) => z.id === info.level.zone);
+    const pass = info.total ? info.score >= IslandQuiz.passMark(info.total) : true;
+    const msg = !info.total ? "Well done!" : info.score === info.total ? "Perfect! Well done." : pass ? "Nice work!"
+      : `Good try. You need ${IslandQuiz.passMark(info.total)} right the first time to win cards. Play again!`;
+    const earned = [info.coins ? `+${info.coins} coins` : "", info.xp ? `+${info.xp} XP` : "",
+      info.won.cards.length ? `+${info.won.cards.length} card${info.won.cards.length > 1 ? "s" : ""}` : ""].filter(Boolean).join(" · ");
+    const cardsHtml = info.won.cards.length
+      ? `<div class="won-cards">${info.won.cards.map((c) => `<div class="won-card is-zone" lang="${IslandLang.code}"><b>${esc(c.word)}</b><small>${c.pinyin ? `${esc(c.pinyin)} · ` : ""}${esc(c.meaning)}</small><em>Zone card</em></div>`).join("")}</div>`
+      : "";
+    const d = info.won.dupes.length;
+    const dupeHtml = d && info.dupePay
+      ? `<p class="sheet-sub">${d === 1 ? "A card you already own" : `${d} cards you already own`} turned into +${info.dupePay.coins} coins and +${info.dupePay.xp} XP.</p>` : "";
+    const noCards = !info.won.cards.length && !d
+      ? `<p class="sheet-sub">${pass ? "No cards this time. Words you get right the first time can win zone cards." : "No cards this time."}</p>` : "";
+    // the bonus question (a sentence built with one of the player's own captured words) and which cards evolved
+    const stageName = ["", "Trained", "Mastered"];
+    const evolved = (info.practised || []).filter((p) => p && p.evolved);
+    const bonusHtml = info.bonus && info.bonus.words
+      ? `<p class="sheet-sub">Bonus question: ${info.bonus.right ? "you used your words" : "keep practising your words"} ${info.bonus.words.map((w, i) => `<b lang="${IslandLang.code}">${esc(w)}</b> (${esc(info.bonus.meanings[i])})`).join(" and ")}${info.bonus.right ? " correctly!" : "."}</p>` : "";
+    const evolvedHtml = evolved.length
+      ? `<p class="album-done">${evolved.length === 1 ? "A card evolved!" : `${evolved.length} cards evolved!`} ${evolved.map((p) => `<b lang="${IslandLang.code}">${esc(p.word)}</b>${stageName[p.stage] ? ` is now ${stageName[p.stage]}` : ""}`).join(", ")}</p>` : "";
+    const practisedOnly = (info.practised || []).filter((p) => p && !p.evolved);
+    const practisedHtml = practisedOnly.length
+      ? `<p class="sheet-sub">Practised: ${practisedOnly.map((p) => `<b lang="${IslandLang.code}">${esc(p.word)}</b>`).join(", ")}</p>` : "";
+    const after = info.album ? IslandCards.albumInfo(info.album) : null;
+    const albumHtml = after && after.total ? `<p class="sheet-sub">${esc(after.name)} album: ${after.have} / ${after.total} cards</p>` : "";
+    const zoneDone = info.before && after && info.before.zoneHave < info.before.zoneTotal && after.zoneTotal > 0 && after.zoneHave >= after.zoneTotal;
+    IslandUI.openSheet(
+      `${IslandUI.head(zone ? zone.name : "Mini-game", zone ? zone.accent : "#8190a8")}
+       <h2 class="sheet-title">${info.total ? `${info.score} / ${info.total}` : "Done"}</h2>
+       <p class="sheet-sub">${esc(info.title)}${info.note ? ` · ${esc(info.note)}` : ""}</p>
+       <p class="sheet-sub">${msg}</p>
+       ${earned ? `<p class="reward-line">${earned}</p>` : ""}
+       ${info.levelUps ? '<p class="album-done">Level up! Check your profile.</p>' : ""}
+       ${cardsHtml}
+       ${dupeHtml}
+       ${noCards}
+       ${bonusHtml}
+       ${evolvedHtml}
+       ${practisedHtml}
+       ${albumHtml}
+       ${zoneDone ? '<p class="album-done">All zone cards collected! Open Collection to claim your badge.</p>' : ""}
+       <button class="btn btn-primary btn-block" data-close type="button">Done</button>`
+    );
   },
 };
 

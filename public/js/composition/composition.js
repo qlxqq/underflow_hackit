@@ -19,6 +19,39 @@ document.addEventListener("DOMContentLoaded", function () {
     const RESULT_KEY = "island:minigame-result";   // read by js/island/miniGames.js
     // The questions are written per language. Only Chinese has any so far (stored as "zh-CN").
     const QUESTION_LANGUAGE = { zh: "zh-CN" };
+    // ---- the bonus question: a sentence built ONLY from words the player captured (plus the few words every
+    // ---- sentence needs). No decoy tiles: every tile is part of the answer.
+    // Used only when the player has enough captured words that fit the zone (BONUS_MIN_WORDS), so a
+    // new player just gets the usual 8 questions; otherwise 7 questions + 1 bonus.
+    const BONUS_MIN_WORDS = 2;     // the sentence uses two captured words
+    // A captured word is used only when its English meaning is on these lists: plain NOUNS that make a sensible
+    // sentence in the zone. Anything else (a verb, a feeling, a person, a thing that does not belong there)
+    // is left out, so the bonus question always makes sense. No bonus question beats a silly one.
+    const BONUS_NOUNS = {
+        // places near home
+        1: new Set(["park", "playground", "supermarket", "shop", "market", "school", "library", "clinic", "hospital", "pharmacy", "bakery", "cafe", "coffee shop", "food court", "hawker centre", "bus stop", "mrt station", "void deck", "lift", "garden", "mall", "shopping mall", "restaurant", "bank", "post office", "kindergarten", "temple", "church", "mosque", "swimming pool", "gym", "basketball court", "fitness corner", "pavilion", "bench", "playground", "carpark", "car park", "minimart", "convenience store"]),
+        // food and drink you can order
+        2: /\b(rice|noodles?|tea|coffee|soup|juice|milk|water|satay|laksa|prata|dumplings?|chicken|egg|eggs|bread|cake|apple|orange|banana|mango|watermelon|papaya|durian|ice cream|porridge|congee|kopi|teh|toast|burger|pizza|fish ball|fish|duck|pork|beef)\b/,
+        // things you can travel by
+        3: new Set(["bus", "taxi", "train", "mrt", "subway", "plane", "airplane", "car", "ferry", "boat", "tram", "lrt", "school bus", "minibus", "cab"])
+    };
+    function bonusMeaningOk(meaning) {
+        if (!meaning || /^to\s/i.test(meaning) || /\b(spicy|hot|cold|big|small|good|bad|very)\b/.test(meaning)) return false;
+        const rule = BONUS_NOUNS[zone];
+        if (!rule) return false;
+        if (rule instanceof Set) return rule.has(meaning.replace(/^(a|an|the)\s+/, ""));
+        return rule.test(meaning) && !/\b(stall|shop|centre|center|menu|order|eat|drink)\b/.test(meaning);
+    }
+    // Small words that carry no meaning of their own: never used as the player's word.
+    const BONUS_FILLER = new Set(["的", "了", "是", "在", "和", "也", "都", "就", "着", "而", "及", "與", "我", "你", "他", "她", "它", "们", "这", "那", "不", "很", "个", "吗", "呢", "吧", "啊", "要", "想", "请", "有", "给", "坐", "骑", "一", "二", "三", "里", "上", "下", "喜欢", "可以"]);
+    // The sentence frames. Both captured words go in the gaps (either order is accepted).
+    // en() is the English the player follows along with.
+    const BONUS_FRAMES = {
+        1: [{ before: ["我家", "附近", "有"], between: "和", after: ["。"], en: function (a, b) { return "Near my home there is " + withArticle(a) + " and " + withArticle(b) + "."; } }],
+        2: [{ before: ["我", "要"], between: "和", after: ["。"], en: function (a, b) { return "I want " + a + " and " + b + "."; } }],
+        3: [{ before: [], between: "和", after: ["都", "可以", "坐", "。"], en: function (a, b) { return "I can take both the " + a + " and the " + b + "."; } }]
+    };
+
     let player = null;       // the signed-in user
     let language = "zh";     // the player's Mother Tongue
     document.querySelector(".session-chip span").textContent = "Composition";
@@ -50,6 +83,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let wrongTries = 0;            // wrong checks on the current question
     let firstTryCount = 0;         // questions got right on the first check: this is the score
     let firstTryWords = [];        // the words of those questions (they can win zone cards)
+    let bonusRight = false;        // the bonus question was right first time
     let finished = false;
     let streakResult = null;       // set when this visit counted towards the daily streak
     let streakCounted = false;
@@ -92,6 +126,80 @@ document.addEventListener("DOMContentLoaded", function () {
         const total = questions.length || 0;
         xpDisplay.textContent = firstTryCount + (total ? "/" + total : "");
         xpDisplay.title = "Questions right on the first try";
+    }
+
+    // ----------------------------------
+    // The bonus question
+    // ----------------------------------
+
+    function withArticle(meaning) {
+        return /^(a|an|the)\s/i.test(meaning) ? meaning : (/^[aeiou]/i.test(meaning) ? "an " : "a ") + meaning;
+    }
+
+    function shuffleList(list) {
+        const out = list.slice();
+        for (let i = out.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const swap = out[i];
+            out[i] = out[j];
+            out[j] = swap;
+        }
+        return out;
+    }
+
+    // The player's own captured words that suit this zone. Never throws: with no captured words
+    // (or no connection) the game simply has no bonus question.
+    async function loadBonusWords() {
+        if (!BONUS_NOUNS[zone] || !player || language !== "zh") return [];
+        try {
+            const result = await db
+                .from("vocabulary")
+                .select("vocab_id, word, romanization, english_meaning, theme, usage_count, evolution_stage")
+                .eq("user_id", player.id)
+                .eq("language", language)
+                .limit(300);
+            if (result.error) throw result.error;
+            const seen = new Set();
+            return (result.data || []).filter(function (row) {
+                const meaning = String(row.english_meaning || "").split(/[\/;,(]/)[0].trim();
+                if (!row.word || seen.has(row.word)) return false;
+                if (!/^[\u4e00-\u9fff]{1,4}$/.test(row.word) || BONUS_FILLER.has(row.word)) return false;
+                if (!/^[A-Za-z][A-Za-z '\-]{0,28}$/.test(meaning)) return false;
+                if (!bonusMeaningOk(meaning.toLowerCase())) return false;
+                row.simpleMeaning = meaning.toLowerCase().replace(/^(a|an|the)\s+/, "");
+                seen.add(row.word);
+                return true;
+            });
+        } catch (err) {
+            console.warn("Composition: could not read the captured words, no bonus question.", err);
+            return [];
+        }
+    }
+
+    // One bonus question, or null when the player does not have enough fitting captured words.
+    function makeBonusQuestion(words) {
+        if (words.length < BONUS_MIN_WORDS) return null;
+        const frames = BONUS_FRAMES[zone] || [];
+        const frame = frames[Math.floor(Math.random() * frames.length)];
+        if (!frame) return null;
+        // the two words the player has practised least (ties are random)
+        const pair = shuffleList(words).sort(function (a, b) { return (a.usage_count || 0) - (b.usage_count || 0); }).slice(0, 2);
+        const a = pair[0];
+        const b = pair[1];
+        const build = function (x, y) { return frame.before.join("") + x.word + frame.between + y.word + frame.after.join(""); };
+        const spelled = function (w) { return w.word + (w.romanization ? " (" + w.romanization + ")" : "") + " = " + w.simpleMeaning; };
+        return {
+            id: "bonus-" + a.vocab_id + "-" + b.vocab_id,
+            bonus: true,
+            bonusWords: [a.word, b.word],
+            bonusMeanings: [a.simpleMeaning, b.simpleMeaning],
+            prompt: "Bonus: arrange the words to say \u201C" + frame.en(a.simpleMeaning, b.simpleMeaning) + "\u201D",
+            hint: "Use your own words: " + spelled(a) + "; " + spelled(b) + ".",
+            tiles: frame.before.concat([a.word, frame.between, b.word], frame.after),
+            accepted_answers: [build(a, b), build(b, a)],
+            explanation: "Your words: " + a.word + " (" + a.simpleMeaning + ") and " + b.word + " (" + b.simpleMeaning + "): " + build(a, b),
+            topic: ""
+        };
     }
 
     // ----------------------------------
@@ -152,21 +260,36 @@ document.addEventListener("DOMContentLoaded", function () {
                 );
             }
 
-            // A different set every time: shuffle the zone's questions and take the first few.
-            for (let i = questions.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                const swap = questions[i];
-                questions[i] = questions[j];
-                questions[j] = swap;
-            }
+            // A different set every time. Questions this player has not seen yet come first (random among
+            // them); after that the ones seen longest ago. So a zone with only a few more questions than one
+            // game uses still feels fresh from play to play.
+            const seenKey = "composition:seen:" + (player ? player.id : "guest") + ":" + zone;
+            let seenOrder = [];
+            try { seenOrder = JSON.parse(localStorage.getItem(seenKey)) || []; } catch (err) { /* nothing remembered */ }
+            const seenRank = new Map(seenOrder.map(function (id, i) { return [String(id), i]; }));
+            const fresh = shuffleList(questions.filter(function (q) { return !seenRank.has(String(q.id)); }));
+            const older = shuffleList(questions.filter(function (q) { return seenRank.has(String(q.id)); }))
+                .sort(function (a, b) { return seenRank.get(String(a.id)) - seenRank.get(String(b.id)); });
+            questions = fresh.concat(older);
+            console.info("Composition: " + questions.length + " questions in this zone, " + fresh.length + " not seen yet; asking up to " + QUESTIONS_PER_GAME + ".");
+            // Enough captured words that fit the zone: 7 questions + 1 bonus built from the player's own word.
+            const bonus = makeBonusQuestion(await loadBonusWords());
+            const normalCount = bonus && questions.length >= QUESTIONS_PER_GAME - 1 ? QUESTIONS_PER_GAME - 1 : QUESTIONS_PER_GAME;
             const all = questions;
-            questions = all.slice(0, QUESTIONS_PER_GAME);
+            questions = all.slice(0, normalCount);
             if (focusWord && !questions.some(function (q) { return q.tiles.indexOf(focusWord) !== -1; })) {
                 const withWord = all.filter(function (q) { return q.tiles.indexOf(focusWord) !== -1; });
                 if (withWord.length) {
                     questions[Math.floor(Math.random() * questions.length)] = withWord[Math.floor(Math.random() * withWord.length)];
                 }
             }
+            questions = shuffleList(questions);   // the order of play is random too
+            try {
+                const chosen = questions.map(function (q) { return String(q.id); });
+                localStorage.setItem(seenKey, JSON.stringify(seenOrder.filter(function (id) { return chosen.indexOf(String(id)) === -1; }).concat(chosen).slice(-400)));
+            } catch (err) { /* private browsing: no memory, still random */ }
+            // the bonus goes in at a random place among the questions
+            if (bonus && normalCount === QUESTIONS_PER_GAME - 1) questions.splice(Math.floor(Math.random() * (questions.length + 1)), 0, bonus);
 
             currentQuestionIndex = 0;
             updateScoreDisplay();
@@ -201,9 +324,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         questionPrompt.textContent = question.prompt;
 
-        questionHint.textContent = question.topic
+        questionHint.textContent = question.hint || (question.topic
             ? "Topic: " + question.topic
-            : "Arrange the words in the correct order.";
+            : "Arrange the words in the correct order.");
 
         questionCounter.textContent =
             "Question " + (currentQuestionIndex + 1) +
@@ -403,7 +526,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const firstTry = wrongTries === 0;
         if (firstTry) {
             firstTryCount++;
-            firstTryWords = firstTryWords.concat(question.tiles);
+            if (question.bonus) {
+                bonusRight = true;   // the player's own words: they can evolve, but they are not zone cards
+            } else {
+                firstTryWords = firstTryWords.concat(question.tiles);
+            }
         }
         updateScoreDisplay();
 
@@ -514,6 +641,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const total = questions.length;
         const ratio = total ? firstTryCount / total : 0;
+        const bonusQuestion = questions.find(function (q) { return q.bonus; }) || null;
 
         questionPrompt.textContent = "Practice completed!";
 
@@ -558,6 +686,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 ratio: ratio,
                 total: total,
                 words: firstTryWords,
+                // every word whose question was right first time: owned cards for them get +1 practice (they can evolve)
+                right: firstTryWords.concat(bonusRight && bonusQuestion ? bonusQuestion.bonusWords : []),
+                bonus: bonusQuestion ? { words: bonusQuestion.bonusWords, meanings: bonusQuestion.bonusMeanings, right: bonusRight } : null,
                 at: Date.now()
             };
             // Two ways to hand it over, in case one is blocked: saved on this device, and on the island's address.

@@ -3,7 +3,8 @@
 //
 //   First clear      mini-game 40 coins + 40 XP for a game of 8 questions, NPC challenge 25 + 25
 //   Game length      a mini-game pays by its question count: 2 questions = 40%, 8 = 100%, 16 or more = 200%
-//   Mini-game cards  1 card per 4 questions (at least 1, at most 4), drawn from the words answered right
+//   Mini-game cards  all right = half as many cards as questions (8 questions = 4, 6 = 3, at most 6, at least 1);
+//                    a pass = one card fewer; a fail = none. Zone cards only, drawn from the words answered right
 //   Replays          pay less each time: 100%, 60%, 40%, 25%, then 15%
 //   NPC performance  failed 30%  /  passed 100%  /  all correct 140%
 //   Duplicate card   5 coins + 3 XP (cards themselves never shrink)
@@ -14,12 +15,12 @@
 //
 //   IslandEconomy.npcPayout(npcId, score, total)   what this attempt is worth (before paying)
 //   IslandEconomy.miniPayout(level, ratio, total)   same for a mini-game (ratio 0-1, default 1; total = its question count)
-//   IslandEconomy.miniCards(total)                  how many cards a mini-game can give
+//   IslandEconomy.miniCards(total, score)           how many cards a mini-game can give (score = questions right first time)
 //   IslandEconomy.duplicatePayout(count)            what duplicate cards are worth
 //   IslandEconomy.pay({ coins, xp })                gives it to the player; returns { coins, xp, levelUps }
 
 const ISLAND_ECONOMY = {
-  mini: { coins: 40, xp: 40, refQuestions: 8, minSize: 0.4, maxSize: 2, questionsPerCard: 4, maxCards: 4 },
+  mini: { coins: 40, xp: 40, refQuestions: 8, minSize: 0.4, maxSize: 2, cardsPerQuestion: 0.5, maxCards: 6 },
   npc: { coins: 25, xp: 25 },
   // share paid on the 1st, 2nd, 3rd... time; the last number repeats
   decay: [1, 0.6, 0.4, 0.25, 0.15],
@@ -56,12 +57,18 @@ const IslandEconomy = {
     return Math.max(m.minSize, Math.min(m.maxSize, n / m.refQuestions));
   },
 
-  // How many cards one play of a game can give: 1 per 4 questions, at least 1, at most 4.
-  miniCards(total) {
+  // How many cards one play of a game can give. All right: half as many as the questions (8 -> 4,
+  // 6 -> 3), at least 1, at most 6. A pass (the NPC pass mark) is one card fewer, a fail gives none.
+  // A game that does not say its length gets 2.
+  miniCards(total, score) {
     const m = ISLAND_ECONOMY.mini;
     const n = Number(total);
     if (!(n > 0)) return 2;
-    return Math.max(1, Math.min(m.maxCards, Math.round(n / m.questionsPerCard)));
+    const full = Math.max(1, Math.min(m.maxCards, Math.round(n * m.cardsPerQuestion)));
+    const right = Number(score);
+    if (!Number.isFinite(right) || right >= n) return full;
+    if (right >= IslandQuiz.passMark(n)) return Math.max(1, full - 1);
+    return 0;
   },
 
   miniPayout(level, ratio = 1, total) {

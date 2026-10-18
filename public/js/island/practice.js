@@ -160,7 +160,7 @@ const IslandPractice = {
     const { error } = await supabase.from(table).update({ usage_count: usage, evolution_stage: stage }).eq(idCol, id).eq("user_id", IslandSave.userId);
     if (error) throw error;
     row.usage_count = usage; row.evolution_stage = stage; row.usage = usage; row.stage = stage;
-    return { word, evolved: stage > before };
+    return { word, evolved: stage > before, stage };
   },
 };
 

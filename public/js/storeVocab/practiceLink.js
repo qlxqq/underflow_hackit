@@ -12,7 +12,9 @@
 //
 //   - A role card (neighbourhood, hawker-centre or public-transport album): practisable if
 //     one of that album's NPCs has the word.
-//   - A zone card with no NPC or mini-game that uses it: not practisable yet.
+//   - A zone card (a word of the zone's mini-games, zoneWords.js): practisable. The island sends the
+//     player to the zone's mini-game, or to an NPC of that zone when no game is built yet.
+//   - A card that no NPC, mini-game or zone list uses: not practisable yet.
 //   - A captured word: practisable. The island adds captured words to the challenges of the
 //     zone their theme belongs to.
 //   - Chinese, Malay and Tamil each have their own island (their own NPC words).
@@ -29,13 +31,21 @@ const CollectionPractice = {
       (!albumId || id === albumId) && groups.some((g) => g.words.some((w) => w.word === word)));
   },
 
+  // Is this word one of the zone's mini-game words (the zone cards)? Those are played in the zone's
+  // mini-game, or asked by one of the zone's NPCs when no game is built for the language yet.
+  zoneHas(word, albumId, language = "zh") {
+    if (typeof ZONE_WORDS === "undefined") return false;
+    const albums = ZONE_WORDS[language] || {};
+    return Object.entries(albums).some(([id, list]) => (!albumId || id === albumId) && list.some((w) => w.word === word));
+  },
+
   // { ok: true } or { ok: false, reason } with a sentence to show the player.
   check({ word, album = null, language = "zh", captured = false }) {
     if (!this.LANGUAGES.includes(language)) {
       return { ok: false, reason: "Practising on the island is not available for this language yet." };
     }
     if (captured) return { ok: true };
-    if (this.npcHas(word, album, language)) return { ok: true };
+    if (this.npcHas(word, album, language) || this.zoneHas(word, album, language)) return { ok: true };
     return { ok: false, reason: `No practice for ${word} yet.` };
   },
 
