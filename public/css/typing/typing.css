@@ -1,0 +1,59 @@
+/* Typing mini-game (typing.js in this folder). Lives inside the island's pop-up sheet,
+   so it uses the shared tokens from css/shared/base.css. */
+
+.ty { display: flex; flex-direction: column; gap: 12px; }
+
+.ty-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ty-leave {
+  min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--line);
+  background: var(--white); color: var(--muted); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+
+.ty-progress { height: 8px; border-radius: 4px; background: var(--lock-bg); overflow: hidden; }
+.ty-progress i { display: block; height: 100%; width: 0; border-radius: 4px; background: var(--teal); transition: width 0.3s ease; }
+
+.ty-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 700; white-space: nowrap; }
+.ty-stage { text-align: right; color: var(--amber-txt); }
+
+.ty-card { padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--line); background: var(--bg); }
+.ty-row { min-height: 1.4em; }
+.ty-row + .ty-row { margin-top: 8px; }
+.ty-english { font-size: 17px; font-weight: 800; line-height: 1.35; color: var(--ink); }
+.ty-pinyin { font-size: 15px; font-weight: 600; line-height: 1.4; color: var(--muted); }
+.ty-chinese { font-family: var(--font-cjk); font-size: 28px; font-weight: 700; line-height: 1.5; letter-spacing: 1px; }
+.ty-grp { white-space: nowrap; }
+
+.ty-ch { display: inline-block; min-width: 1em; text-align: center; border-radius: 6px; transition: color 0.15s, background 0.15s; }
+.ty-idle { color: #8190a8; }
+.ty-ok { color: var(--green-txt); background: var(--green-bg); }
+.ty-bad { color: var(--danger); background: var(--danger-bg); }
+.ty-punct { color: #8190a8; }
+/* Stage 3: the empty boxes show how many characters to type without giving the answer away. */
+.ty[data-hide-chinese="1"] .ty-idle { color: #b6c0d1; }
+
+.ty-input {
+  width: 100%; min-height: 54px; padding: 0 14px; border-radius: var(--radius-sm);
+  border: 2px solid var(--line); background: var(--white); color: var(--ink);
+  font-family: var(--font-cjk); font-size: 22px; font-weight: 700; outline: none;
+}
+.ty-input:focus { border-color: var(--amber); }
+.ty-input::placeholder { color: #8190a8; font-weight: 600; font-size: 16px; }
+
+.ty-feedback { min-height: 1.4em; font-size: 14px; font-weight: 700; color: var(--amber-txt); }
+.ty-feedback.is-good { color: var(--green-txt); }
+
+.ty-actions { display: flex; gap: 10px; }
+.ty-actions .btn { flex: 1; }
+
+.ty-switch { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+.ty-switch input { width: 18px; height: 18px; accent-color: var(--teal); }
+
+/* ---------- end of round ---------- */
+.ty-done { text-align: center; }
+.ty-done-emoji { font-size: 44px; line-height: 1; margin-bottom: 4px; }
+.ty-gain { display: inline-block; margin: 0 0 14px; padding: 8px 16px; border-radius: 20px; background: var(--amber-bg); color: var(--amber-txt); font-weight: 800; }
+.ty-done-list { margin: 0 0 16px; text-align: left; border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
+.ty-done-list div { padding: 10px 14px; border-top: 1px solid var(--line); }
+.ty-done-list div:first-child { border-top: 0; }
+.ty-done-list span { display: block; font-family: var(--font-cjk); font-size: 18px; font-weight: 700; }
+.ty-done-list small { color: var(--muted); font-size: 13px; font-weight: 600; }
