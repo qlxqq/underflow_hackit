@@ -15,7 +15,7 @@
 // ---------- numbers to tune ----------
 const RARITY_XP = { common: 5, uncommon: 8, rare: 15, epic: 30, legendary: 60 }; // XP per captured word
 const ALBUM_COMPLETE_REWARD = { xp: 150, coins: 100 };
-const LEVEL_UP_COINS = 20;
+const LEVEL_UP_REWARD = { coins: 20 }; // bonus coins for every level gained
 
 // ---------- levels ----------
 // Total XP needed to reach level L is 50 * (L - 1)^2: 50, 200, 450, 800, ...
@@ -54,7 +54,7 @@ async function grantRewards(userId, { xp = 0, coins = 0 }) {
   const levelBefore = levelFromXp(before.xp).level;
   const levelAfter = levelFromXp(before.xp + xp).level;
   const levelUps = Math.max(0, levelAfter - levelBefore);
-  const bonusCoins = levelUps * LEVEL_UP_COINS;
+  const bonusCoins = levelUps * LEVEL_UP_REWARD.coins;
 
   const language = rewardLanguage(userId);
   let { data, error } = await supabase.rpc("add_rewards", { p_xp: xp, p_coins: coins + bonusCoins, p_language: language });

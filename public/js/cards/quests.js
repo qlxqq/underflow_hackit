@@ -158,7 +158,7 @@ async function checkAlbumBadges(userId, albumRows, language) {
         if (!isNew) continue;
         const reward = await grantRewards(userId, step.reward);
         const lines = [`+${step.reward.xp} XP`, `+${step.reward.coins} ${coinSvg(14)} coins`, step.extra];
-        if (reward.levelUps > 0) lines.push(`Level up! You are now level ${reward.level} (+${reward.levelUps * LEVEL_UP_COINS} bonus coins)`);
+        if (reward.levelUps > 0) lines.push(`Level up! You are now level ${reward.level} (+${reward.levelUps * LEVEL_UP_REWARD.coins} bonus coins)`);
         await showCelebration({ title: step.title, text: step.text, badgeHtml: albumBadgeSvg(album, step.master), lines });
       }
     }
@@ -281,7 +281,7 @@ function setupJourneyQuests(getUserId) {
       const reward = await claimQuest(userId, button.dataset.claim);
       const quest = QUEST_DEFS.find((qt) => qt.id === button.dataset.claim);
       const lines = [`+${quest.xp} XP`, `+${quest.coins} ${coinSvg(14)} coins`];
-      if (reward.levelUps > 0) lines.push(`Level up! You are now level ${reward.level} (+${reward.levelUps * LEVEL_UP_COINS} bonus coins)`);
+      if (reward.levelUps > 0) lines.push(`Level up! You are now level ${reward.level} (+${reward.levelUps * LEVEL_UP_REWARD.coins} bonus coins)`);
       await showCelebration({ title: "Quest complete!", text: quest.title, badgeHtml: coinSvg(96), lines });
     } catch (err) {
       console.error("Could not claim that quest:", err);

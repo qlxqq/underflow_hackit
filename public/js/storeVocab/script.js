@@ -117,7 +117,7 @@ async function rewardCards(rows, { fromCapture = true } = {}) {
   const reward = await safely("Rewards", () => grantRewards(currentUser.id, { xp, coins: 0 }));
   if (reward) {
     lines.push(`+${xp} XP`);
-    if (reward.levelUps > 0) lines.push(`Level up! You are now level ${reward.level} (+${reward.levelUps * LEVEL_UP_COINS} coins)`);
+    if (reward.levelUps > 0) lines.push(`Level up! You are now level ${reward.level} (+${reward.levelUps * LEVEL_UP_REWARD.coins} coins)`);
   }
   await safely("Streak", () => recordStreakActivity(currentUser.id));
   if (fromCapture) await questEvent("capture_word", rows.length);
@@ -642,7 +642,7 @@ async function enterApp() {
     return;
   }
   appSection.hidden = false;
-  await IslandContent.ready; // the words and text the Collection shows come from Supabase too
+  await Promise.all([IslandContent.ready, AppContent.ready]); // the words and text the Collection shows come from Supabase too
   if (PACK_ON_CAPTURE) showStatus("Pack test is on for captured words. Open the page with ?pack=0 on the end to turn it off.", "info");
   // Capture uses the player's Mother Tongue and nothing else.
   setLanguageTint(getMotherTongue());

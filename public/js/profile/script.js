@@ -329,6 +329,7 @@ async function enterApp() {
     location.replace(JOURNEY_PAGE);
     return;
   }
+  await AppContent.ready; // reward numbers and picture names from Supabase (falls back to the built-in lists)
   appSection.hidden = false;
   showView("profile");
   try {

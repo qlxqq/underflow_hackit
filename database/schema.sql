@@ -398,3 +398,30 @@ begin
     execute format('create policy "%s_read" on %I for select using (true)', t, t);
   end loop;
 end $$;
+-- ============================================================
+-- App content (read-only for players; filled by rewards_seed.sql, cards_seed.sql, capture_seed.sql, profile_seed.sql)
+-- ============================================================
+create table if not exists rarity_tiers (id text primary key, label text not null, xp integer not null check (xp >= 0), sort integer not null default 0);
+create table if not exists rarity_cutoffs (language text not null, tier text not null, last_rank integer not null check (last_rank > 0), primary key (language, tier));
+create table if not exists reward_config (id text primary key, xp integer not null default 0 check (xp >= 0), coins integer not null default 0 check (coins >= 0));
+create table if not exists quest_defs (
+  id text primary key, title text not null, event text not null, target integer not null check (target > 0),
+  xp integer not null default 0, coins integer not null default 0, soon boolean not null default false, sort integer not null default 0
+);
+create table if not exists album_defs (id text primary key, name text not null, sort integer not null default 0);
+create table if not exists evolution_stages (stage integer primary key, label text not null, min_uses integer not null default 0);
+create table if not exists theme_categories (theme text primary key, category text not null);
+create table if not exists filler_words (language text not null, word text not null, primary key (language, word));
+create table if not exists avatar_defs (id text primary key, label text not null, sort integer not null default 0);
+
+do $$
+declare t text;
+begin
+  foreach t in array array['rarity_tiers','rarity_cutoffs','reward_config','quest_defs','album_defs','evolution_stages','theme_categories','filler_words','avatar_defs']
+  loop
+    execute format('alter table %I enable row level security', t);
+    execute format('grant select on %I to anon, authenticated', t);
+    execute format('drop policy if exists "%s_read" on %I', t, t);
+    execute format('create policy "%s_read" on %I for select using (true)', t, t);
+  end loop;
+end $$;
