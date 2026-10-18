@@ -75,7 +75,10 @@ const IslandMiniGames = {
     if (!pos) return false;
     try { localStorage.removeItem(ISLAND_MINIGAME_RESULT_KEY); } catch (err) { /* storage blocked */ }
     this.saveReturnSpot();
-    location.href = `${cfg.page}?zone=${pos.zone}&level=${pos.place}&island=${landmark.level}`;
+    // Practise on a zone card: the game always asks one question with that word
+    const p = typeof IslandPractice !== "undefined" ? IslandPractice.pending : null;
+    const focus = p && !p.npcId && p.word ? `&focus=${encodeURIComponent(p.word)}` : "";
+    location.href = `${cfg.page}?zone=${pos.zone}&level=${pos.place}&island=${landmark.level}${focus}`;
     return true;
   },
 
@@ -123,10 +126,12 @@ const IslandMiniGames = {
     this.clearResult(); // before paying, so a reload can never pay twice
     const ratio = Math.max(0, Math.min(1, Number(result.ratio)));
     const total = Math.max(0, Math.round(Number(result.total))) || undefined;
+    const score = total && Number.isFinite(ratio) ? Math.round(ratio * total) : undefined;   // questions right first time
     try { await window.IslandAPI.completeLevel(level.level, Number.isFinite(ratio) ? ratio : 1, total); } catch (err) { console.error("Island: could not finish the level.", err); }
     const album = typeof ALBUM_OF_ZONE !== "undefined" ? ALBUM_OF_ZONE[level.zone] : null;
-    if (album && Array.isArray(result.words) && result.words.length && window.IslandAPI.awardWords) {
-      try { await window.IslandAPI.awardWords(album, result.words, null, { max: IslandEconomy.miniCards(total) }); } catch (err) { console.error("Island: could not award cards.", err); }
+    const cardCount = IslandEconomy.miniCards(total, score);   // all right = half the questions, a pass = one fewer, a fail = none
+    if (album && cardCount > 0 && Array.isArray(result.words) && result.words.length && window.IslandAPI.awardWords) {
+      try { await window.IslandAPI.awardWords(album, result.words, null, { max: cardCount }); } catch (err) { console.error("Island: could not award cards.", err); }
     }
   },
 };

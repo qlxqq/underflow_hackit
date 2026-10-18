@@ -5,12 +5,14 @@ document.addEventListener("DOMContentLoaded", function () {
     (typeof supabase !== "undefined" && supabase.auth ? supabase : null);
 
     // The island opens this page as  composition.html?zone=2&level=3&island=6
-    //   zone / level = the zone (1-3) and the level inside it (1-3), which pick the questions
+    //   zone         = the zone (1-3). Every play asks QUESTIONS_PER_GAME questions picked at random from ALL
+    //                  the zone's questions, whatever level they were written for. (level is not used.)
     //   island       = the level's number on the island (1-9). Only present when the island opened the page:
     //                  then the island pays the reward (coins, XP, cards) when the player goes back to it.
     const params = new URLSearchParams(location.search);
     const zone = Number(params.get("zone")) || 1;
-    const level = Number(params.get("level")) || 3;
+    const QUESTIONS_PER_GAME = 8;
+    const focusWord = params.get("focus") || "";   // set by a card's Practise button: one question with this word is always asked
     const islandLevel = Number(params.get("island")) || 0;
     const ISLAND_PAGE = "../island/island.html";
     const LOGIN_PAGE = "../auth/login.html";
@@ -19,7 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const QUESTION_LANGUAGE = { zh: "zh-CN" };
     let player = null;       // the signed-in user
     let language = "zh";     // the player's Mother Tongue
-    document.querySelector(".session-chip span").textContent = "Level " + level + " · Composition";
+    document.querySelector(".session-chip span").textContent = "Composition";
 
     const questionPrompt = document.getElementById("questionPrompt");
     const questionHint = document.getElementById("questionHint");
@@ -121,7 +123,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     "id, zone, level, topic, language, prompt, tiles, accepted_answers, explanation, xp"
                 )
                 .eq("zone", zone)
-                .eq("level", level)
                 .eq("language", questionLanguage)
                 .order("id");
 
@@ -133,7 +134,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (!data || data.length === 0) {
                 throw new Error(
-                    "No questions found for zone " + zone + ", level " + level + "."
+                    "No questions found for zone " + zone + "."
                 );
             }
 
@@ -149,6 +150,22 @@ document.addEventListener("DOMContentLoaded", function () {
                 throw new Error(
                     "The questions have missing or invalid tiles or answers."
                 );
+            }
+
+            // A different set every time: shuffle the zone's questions and take the first few.
+            for (let i = questions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const swap = questions[i];
+                questions[i] = questions[j];
+                questions[j] = swap;
+            }
+            const all = questions;
+            questions = all.slice(0, QUESTIONS_PER_GAME);
+            if (focusWord && !questions.some(function (q) { return q.tiles.indexOf(focusWord) !== -1; })) {
+                const withWord = all.filter(function (q) { return q.tiles.indexOf(focusWord) !== -1; });
+                if (withWord.length) {
+                    questions[Math.floor(Math.random() * questions.length)] = withWord[Math.floor(Math.random() * withWord.length)];
+                }
             }
 
             currentQuestionIndex = 0;
