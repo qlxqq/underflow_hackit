@@ -1,7 +1,7 @@
 // Typing mini-game ("Monkeytype for Mother Tongue").
 //
 // Each round is a few real-life sentences. Each sentence is typed once per stage,
-// with the help taken away each stage (set in config.js: all shown -> no pinyin ->
+// with the help taken away each stage (set in config.js: all shown -> no roman ->
 // English only). Typing can be done in the mother-tongue script (an IME) or, for
 // people without that keyboard, in romanisation (e.g. pinyin) - the switch below the
 // input. Which levels run Typing, which language is played, how many stages, the
@@ -20,10 +20,9 @@
 //   - captured words that appear in a sentence count as practised (IslandAPI.recordPractice),
 //     and those sentences are picked first
 //
-// Everything for this feature lives in this folder (public/typing/):
-//   config.js (all settings), typingData.js (the sentences), typing.js (this file),
-//   typing.css, index.html (a test page). On the island page it loads after ui.js,
-//   and config.js + typingData.js load before it.
+// This feature's files: js/typing/ (config.js all settings, typingData.js the
+//   sentences, typing.js this file) and css/typing/typing.css. On the island page
+//   typing.js loads after ui.js, with config.js + typingData.js before it.
 
 // ---------- text helpers (plain functions so they are easy to test) ----------
 const TYPING_PUNCT = /[\s　，。！？、；：“”‘’「」『』（）《》〈〉…—·,.!?;:'"()\-~]/;
