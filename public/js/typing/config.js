@@ -34,10 +34,12 @@ const TYPING_CONFIG = {
   //   roman     BCP-47 tag for the romanization row
   //   romanName what the romanization is called ("pinyin")
   //   romanize  false hides the "type romanization" switch (e.g. Malay is already Latin)
+  //   speak     BCP-47 tag "Hear it" uses to pick a voice; audio only plays if the
+  //             player's device has a voice for it (browser built-in text-to-speech)
   languages: {
-    zh: { name: "Chinese", script: "zh-Hans", roman: "zh-Latn-pinyin", romanName: "pinyin", romanize: true },
-    ms: { name: "Malay", script: "ms", romanize: false },
-    ta: { name: "Tamil", script: "ta", roman: "ta-Latn", romanName: "romanised Tamil", romanize: true },
+    zh: { name: "Chinese", script: "zh-Hans", roman: "zh-Latn-pinyin", romanName: "pinyin", romanize: true, speak: "zh-CN" },
+    ms: { name: "Malay", script: "ms", romanize: false, speak: "ms-MY" },
+    ta: { name: "Tamil", script: "ta", roman: "ta-Latn", romanName: "romanised Tamil", romanize: true, speak: "ta-IN" },
   },
 
   // All on-screen wording. {placeholders} are filled from the current language.
@@ -52,6 +54,8 @@ const TYPING_CONFIG = {
     goodStage: "Nice! Taking the training wheels off...",
     goodLast: "Perfect!",
     nudge: "Almost! Fix the red ones and keep going.",
+    noVoice: "No {language} voice on this device, so there's nothing to play.",
+    noSpeech: "This browser can't read it aloud.",
     sentenceCount: "Sentence {n} of {total}",
     stageLabel: "Stage {n}/{total} · {name}",
     emptyBox: "＿",
@@ -69,7 +73,7 @@ const TYPING_CONFIG = {
   // The settings for a language, with safe fallbacks so an unlisted code still works.
   languageInfo(code) {
     const info = this.languages[code] || {};
-    return { name: info.name || code, script: info.script || code, roman: info.roman || "", romanName: info.romanName || "romanisation", romanize: info.romanize !== false };
+    return { name: info.name || code, script: info.script || code, roman: info.roman || "", romanName: info.romanName || "romanisation", romanize: info.romanize !== false, speak: info.speak || code };
   },
 
   // Fills {name} style placeholders in a text key.

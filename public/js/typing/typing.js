@@ -333,10 +333,51 @@ const IslandTyping = {
   },
 
   // ---------- helpers on the screen ----------
+  // Reads the sentence aloud with the browser's built-in text-to-speech. This only
+  // makes a sound if the player's device has a voice for the language, so when it
+  // can't, we say so instead of failing silently. Voices load asynchronously and
+  // cancel()+speak() in the same tick is dropped by some browsers, both handled here.
   hear() {
+    const cfg = this.cfg();
     const s = this.current();
-    if (typeof speakWord === "function") { try { window.speechSynthesis.cancel(); speakWord(s.target, this.language); } catch (err) { /* no speech on this device */ } }
+    const synth = window.speechSynthesis;
+    if (!synth || typeof SpeechSynthesisUtterance === "undefined") { this.say(cfg.text.noSpeech); return; }
+    const code = this.info.speak || "";
+    const base = code.slice(0, 2).toLowerCase();
+
+    let fired = false;
+    const speak = () => {
+      if (fired) return;
+      fired = true;
+      const voices = synth.getVoices() || [];
+      const voice = base ? voices.find((v) => v.lang && v.lang.toLowerCase().replace("_", "-").startsWith(base)) : null;
+      // Voices are listed but none match this language: nothing useful would play.
+      if (base && voices.length && !voice) { this.say(cfg.t("noVoice", { language: this.info.name })); return; }
+      const utter = new SpeechSynthesisUtterance(s.target);
+      if (code) utter.lang = code;
+      try { if (voice) utter.voice = voice; } catch (err) { /* keep the default voice */ }
+      utter.rate = 0.9;
+      utter.onerror = () => this.say(cfg.t("noVoice", { language: this.info.name }));
+      // If it was speaking, cancelling and speaking on the next tick avoids the drop.
+      if (synth.speaking) { synth.cancel(); setTimeout(() => synth.speak(utter), 60); }
+      else synth.speak(utter);
+    };
+
+    // getVoices() is often empty on the first click; wait for the list once, with a
+    // short timeout as a backstop for browsers that never fire the event.
+    if ((synth.getVoices() || []).length === 0) {
+      const prev = synth.onvoiceschanged;
+      synth.onvoiceschanged = () => { synth.onvoiceschanged = prev || null; speak(); };
+      setTimeout(speak, 300);
+    } else {
+      speak();
+    }
     this.el.input.focus();
+  },
+
+  // A short message in the feedback line (used when audio can't play).
+  say(text) {
+    if (this.el && this.el.feedback) { this.el.feedback.textContent = text; this.el.feedback.className = "ty-feedback"; }
   },
 
   // Reveals the answer for this prompt. The player still has to type it, but the reward drops a little.
