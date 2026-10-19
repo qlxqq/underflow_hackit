@@ -28,6 +28,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const DUEL_PAGE = "../duel/duel.html";
     const ZONE_NAMES = { 1: "Neighbourhood", 2: "Hawker centre", 3: "Public transport" };
 
+    // Card gifts (js/friends/gifts.js). Safe if that script is missing: the gift button and section just do not appear.
+    const giftsReady = typeof Gifts !== "undefined";
+
     let busy = false;
     let signedIn = false;
     let searchTimer = null;
@@ -91,6 +94,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         render(data || []);
         loadDuels();
+        if (giftsReady) {
+            Gifts.init(db, { makeRow: makeRow, makeButton: makeButton, showStatus: showStatus, clearStatus: clearStatus });
+            Gifts.load();
+        }
     }
 
     function render(rows) {
@@ -133,10 +140,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 makeButton("⚔ Duel", "btn btn-primary", function () {
                     challengeFriend(row);
                 }),
+                giftButton(row),
                 makeButton("Remove", "btn btn-outline btn-danger-text", function () {
                     removeFriend(row, true);
                 })
-            ]));
+            ].filter(Boolean)));
         });
 
         const requestTotal = incoming.length + sent.length;
@@ -146,6 +154,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
         friendsCount.textContent = friends.length ? String(friends.length) : "";
         friendsEmpty.hidden = friends.length > 0;
+    }
+
+    // The small gift button next to a friend (opens the list of spare cards to send).
+    function giftButton(row) {
+        if (!giftsReady) return null;
+
+        const button = makeButton("🎁", "btn btn-outline", function () {
+            Gifts.openSend(row);
+        });
+
+        button.setAttribute("aria-label", "Gift a card to " + row.friend_username);
+        button.title = "Gift a spare card";
+
+        return button;
     }
 
     function friendMeta(row) {
@@ -620,7 +642,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Look for new challenges every few seconds while the page is open.
     setInterval(function () {
-        if (!document.hidden && signedIn && !busy) loadDuels();
+        if (!document.hidden && signedIn && !busy) {
+            loadDuels();
+            if (giftsReady) Gifts.load();
+        }
     }, 4000);
 
     async function removeFriend(row, isFriend) {
