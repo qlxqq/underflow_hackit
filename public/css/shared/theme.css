@@ -1,0 +1,221 @@
+/* Dark mode for the whole app.
+   Load it on every page, after the page's other stylesheets, together with js/shared/theme.js:
+     <link rel="stylesheet" href="../../css/shared/theme.css">
+     <script src="../../js/shared/theme.js"></script>
+   theme.js puts data-theme="dark" (or "light") on <html>, and lists the page's stylesheets in
+   data-css, so the dark fixes for one feature's CSS file only apply on pages that load it.
+
+   For new styles: use the shared colours (var(--white), var(--ink), var(--muted), var(--line),
+   var(--bg), var(--amber-bg) ...) instead of writing #hex colours, and dark mode just works. */
+
+/* ---------- 1. the shared colours, dark versions ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;              /* dark scrollbars, form controls and date pickers */
+  --ink: #e8edf5;                  /* main text */
+  --muted: #9ba8bf;                /* secondary text */
+  --white: #182132;                /* cards, bars, sheets ("white" in light mode) */
+  --bg: #0f1622;                   /* page background */
+  --line: #2b3649;                 /* borders */
+  --amber: #f2a93b;                /* brand colour stays the same */
+  --amber-bg: #33270f;
+  --amber-bd: #5c4518;
+  --amber-txt: #f4bf6a;
+  --teal: #2bb5a5;
+  --green-txt: #7fd19c;
+  --green-bg: #15301f;
+  --danger: #ff8f86;
+  --danger-bg: #3a1c1c;
+  --lock-bg: #263145;
+  --lock-ic: #7f8ca5;
+}
+:root[data-theme="dark"] body { background: #070b12; }
+:root[data-theme="dark"] .field::placeholder { color: #6f7d96; }
+:root[data-theme="dark"] .status-info { background: #16263d; color: #9cc0f0; }
+
+/* Smooth switch when the player changes the setting (not on page load) */
+:root.theme-changing,
+:root.theme-changing * { transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease !important; }
+
+/* ---------- 2. the Appearance switch (theme.js fills any <div data-theme-picker>) ---------- */
+.theme-picker {
+  display: flex; gap: 4px; padding: 4px;
+  border-radius: 18px; background: var(--bg); border: 1px solid var(--line);
+}
+.theme-opt {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 0 10px; border: 0; border-radius: 14px;
+  background: transparent; color: var(--muted);
+  font: 700 14px var(--font-ui); cursor: pointer;
+}
+.theme-opt svg { flex: none; }
+.theme-opt[aria-checked="true"] {
+  background: var(--white); color: var(--ink);
+  box-shadow: 0 1px 3px rgba(14, 22, 40, 0.12), 0 0 0 1px var(--line);
+}
+.theme-note { margin: 8px 2px 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+
+/* ---------- 3. every other colour, converted automatically from each CSS file ---------- */
+/* ---- shared/base.css ---- */
+:root[data-theme="dark"][data-css~="shared-base"] .btn-primary { color: #18233a; }
+
+/* ---- shared/topbar.css ---- */
+:root[data-theme="dark"][data-css~="shared-topbar"] .stat-streak { color: #fa9d69; }
+
+/* ---- shared/bottomnav.css ---- */
+:root[data-theme="dark"][data-css~="shared-bottomnav"] .nav-capture-btn { color: #18233a; }
+
+/* ---- shared/rewards.css ---- */
+:root[data-theme="dark"][data-css~="shared-rewards"] .quests-panel.has-ready .qp-head-text span { color: #f0a556; }
+
+/* ---- shared/tour.css ---- */
+:root[data-theme="dark"][data-css~="shared-tour"] .tour-btn { color: #18233a; }
+
+/* ---- composition/composition.css ---- */
+:root[data-theme="dark"][data-css~="composition-composition"] .pr-zone-pill { color: #fff; }
+:root[data-theme="dark"][data-css~="composition-composition"] .feedback-box.incorrect { border-color: #85514e; }
+:root[data-theme="dark"][data-css~="composition-composition"] .feedback-icon { background: rgba(24, 33, 50, 0.8); }
+
+/* ---- duel/duel.css ---- */
+:root[data-theme="dark"][data-css~="duel-duel"] .duel-app { --d-me-soft: #232b37; --d-me-line: #435a81; --d-them-soft: #31241a; --d-them-line: #714c2a; }
+:root[data-theme="dark"][data-css~="duel-duel"] .them-status { background: rgba(24, 33, 50, 0.6); }
+:root[data-theme="dark"][data-css~="duel-duel"] .btn-danger { color: var(--white); }
+:root[data-theme="dark"][data-css~="duel-duel"] .duel-toast { color: var(--white); }
+
+/* ---- festival/style.css ---- */
+:root[data-theme="dark"][data-css~="festival-style"] .fest-word.is-found { border-color: #406447; }
+:root[data-theme="dark"][data-css~="festival-style"] .fw-banner-text { border: 1px dashed #406447; }
+
+/* ---- island/app.css ---- */
+:root[data-theme="dark"][data-css~="island-app"] .brand-tagline { color: #a6c9e3; }
+:root[data-theme="dark"][data-css~="island-app"] .auth-box { border: 1px solid #3e4953; }
+:root[data-theme="dark"][data-css~="island-app"] .auth-tabs { border-bottom: 1px solid #3c444d; background: #1e242f; }
+:root[data-theme="dark"][data-css~="island-app"] .auth-card .field { background: #1e242f; border-color: #3e4953; }
+:root[data-theme="dark"][data-css~="island-app"] .auth-languages span + span::before { background: #3c4554; }
+:root[data-theme="dark"][data-css~="island-app"] .language-choice[data-lang="zh"] { --tint: #212a23; --tint-bd: #3d5442; --blob: #253b28; --chev: var(--green-txt); }
+:root[data-theme="dark"][data-css~="island-app"] .language-choice[data-lang="ms"] { --tint: #2a2519; --tint-bd: #5e491d; --blob: #3f2f0f; --chev: var(--amber-txt); }
+:root[data-theme="dark"][data-css~="island-app"] .language-choice[data-lang="ta"] { --tint: #212732; --tint-bd: #355566; --blob: #154052; --chev: #8ac9f4; }
+:root[data-theme="dark"][data-css~="island-app"] .language-english { color: #b6c6e5; }
+:root[data-theme="dark"][data-css~="island-app"] .island-screen { background: #254150; }
+:root[data-theme="dark"][data-css~="island-app"] .island-wrap { background: #254150; }
+
+/* ---- island/style.css ---- */
+:root[data-theme="dark"][data-css~="island-style"] .island-stage { background: #254150; }
+:root[data-theme="dark"][data-css~="island-style"] .loading { background: #254150; }
+:root[data-theme="dark"][data-css~="island-style"] .zone-pill { background: rgba(24, 33, 50, 0.94); }
+:root[data-theme="dark"][data-css~="island-style"] .discover { background: rgba(24, 33, 50, 0.82); }
+:root[data-theme="dark"][data-css~="island-style"] .hud-btn { background: rgba(24, 33, 50, 0.94); }
+:root[data-theme="dark"][data-css~="island-style"] .waypoint { background: rgba(24, 33, 50, 0.94); }
+:root[data-theme="dark"][data-css~="island-style"] .joy-base { background: rgba(24, 33, 50, 0.45); }
+:root[data-theme="dark"][data-css~="island-style"] .joystick.is-active .joy-base { background: rgba(24, 33, 50, 0.6); }
+:root[data-theme="dark"][data-css~="island-style"] .joy-knob { border: 3px solid var(--white); }
+:root[data-theme="dark"][data-css~="island-style"] .act-btn { color: #18233a; }
+:root[data-theme="dark"][data-css~="island-style"] .keys-hint { background: rgba(24, 33, 50, 0.85); }
+:root[data-theme="dark"][data-css~="island-style"] .game-ic { color: #18233a; }
+:root[data-theme="dark"][data-css~="island-style"] .map-canvas { background: #213945; }
+:root[data-theme="dark"][data-css~="island-style"] .map-zone.is-hidden .map-dot { background: #3e4856; }
+:root[data-theme="dark"][data-css~="island-style"] .coin-chip { background: rgba(24, 33, 50, 0.94); }
+:root[data-theme="dark"][data-css~="island-style"] .fade { background: #254150; }
+:root[data-theme="dark"][data-css~="island-style"] .shop-row { background: var(--white); }
+:root[data-theme="dark"][data-css~="island-style"] .shop-row.is-owned { background: #212a23; border-color: #395342; }
+:root[data-theme="dark"][data-css~="island-style"] .shop-buy:disabled { background: #272d39; }
+:root[data-theme="dark"][data-css~="island-style"] .shop-owned { color: #71cf8f; }
+:root[data-theme="dark"][data-css~="island-style"] .reward-line { color: #eda753; }
+:root[data-theme="dark"][data-css~="island-style"] .shop-tab { background: #242a35; color: #aebdda; }
+:root[data-theme="dark"][data-css~="island-style"] .av-body { border: 2px solid #3f4650; background: #1e242f; }
+:root[data-theme="dark"][data-css~="island-style"] .av-body.is-on { background: #2b2314; }
+:root[data-theme="dark"][data-css~="island-style"] .av-swatch { border: 3px solid var(--white); box-shadow: 0 0 0 2px #454c59; }
+:root[data-theme="dark"][data-css~="island-style"] .match-opt { background: var(--white); }
+:root[data-theme="dark"][data-css~="island-style"] .match-opt.is-picked { background: #242834; }
+:root[data-theme="dark"][data-css~="island-style"] .won-card { background: #2a2311; }
+:root[data-theme="dark"][data-css~="island-style"] .won-card em { color: #eaa857; }
+:root[data-theme="dark"][data-css~="island-style"] .won-card.is-zone { background: #1c2826; }
+:root[data-theme="dark"][data-css~="island-style"] .won-card.is-zone em { color: #6dccbe; }
+
+/* ---- journey/style.css ---- */
+:root[data-theme="dark"][data-css~="journey-style"] .brand-tagline { color: #a6c9e3; }
+:root[data-theme="dark"][data-css~="journey-style"] .auth-box { border: 1px solid #3e4953; }
+:root[data-theme="dark"][data-css~="journey-style"] .auth-tabs { border-bottom: 1px solid #3c444d; background: #1e242f; }
+:root[data-theme="dark"][data-css~="journey-style"] .auth-card .field { background: #1e242f; border-color: #3e4953; }
+:root[data-theme="dark"][data-css~="journey-style"] .auth-languages span + span::before { background: #3c4554; }
+:root[data-theme="dark"][data-css~="journey-style"] .language-choice[data-lang="zh"] { --tint: #212a23; --tint-bd: #3d5442; --blob: #253b28; --chev: var(--green-txt); }
+:root[data-theme="dark"][data-css~="journey-style"] .language-choice[data-lang="ms"] { --tint: #2a2519; --tint-bd: #5e491d; --blob: #3f2f0f; --chev: var(--amber-txt); }
+:root[data-theme="dark"][data-css~="journey-style"] .language-choice[data-lang="ta"] { --tint: #212732; --tint-bd: #355566; --blob: #154052; --chev: #8ac9f4; }
+:root[data-theme="dark"][data-css~="journey-style"] .language-english { color: #b6c6e5; }
+:root[data-theme="dark"][data-css~="journey-style"] .stat-streak { color: #fa9d69; }
+:root[data-theme="dark"][data-css~="journey-style"] .sheet-sub { color: #fa9d69; }
+:root[data-theme="dark"][data-css~="journey-style"] .zone-board { color: #fff; }
+:root[data-theme="dark"][data-css~="journey-style"] .zone-board .icon { color: #fff; }
+:root[data-theme="dark"][data-css~="journey-style"] .route-zone.is-locked .zone-board { background: #536176; }
+:root[data-theme="dark"][data-css~="journey-style"] .station-dot::before { border: 4px solid #525a68; }
+:root[data-theme="dark"][data-css~="journey-style"] .station-label { background: rgba(24, 33, 50, 0.82); }
+
+/* ---- profile/style.css ---- */
+:root[data-theme="dark"][data-css~="profile-style"] .pf-card-art { background: color-mix(in srgb, var(--rc) 12%, var(--white)); }
+:root[data-theme="dark"][data-css~="profile-style"] .av-check { color: #18233a; }
+:root[data-theme="dark"][data-css~="profile-style"] .fv-tick { color: #18233a; }
+
+/* ---- pronunciation/style.css ---- */
+:root[data-theme="dark"][data-css~="pronunciation-style"] .pr-page { --pr-teal-soft: #183532; }
+:root[data-theme="dark"][data-css~="pronunciation-style"] .pr-zone-pill { color: #fff; }
+:root[data-theme="dark"][data-css~="pronunciation-style"] .pr-mic-btn { color: #18233a; }
+
+/* ---- scenarios/style.css ---- */
+:root[data-theme="dark"][data-css~="scenarios-style"] .sc-page { --mode-soft: #252c3a; }
+:root[data-theme="dark"][data-css~="scenarios-style"] .sc-mode[aria-checked="true"] .sc-mode-ic { color: #fff; }
+:root[data-theme="dark"][data-css~="scenarios-style"] .sc-msg.is-user .sc-bubble { color: #fff; }
+:root[data-theme="dark"][data-css~="scenarios-style"] .sc-mic { color: #18233a; }
+:root[data-theme="dark"][data-css~="scenarios-style"] .sc-send { color: #fff; }
+:root[data-theme="dark"][data-css~="scenarios-style"] .sc-fix-you { text-decoration-color: rgba(255, 154, 140, 0.5); }
+
+/* ---- storeVocab/albums.css ---- */
+:root[data-theme="dark"][data-css~="storeVocab-albums"] .cap-filter-btn[aria-expanded="true"] { color: var(--white); }
+:root[data-theme="dark"][data-css~="storeVocab-albums"] .cap-badge { color: #18233a; }
+:root[data-theme="dark"][data-css~="storeVocab-albums"] .cap-chip[aria-pressed="true"] { color: var(--white); }
+
+/* ---- storeVocab/cardface.css ---- */
+:root[data-theme="dark"][data-css~="storeVocab-cardface"] .vocab-card { --r-text: #a9bad7; --r-border: #48515e; --r-bg: #232934; }
+:root[data-theme="dark"][data-css~="storeVocab-cardface"] .vocab-card.rarity-uncommon { --r-text: #7bd09e; --r-bg: #1f2e24; }
+:root[data-theme="dark"][data-css~="storeVocab-cardface"] .vocab-card.rarity-rare { --r-text: #8fbeff; --r-bg: #252c3a; }
+:root[data-theme="dark"][data-css~="storeVocab-cardface"] .vocab-card.rarity-epic { --r-text: #c9a7ff; --r-bg: #30283a; --r-glow: 0 0 0 3px #4a3e56; }
+:root[data-theme="dark"][data-css~="storeVocab-cardface"] .vocab-card.rarity-legendary { --r-text: #f5a15d; --r-bg: #342606; --r-glow: 0 0 0 3px #554110, 0 6px 16px rgba(242, 169, 59, 0.3); }
+:root[data-theme="dark"][data-css~="storeVocab-cardface"] .card-practice { color: #7dcfc2; }
+
+/* ---- storeVocab/style.css ---- */
+:root[data-theme="dark"][data-css~="storeVocab-style"] .screen { --tint: #212a23; --tint-bd: #3d5442; --blob: #253b28; --accent: var(--green-txt); }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .screen[data-lang="ms"] { --tint: #2a2519; --tint-bd: #5e491d; --blob: #3f2f0f; --accent: var(--amber-txt); }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .screen[data-lang="ta"] { --tint: #212732; --tint-bd: #355566; --blob: #154052; --accent: #8ac9f4; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .sum-saved { background: #252b36; color: var(--muted); }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .found-row:not(.is-saved) { background: #272218; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .found-row.is-saved { background: #252b36; border-left-color: #565e6b; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .found-row.is-saved .check-wrap input { border-color: #565e6b; background: #414854; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .stat-words { background: #252b38; border-color: #415376; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .stat-words span { color: #8fbeff; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .stat-mastered { background: #1d2e2c; border-color: #2d5954; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .stat-mastered span { color: #7dcfc2; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .vocab-card { --r-text: #a9bad7; --r-border: #48515e; --r-bg: #232934; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .vocab-card.rarity-uncommon { --r-text: #7bd09e; --r-bg: #1f2e24; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .vocab-card.rarity-rare { --r-text: #8fbeff; --r-bg: #252c3a; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .vocab-card.rarity-epic { --r-text: #c9a7ff; --r-bg: #30283a; --r-glow: 0 0 0 3px #4a3e56; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .vocab-card.rarity-legendary { --r-text: #f5a15d; --r-bg: #342606; --r-glow: 0 0 0 3px #554110, 0 6px 16px rgba(242, 169, 59, 0.3); }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .card-practice { color: #7dcfc2; }
+:root[data-theme="dark"][data-css~="storeVocab-style"] .empty-art span { background: #232934; }
+
+/* ---- typing/typing.css ---- */
+:root[data-theme="dark"][data-css~="typing-typing"] .ty[data-hide-chinese="1"] .ty-idle { color: #373f4d; }
+
+/* ---------- 4. fixes the automatic pass can't work out (last, so they win) ---------- */
+/* Scenarios: the mode's light tint is set by chat.js, so darken it here */
+:root[data-theme="dark"][data-css] .sc-page { --mode-soft: color-mix(in srgb, var(--mode) 22%, var(--white)) !important; }
+:root[data-theme="dark"][data-css] .sc-mode { --s: color-mix(in srgb, var(--c) 22%, var(--white)) !important; }
+/* Scenarios: the deep mode colour is too dark to read as text on a dark page */
+:root[data-theme="dark"][data-css] .sc-goal summary,
+:root[data-theme="dark"][data-css] .sc-level,
+:root[data-theme="dark"][data-css] .sc-tool[aria-pressed="true"] { color: color-mix(in srgb, var(--mode) 65%, #fff); }
+/* Tour: the grey "Back" button keeps light text (the amber "Next" one gets dark text) */
+:root[data-theme="dark"][data-css] .tour-btn.secondary { color: var(--ink); }
+/* Streak flame before there is a streak: dim grey instead of light grey */
+:root[data-theme="dark"][data-css] .stat-streak:not(.is-active) .flame-outer { fill: #4a566b; }
+:root[data-theme="dark"][data-css] .stat-streak:not(.is-active) .flame-inner { fill: #333d4f; }
+/* Mastered-card shine and card art keep their colours; just soften the glare */
+:root[data-theme="dark"][data-css] .card-art::after,
+:root[data-theme="dark"][data-css] .pf-card-art::after { opacity: 0.6; }
