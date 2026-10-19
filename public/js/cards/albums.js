@@ -241,7 +241,7 @@ function activeFilterCount() {
 }
 
 // ---------- screen state ----------
-const albumUi = { container: null, handlers: null, data: null, openId: null, filter: "all" };
+const albumUi = { container: null, handlers: null, data: null, openId: null, filter: "all", search: "" };
 
 function initAlbums(container, handlers) {
   albumUi.container = container;
@@ -265,6 +265,7 @@ function initAlbums(container, handlers) {
     } else if (open) {
       albumUi.openId = open.dataset.album;
       albumUi.filter = "all";
+      albumUi.search = "";
       renderAlbums(albumUi.data);
       window.scrollTo(0, 0);
     } else if (t.closest("[data-album-back]")) {
@@ -306,6 +307,11 @@ function initAlbums(container, handlers) {
   });
 
   container.addEventListener("input", (e) => {
+    if (e.target.matches("[data-album-search]")) {   // search inside an island album: only the cards are redrawn, so the box keeps focus
+      albumUi.search = e.target.value;
+      refreshIslandCards();
+      return;
+    }
     if (!e.target.matches("[data-cap-search]")) return;
     capUi.search = e.target.value;
     updateCaptured(true);
@@ -514,13 +520,32 @@ function islandDetailSkeleton(album) {
       <h2 class="album-title">${escapeHtml(album.name)}</h2>
     </div>
     ${album.complete ? `<p class="album-done">${status}</p>` : `<p class="album-how">${status}</p>`}
-    <p class="album-how">Zone cards: win these in mini-games on the island. Role cards: win these from NPC challenges (talk to the characters marked ? on the island). None can be captured.</p>
+    <p class="album-how">Win zone cards in mini-games and role cards from the ? characters. They can't be captured.</p>
+    <label class="cap-search album-search" style="display:block;margin:14px 0 12px"><span class="visually-hidden">Search this album</span>
+      <input type="search" data-album-search placeholder="Search words, pinyin or meanings" value="${escapeHtml(albumUi.search)}" autocomplete="off" />
+    </label>
     <div class="cap-chips album-filters" role="group" aria-label="Filter cards">${chips}</div>
     <div class="card-grid album-cards"></div>`;
 }
 
+// Redraws just the cards of the open island album (used while typing in the search box).
+function refreshIslandCards() {
+  const album = buildIslandAlbums(albumUi.data.albumRows, albumUi.data.language).find((a) => a.id === albumUi.openId);
+  if (album) fillIslandCards(album, albumUi.data.language);
+}
+
+// A search matches an owned card by its word, pinyin or meaning (tones and spaces ignored: "xuexiao" finds 学校).
+// A card still to win only shows its meaning, so only the meaning is searched: the word and pinyin stay hidden.
+function slotMatches(slot, term) {
+  if (!term) return true;
+  const fields = slot.row ? [slot.word, slot.romanization, slot.meaning] : [slot.meaning];
+  return fields.some((v) => searchKey(v).includes(term));
+}
+
 function fillIslandCards(album, language) {
   const grid = albumUi.container.querySelector(".album-cards");
+  grid.innerHTML = "";
+  const term = searchKey(albumUi.search);
   const dev = albumUi.handlers.onDevAward && new URLSearchParams(location.search).get("dev") === "1";
   const heading = (title, have, total) =>
     `<h3 class="album-section" style="grid-column: 1 / -1; margin: 10px 0 0">${escapeHtml(title)} <span>${have} of ${total}</span></h3>`;
@@ -529,6 +554,11 @@ function fillIslandCards(album, language) {
       const card = renderCard(albumCardEntry(album, slot, language), () => {}, albumUi.handlers.onPracticeAlbum);
       const remove = card.querySelector(".card-delete");
       if (remove) remove.remove(); // island cards cannot be deleted
+      // a spare copy (from a duplicate) can be gifted to a friend: shown as a small tag on the card
+      if (slot.row.spares > 0) {
+        if (!card.style.position) card.style.position = "relative";
+        card.insertAdjacentHTML("beforeend", `<span class="spare-tag" title="Gift it to a friend from the Friends page" style="position:absolute;top:8px;left:8px;z-index:2;background:#0f7a6f;color:#fff;font:800 11px/1 Manrope,sans-serif;padding:5px 8px;border-radius:999px;">🎁 ×${slot.row.spares}</span>`);
+      }
       grid.appendChild(card);
       return;
     }
@@ -553,7 +583,13 @@ function fillIslandCards(album, language) {
     if (!r) { r = { id: s.roleId, label: s.roleLabel, slots: [] }; roles.push(r); }
     r.slots.push(s);
   });
-  if (filter === "zone") zone.forEach(addSlot);
+  if (term) {
+    // searching: one flat list, no section headings
+    const pool = filter === "zone" ? zone : filter !== "all" ? (roles.find((r) => r.id === filter) || { slots: [] }).slots : album.slots;
+    const found = pool.filter((s) => slotMatches(s, term));
+    if (!found.length) grid.insertAdjacentHTML("beforeend", `<p class="empty-state cap-none" style="grid-column: 1 / -1">No cards match.</p>`);
+    found.forEach(addSlot);
+  } else if (filter === "zone") zone.forEach(addSlot);
   else if (filter !== "all") (roles.find((r) => r.id === filter) || { slots: [] }).slots.forEach(addSlot);
   else {
     grid.insertAdjacentHTML("beforeend", heading("Zone cards", album.zoneHave, album.zoneTotal));

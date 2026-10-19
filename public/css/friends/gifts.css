@@ -1,0 +1,13 @@
+/* Card gifts on the Friends page. Loaded after friends.css. */
+
+/* Duel, gift and Remove side by side can be wide on a small phone: let them wrap instead of overflowing. */
+.friend-row .friend-actions { flex-wrap: wrap; justify-content: flex-end; }
+
+/* The "pick a spare card to send" pop-up */
+.gift-card { max-width: 420px; }
+.gift-pick { list-style: none; margin: 12px 0 4px; padding: 0; max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.gift-pick-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line, #e2e8f0); border-radius: 14px; background: var(--white, #fff); }
+.gift-pick-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.gift-pick-word { font-size: 20px; font-weight: 800; color: var(--ink, #18233a); }
+.gift-pick-text small { color: var(--muted, #6b7a90); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gift-spare { flex-shrink: 0; font-size: 12px; font-weight: 800; color: #0f7a6f; background: #e0f4f1; border-radius: 999px; padding: 4px 9px; }

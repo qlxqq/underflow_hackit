@@ -261,7 +261,8 @@ const IslandUI = {
   injectNpcStyles() {
     if (document.getElementById("npc-full-style")) return;
     const css = `
-#overlay.npc-full { position: fixed !important; inset: 0 !important; display: flex !important; align-items: stretch !important; justify-content: center !important; padding: 0 !important; background: #e8ecf4 !important; }
+body:has(#overlay.npc-full) .bottom-nav { display: none !important; }
+#overlay.npc-full { z-index: 70 !important; position: fixed !important; inset: 0 !important; display: flex !important; align-items: stretch !important; justify-content: center !important; padding: 0 !important; background: #e8ecf4 !important; }
 #overlay.npc-full[hidden] { display: none !important; }
 #overlay.npc-full #sheet { width: min(100%, 460px) !important; max-width: 460px !important; height: 100% !important; max-height: none !important; margin: 0 !important; padding: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: var(--bg, #f3f6fb) !important; overflow-y: auto !important; transform: none !important; animation: none !important; }
 .npc-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--white, #fff); border-bottom: 1px solid var(--line, #e2e8f0); }
@@ -594,6 +595,15 @@ const IslandUI = {
       ctx.lineWidth = 4; ctx.strokeStyle = "#fff"; ctx.stroke();
       if (isDone) { ctx.fillStyle = "#fff"; ctx.font = '800 17px "Manrope", sans-serif'; ctx.fillText("✓", l.front.x * k, l.front.y * k + 1); }
       else { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(l.front.x * k - 4, l.front.y * k - 6); ctx.lineTo(l.front.x * k + 7, l.front.y * k); ctx.lineTo(l.front.x * k - 4, l.front.y * k + 6); ctx.closePath(); ctx.fill(); }
+      // which mini-game it is, written under the pin (stays after the level is done)
+      const gameName = typeof getMiniGameForLevel === "function" ? (getMiniGameForLevel(l.level) || {}).name : "";
+      if (gameName) {
+        ctx.font = '800 16px "Manrope", sans-serif';
+        ctx.lineJoin = "round"; ctx.lineWidth = 5; ctx.strokeStyle = "rgba(255,255,255,0.95)";
+        ctx.strokeText(gameName, l.front.x * k, l.front.y * k + r + 14);
+        ctx.fillStyle = isDone ? "#1f7a44" : "#18233a";
+        ctx.fillText(gameName, l.front.x * k, l.front.y * k + r + 14);
+      }
     });
     // one "?" per NPC (only in zones the player has found); green tick once their challenge is passed
     ISLAND_NPCS.forEach((n) => {

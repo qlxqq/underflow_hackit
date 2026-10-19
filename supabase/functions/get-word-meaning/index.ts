@@ -96,8 +96,7 @@ async function readTextFromPhoto(image: string, mediaType: string, language: str
       { type: "text", text: "Transcribe the text in this photo." },
     ],
     1500,
-    // A failed call is reported to the app, not turned into "no text found".
-    { throwOnError: true },
+    true,
   );
   return text.trim();
 }
@@ -171,29 +170,48 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function callClaude(model: string, system: string, userContent: string | unknown[], maxTokens: number, options: { temperature?: number; throwOnError?: boolean } = {}) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
-      system,
-      messages: [{ role: "user", content: userContent }],
-    }),
-  });
-  const data = await response.json();
-  // Shows up in the function's logs in the Supabase dashboard.
-  if (!response.ok) {
+// Busy or rate-limited replies are tried again (up to 3 tries in all). With strict = true a call that still fails
+// throws, so the app can tell "Claude could not be reached" from "there is no text in the photo". Before, every failure
+// came back as an empty reply, which looked like "no text found" and made photo reading work only some of the time.
+async function callClaude(model: string, system: string, userContent: string | unknown[], maxTokens: number, strict = false) {
+  const RETRY_STATUS = [408, 429, 500, 502, 503, 504, 529];
+  let lastStatus = 0;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let response: Response;
+    try {
+      response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: maxTokens,
+          system,
+          messages: [{ role: "user", content: userContent }],
+        }),
+      });
+    } catch (err) {
+      console.error("Anthropic API unreachable:", err);
+      lastStatus = 0;
+      if (attempt < 2) { await new Promise((r) => setTimeout(r, 700 * (attempt + 1))); continue; }
+      break;
+    }
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) return data.content?.[0]?.text ?? "";
+    // Shows up in the function's logs in the Supabase dashboard.
     console.error("Anthropic API error:", response.status, JSON.stringify(data));
-    if (options.throwOnError) throw new Error(`Reader error ${response.status}: ${data?.error?.message ?? "unknown"}`);
+    lastStatus = response.status;
+    if (RETRY_STATUS.includes(response.status) && attempt < 2) {
+      await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
+      continue;
+    }
+    break;
   }
-  return data.content?.[0]?.text ?? "";
+  if (strict) throw new Error(`The reader is busy (${lastStatus || "no connection"}). Please try again.`);
+  return "";
 }
 
 async function lookupMeanings(words: string[], language: string, contextSentence: string) {
@@ -265,11 +283,7 @@ Deno.serve(async (req) => {
       if (!["image/jpeg", "image/png", "image/webp"].includes(mediaType)) {
         return json({ error: "Unsupported photo type." }, 400);
       }
-      try {
-        return json({ text: await readTextFromPhoto(image, mediaType, language) });
-      } catch (err) {
-        return json({ error: err instanceof Error ? err.message : "Could not read the photo." }, 502);
-      }
+      return json({ text: await readTextFromPhoto(image, mediaType, language) });
     }
 
     // ---- job 2: draw a picture for one word ----

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Open a gift</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="apple-touch-icon" href="../../icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Mother Tongue">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@500;700;800&family=Noto+Sans+Tamil:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Shared tokens first, then this page. No bottom navigation, like the mini-game pages. -->
+  <link rel="stylesheet" href="../../css/shared/base.css">
+  <link rel="stylesheet" href="../../css/shared/topbar.css">
+  <link rel="stylesheet" href="../../css/gift/gift.css">
+</head>
+<body>
+<div class="app gf-page">
+
+  <header class="top-bar has-back gf-top">
+    <button type="button" class="icon-btn back-button" id="backBtn" aria-label="Back to friends">
+      <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <!-- three segments: type it, say it, write it (filled in by gift.js) -->
+    <div class="gf-progress" id="progress" aria-hidden="true"></div>
+    <span class="chip gf-lang" id="langBadge" aria-label="Language">中文</span>
+  </header>
+
+  <main class="gf-main">
+    <p class="gf-notice" id="notice" role="status" hidden></p>
+
+    <!-- 0: the locked card -->
+    <section class="gf-step" id="stepIntro" hidden>
+      <div class="gf-card gf-mystery">
+        <div class="gf-mystery-card" aria-hidden="true"><span>?</span></div>
+        <p class="gf-from" id="introFrom"></p>
+        <h1 class="gf-title">A card for you</h1>
+        <p class="gf-sub">It stays locked until you type it, say it and use it in a sentence. Three quick steps, no pressure and no timer.</p>
+      </div>
+      <button type="button" class="btn btn-primary btn-block" id="introGo">Unlock it</button>
+    </section>
+
+    <!-- 1: type the word from its English meaning -->
+    <section class="gf-step" id="stepType" hidden>
+      <div class="gf-card">
+        <p class="gf-step-label">Step 1 of 3 · Type it</p>
+        <p class="gf-ask">What is this in <span id="typeLang">Chinese</span>?</p>
+        <p class="gf-english" id="typeEnglish"></p>
+        <p class="gf-boxes" id="typeBoxes" aria-hidden="true"></p>
+        <p class="gf-hint" id="typeHint" hidden></p>
+      </div>
+      <input type="text" id="typeInput" class="gf-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">
+      <p class="gf-feedback" id="typeFeedback" role="status" aria-live="polite"></p>
+      <div class="gf-actions">
+        <button type="button" class="btn btn-outline" id="typeHintBtn">Hint</button>
+        <button type="button" class="btn btn-primary" id="typeCheck">Check</button>
+      </div>
+      <label class="gf-switch" id="typeSwitchWrap"><input type="checkbox" id="typeRomanMode"> <span>No keyboard for it? Type the <b id="typeRomanName">pinyin</b> instead</span></label>
+    </section>
+
+    <!-- 2: say it -->
+    <section class="gf-step" id="stepSay" hidden>
+      <div class="gf-card">
+        <p class="gf-step-label">Step 2 of 3 · Say it</p>
+        <p class="gf-word" id="sayWord"></p>
+        <p class="gf-roman" id="sayRoman"></p>
+        <p class="gf-english gf-english-sm" id="sayEnglish"></p>
+      </div>
+      <p class="gf-feedback" id="sayFeedback" role="status" aria-live="polite"></p>
+      <div class="gf-actions">
+        <button type="button" class="btn btn-outline" id="sayHear">Hear it</button>
+        <button type="button" class="btn btn-primary" id="sayMic">Tap and say it</button>
+      </div>
+      <button type="button" class="btn btn-outline btn-block" id="saySkip" hidden>Skip this step</button>
+    </section>
+
+    <!-- 3: write a sentence -->
+    <section class="gf-step" id="stepWrite" hidden>
+      <div class="gf-card">
+        <p class="gf-step-label">Step 3 of 3 · Use it</p>
+        <p class="gf-ask">Write a short sentence with <b class="gf-inline-word" id="writeWord"></b></p>
+        <p class="gf-sub" id="writeSub">Any sentence you like. It's yours, and nobody grades it.</p>
+      </div>
+      <textarea id="writeInput" class="gf-input gf-area" rows="3" maxlength="200" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+      <p class="gf-feedback" id="writeFeedback" role="status" aria-live="polite"></p>
+      <button type="button" class="btn btn-primary btn-block" id="writeDone">Add to my collection</button>
+    </section>
+
+    <!-- done -->
+    <section class="gf-step" id="stepDone" hidden>
+      <div class="gf-card gf-done">
+        <div class="gf-done-emoji" aria-hidden="true">🎉</div>
+        <h1 class="gf-title" id="doneTitle">Added to your collection!</h1>
+        <div class="gf-final-card">
+          <b class="gf-final-word" id="doneWord"></b>
+          <span class="gf-final-roman" id="doneRoman"></span>
+          <span class="gf-final-meaning" id="doneMeaning"></span>
+        </div>
+        <p class="gf-sub" id="doneSub"></p>
+      </div>
+      <a class="btn btn-primary btn-block" href="../storeVocab/storeVocab.html#collection">See it in my collection</a>
+      <a class="btn btn-outline btn-block" href="../friends/friends.html">Back to friends</a>
+    </section>
+  </main>
+
+</div>
+
+<!-- Supabase library (same pinned version as the other pages), then the shared client, each loaded once -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+<script src="../../js/shared/supabaseClient.js"></script>
+<script src="../../js/gift/gift.js"></script>
+</body>
+</html>

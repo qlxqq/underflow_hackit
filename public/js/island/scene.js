@@ -153,7 +153,7 @@ class IslandScene extends Phaser.Scene {
     u.badge.fillCircle(-bw / 2 + 38, -37, 25);
     u.badgeT.setText(done ? "✓" : "");
     if (!done) { u.badge.fillStyle(0xffffff, 1); u.badge.fillTriangle(-bw / 2 + 31, -49, -bw / 2 + 31, -25, -bw / 2 + 51, -37); }
-    u.gameT.setText(done ? "Completed" : u.game.name);
+    u.gameT.setText(u.game.name);   // the label always says which mini-game this is; green once it is done
     u.gameT.setColor(done ? "#2f9e5b" : "#6a7790");
     u.ringBox.setVisible(!done);
   }
