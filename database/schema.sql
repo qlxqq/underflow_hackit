@@ -585,3 +585,525 @@ begin
 end $$;
 revoke all on function festival_claim(uuid, text, text[]) from public, anon, authenticated;
 grant execute on function festival_claim(uuid, text, text[]) to service_role;
+
+-- ============================================================
+-- CARD BATTLE: fight a boss with your word cards (separate from duels)
+-- Run AFTER schema.sql (it uses album_cards, evolution_stages, island_zone_words,
+-- composition_questions and profiles).
+-- Paste into the Supabase SQL Editor (New query) and run.
+-- Safe to run again: tables are skipped, policies and functions are replaced.
+--
+-- How a battle works
+--   0. Bosses are LOCKED until you own enough Chinese word cards: boss 1 needs 20,
+--      boss 2 needs 30, boss 3 needs 45 (change them in _battle_zone_min_cards() below).
+--   1. Pick a boss (zone 1-3). Your deck is your Chinese word cards (album_cards).
+--   2. Every round you are dealt 3 cards. Pick one to play.
+--   3. The game asks a composition question that CONTAINS that card's word. Build the
+--      sentence to attack. You get 2 tries.
+--   4. Damage = card power x bonuses:
+--        first try x1.0, second try x0.6
+--        answered within 10 seconds x1.25, within 20 seconds x1.1
+--        combo: +10% for each perfect round in a row (up to +50%)
+--        word not actually in the question (rare fallback) x0.5
+--   5. The boss hits back every round: half damage if you were perfect, full if you
+--      needed a retry, 1.5x if you missed.
+--   6. A card that lands a hit gets +1 use and EVOLVES when it reaches the next stage in
+--      evolution_stages. Evolved cards hit harder, so practising a word makes it stronger.
+--   7. Win = 30 XP (+ up to 10 for HP left). Lose = 5 XP.
+-- The database decides everything (answers, damage, HP, rewards), so editing the page
+-- cannot cheat.
+-- ============================================================
+
+create table if not exists public.battles (
+  id                  uuid primary key default gen_random_uuid(),
+  user_id             uuid not null references auth.users(id) on delete cascade,
+  zone                integer not null check (zone between 1 and 3),
+  status              text not null default 'active'
+                      check (status in ('active', 'won', 'lost', 'abandoned')),
+  round               integer not null default 1,
+  phase               text not null default 'pick' check (phase in ('pick', 'answer')),
+  boss_name           text not null,
+  boss_hp             integer not null,
+  boss_max            integer not null,
+  boss_attack         integer not null,
+  player_hp           integer not null default 100,
+  player_max          integer not null default 100,
+  combo               integer not null default 0,
+  hand                bigint[] not null default '{}',      -- album_cards.card_id of the 3 cards dealt
+  card_id             bigint,                              -- the card being played
+  question_id         bigint,
+  question_started_at timestamptz,
+  tries               integer not null default 0,
+  on_theme            boolean not null default true,       -- false: no question contained the word
+  used_questions      bigint[] not null default '{}',
+  last_event          jsonb,                               -- what happened in the last round
+  evolutions          jsonb not null default '[]'::jsonb,  -- cards that evolved in this battle
+  xp_gained           integer not null default 0,
+  created_at          timestamptz not null default now(),
+  finished_at         timestamptz
+);
+
+create index if not exists battles_user_idx on public.battles (user_id, status);
+
+alter table public.battles enable row level security;
+
+-- Players can only READ their own battles. Only the functions below change anything.
+drop policy if exists "battles select own" on public.battles;
+create policy "battles select own" on public.battles
+  for select to authenticated
+  using (auth.uid() = user_id);
+
+revoke all on public.battles from anon, authenticated;
+grant select on public.battles to authenticated;
+
+-- ---------- internal: rarity bonus (plug your real rarity in here) ----------
+-- Returns extra card power for a rare word. It is 0 for now. When you know how a word's
+-- rarity is worked out, return e.g. 2 for uncommon, 4 for rare, 6 for epic, 10 for legendary.
+create or replace function public._card_rarity_bonus(p_language text, p_word text)
+returns integer
+language sql immutable as $$ select 0 $$;
+
+-- ---------- internal: evolution stage for a number of uses ----------
+-- Uses your evolution_stages table; if it is empty: 3, 8 and 15 uses give stages 1, 2, 3.
+create or replace function public._card_stage_for(p_uses integer)
+returns integer
+language sql stable security definer set search_path = public as $$
+  select coalesce(
+    (select max(stage) from public.evolution_stages where min_uses <= p_uses),
+    case when p_uses >= 15 then 3 when p_uses >= 8 then 2 when p_uses >= 3 then 1 else 0 end);
+$$;
+
+-- ---------- internal: card power ----------
+-- 10 base, +4 per evolution stage, +1 for every 3 uses (up to 10), +2 per extra character
+-- of the word (up to 3 extra), plus the rarity bonus.
+create or replace function public._card_power(p_language text, p_word text, p_stage integer, p_uses integer)
+returns integer
+language sql stable security definer set search_path = public as $$
+  select 10 + 4 * greatest(p_stage, 0)
+            + least(greatest(p_uses, 0), 30) / 3
+            + least(greatest(char_length(p_word) - 1, 0), 3) * 2
+            + public._card_rarity_bonus(p_language, p_word);
+$$;
+
+-- ---------- internal: one card as JSON (for the page) ----------
+create or replace function public._battle_card_json(p_card_id bigint)
+returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'card_id',      ac.card_id,
+    'word',         ac.word,
+    'stage',        ac.evolution_stage,
+    'stage_label',  coalesce((select es.label from public.evolution_stages es where es.stage = ac.evolution_stage),
+                             'Stage ' || ac.evolution_stage),
+    'uses',         ac.usage_count,
+    'power',        public._card_power(ac.language, ac.word, ac.evolution_stage, ac.usage_count),
+    'romanization', (select iz.romanization from public.island_zone_words iz
+                      where iz.language = ac.language and iz.word = ac.word limit 1),
+    'meaning',      (select iz.meaning from public.island_zone_words iz
+                      where iz.language = ac.language and iz.word = ac.word limit 1))
+  from public.album_cards ac
+  where ac.card_id = p_card_id;
+$$;
+
+-- ---------- internal: deal 3 random cards from the player's deck ----------
+create or replace function public._battle_deal(p_user uuid)
+returns bigint[]
+language sql volatile security definer set search_path = public as $$
+  select coalesce(array_agg(card_id), '{}')
+    from (select card_id from public.album_cards
+           where user_id = p_user and language = 'zh'
+           order by random() limit 3) d;
+$$;
+
+-- ---------- internal: the whole battle as JSON ----------
+create or replace function public._battle_json(p_id uuid)
+returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'id',         b.id,
+    'status',     b.status,
+    'zone',       b.zone,
+    'round',      b.round,
+    'phase',      b.phase,
+    'boss',       jsonb_build_object('name', b.boss_name, 'hp', b.boss_hp, 'max', b.boss_max, 'attack', b.boss_attack),
+    'player',     jsonb_build_object('hp', b.player_hp, 'max', b.player_max),
+    'combo',      b.combo,
+    'tries',      b.tries,
+    'on_theme',   b.on_theme,
+    'hand',       coalesce((select jsonb_agg(public._battle_card_json(h.id) order by h.ord)
+                              from unnest(b.hand) with ordinality as h(id, ord)), '[]'::jsonb),
+    'card',       case when b.card_id is null then null else public._battle_card_json(b.card_id) end,
+    'question',   case when b.phase = 'answer' and b.question_id is not null then
+                    (select jsonb_build_object('id', q.id, 'prompt', q.prompt, 'tiles', q.tiles, 'topic', q.topic)
+                       from public.composition_questions q where q.id = b.question_id)
+                  else null end,
+    'question_started_at', b.question_started_at,
+    'last_event', b.last_event,
+    'evolutions', b.evolutions,
+    'xp_gained',  b.xp_gained,
+    'server_now', now())
+  from public.battles b
+  where b.id = p_id;
+$$;
+
+-- ---------- battle_deck: my cards, strongest first (for the start screen) ----------
+create or replace function public.battle_deck()
+returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+
+  return coalesce((
+    select jsonb_agg(public._battle_card_json(c.card_id)
+             order by public._card_power(c.language, c.word, c.evolution_stage, c.usage_count) desc, c.word)
+      from public.album_cards c
+     where c.user_id = auth.uid() and c.language = 'zh'), '[]'::jsonb);
+end $$;
+
+-- ---------- each boss unlocks after this many word cards ----------
+-- Change the numbers here to make a boss easier or harder to unlock.
+-- (To add a boss later, add a line here and a boss in the page.)
+create or replace function public._battle_zone_min_cards(p_zone integer)
+returns integer
+language sql immutable as $$
+  select case p_zone
+           when 1 then 20
+           when 2 then 30
+           when 3 then 45
+           else 45
+         end
+$$;
+
+-- the cards needed for the very first boss (kept for the old page)
+create or replace function public._battle_min_cards()
+returns integer
+language sql immutable as $$ select public._battle_zone_min_cards(1) $$;
+
+-- ---------- battle_requirements: what the start screen needs to show the lock ----------
+-- have = my Chinese word cards, min_cards = cards for the first boss,
+-- zones = cards needed per boss, e.g. {"1":20,"2":30,"3":45}, total_words = words that exist on the island.
+create or replace function public.battle_requirements()
+returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+
+  return jsonb_build_object(
+    'min_cards',   public._battle_min_cards(),
+    'zones',       jsonb_build_object('1', public._battle_zone_min_cards(1),
+                                      '2', public._battle_zone_min_cards(2),
+                                      '3', public._battle_zone_min_cards(3)),
+    'have',        (select count(*) from public.album_cards where user_id = auth.uid() and language = 'zh'),
+    'total_words', (select count(distinct word) from public.island_zone_words where language = 'zh'));
+end $$;
+
+-- ---------- battle_start: begin a battle against a zone boss ----------
+-- Returns the new battle id. Any battle you left unfinished is closed first.
+create or replace function public.battle_start(p_zone integer)
+returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  v_uid  uuid := auth.uid();
+  v_hand bigint[];
+  v_id   uuid;
+  v_have integer;
+begin
+  if v_uid is null then raise exception 'not signed in'; end if;
+  if p_zone not between 1 and 3 then raise exception 'pick a boss'; end if;
+
+  -- each boss unlocks once the player has collected enough word cards
+  select count(*) into v_have from public.album_cards where user_id = v_uid and language = 'zh';
+
+  if v_have < public._battle_zone_min_cards(p_zone) then
+    raise exception 'this boss unlocks at % word cards, you have %', public._battle_zone_min_cards(p_zone), v_have;
+  end if;
+
+  v_hand := public._battle_deal(v_uid);
+
+  if coalesce(array_length(v_hand, 1), 0) < 3 then
+    raise exception 'you need at least 3 cards to battle, win some on the island first';
+  end if;
+
+  if not exists (select 1 from public.composition_questions where zone = p_zone and language = 'zh-CN') then
+    raise exception 'this boss has no questions yet';
+  end if;
+
+  update public.battles set status = 'abandoned', finished_at = now()
+   where user_id = v_uid and status = 'active';
+
+  insert into public.battles (user_id, zone, boss_name, boss_hp, boss_max, boss_attack, hand)
+  values (v_uid, p_zone,
+          case p_zone when 1 then 'Lift Gremlin' when 2 then 'Hawker Pigeon' else 'Rush Hour Crowd' end,
+          case p_zone when 1 then 60 when 2 then 80 else 100 end,
+          case p_zone when 1 then 60 when 2 then 80 else 100 end,
+          case p_zone when 1 then 8 when 2 then 10 else 12 end,
+          v_hand)
+  returning id into v_id;
+
+  return v_id;
+end $$;
+
+-- ---------- battle_my_active: the battle I can resume (or null) ----------
+create or replace function public.battle_my_active()
+returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  v_id uuid;
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+
+  update public.battles set status = 'abandoned', finished_at = now()
+   where user_id = auth.uid() and status = 'active' and created_at < now() - interval '6 hours';
+
+  select id into v_id from public.battles
+   where user_id = auth.uid() and status = 'active'
+   order by created_at desc limit 1;
+
+  return v_id;
+end $$;
+
+-- ---------- battle_state: read a battle (no changes made) ----------
+create or replace function public.battle_state(p_battle uuid)
+returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+
+  if not exists (select 1 from public.battles where id = p_battle and user_id = auth.uid()) then
+    raise exception 'battle not found';
+  end if;
+
+  return public._battle_json(p_battle);
+end $$;
+
+-- ---------- battle_play: choose a card from your hand ----------
+-- Picks a question that contains the card's word (preferring this boss's zone).
+create or replace function public.battle_play(p_battle uuid, p_card_id bigint)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  v_uid   uuid := auth.uid();
+  b       public.battles%rowtype;
+  v_word  text;
+  v_q     bigint;
+  v_theme boolean := true;
+begin
+  if v_uid is null then raise exception 'not signed in'; end if;
+
+  select * into b from public.battles where id = p_battle and user_id = v_uid for update;
+  if not found then raise exception 'battle not found'; end if;
+  if b.status <> 'active' then raise exception 'this battle is over'; end if;
+  if b.phase <> 'pick' then raise exception 'you already played a card this round'; end if;
+  if not (p_card_id = any (b.hand)) then raise exception 'that card is not in your hand'; end if;
+
+  select word into v_word from public.album_cards where card_id = p_card_id and user_id = v_uid;
+  if v_word is null then raise exception 'card not found'; end if;
+
+  -- 1. a question with the word, not used yet in this battle, this zone first
+  select id into v_q from public.composition_questions
+   where language = 'zh-CN' and tiles @> to_jsonb(array[v_word]) and not (id = any (b.used_questions))
+   order by (zone = b.zone) desc, random() limit 1;
+
+  -- 2. same, allowing a repeat
+  if v_q is null then
+    select id into v_q from public.composition_questions
+     where language = 'zh-CN' and tiles @> to_jsonb(array[v_word])
+     order by (zone = b.zone) desc, random() limit 1;
+  end if;
+
+  -- 3. no question has this word: any question from the zone, weaker attack
+  if v_q is null then
+    v_theme := false;
+    select id into v_q from public.composition_questions
+     where language = 'zh-CN' and zone = b.zone
+     order by (id = any (b.used_questions)), random() limit 1;
+  end if;
+
+  update public.battles
+     set phase = 'answer', card_id = p_card_id, question_id = v_q, question_started_at = now(),
+         tries = 0, on_theme = v_theme, used_questions = array_append(used_questions, v_q)
+   where id = p_battle;
+
+  return public._battle_json(p_battle);
+end $$;
+
+-- ---------- battle_answer: build the sentence, attack ----------
+create or replace function public.battle_answer(p_battle uuid, p_answer text)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  v_uid     uuid := auth.uid();
+  b         public.battles%rowtype;
+  c         public.album_cards%rowtype;
+  q         public.composition_questions%rowtype;
+  v_clean   text := regexp_replace(coalesce(p_answer, ''), '\s', '', 'g');
+  v_ok      boolean;
+  v_tries   integer;
+  v_power   integer;
+  v_elapsed numeric;
+  m_speed   numeric := 1.0;
+  m_retry   numeric := 1.0;
+  m_theme   numeric := 1.0;
+  m_combo   numeric := 1.0;
+  v_damage  integer := 0;
+  v_boss_dmg integer := 0;
+  v_perfect boolean := false;
+  v_hit     boolean := false;
+  v_new_uses integer;
+  v_new_stage integer;
+  v_evolved jsonb := null;
+  v_status  text := 'active';
+  v_xp      integer := 0;
+  v_hand    bigint[];
+  v_event   jsonb;
+begin
+  if v_uid is null then raise exception 'not signed in'; end if;
+
+  select * into b from public.battles where id = p_battle and user_id = v_uid for update;
+  if not found then raise exception 'battle not found'; end if;
+  if b.status <> 'active' then raise exception 'this battle is over'; end if;
+  if b.phase <> 'answer' then raise exception 'play a card first'; end if;
+  if v_clean = '' then raise exception 'build your sentence first'; end if;
+
+  select * into q from public.composition_questions where id = b.question_id;
+  select * into c from public.album_cards where card_id = b.card_id;
+
+  select exists (select 1 from jsonb_array_elements_text(q.accepted_answers) a
+                  where regexp_replace(a, '\s', '', 'g') = v_clean)
+    into v_ok;
+
+  v_tries := b.tries + 1;
+
+  -- wrong, but there is still a second try
+  if not v_ok and v_tries < 2 then
+    update public.battles
+       set tries = v_tries,
+           last_event = jsonb_build_object('result', 'wrong', 'tries_left', 2 - v_tries,
+                                           'sentence', left(p_answer, 200), 'round', b.round)
+     where id = p_battle;
+    return public._battle_json(p_battle);
+  end if;
+
+  v_elapsed := extract(epoch from (now() - b.question_started_at));
+  v_power   := public._card_power(c.language, c.word, c.evolution_stage, c.usage_count);
+
+  if v_ok then
+    v_hit     := true;
+    v_perfect := (b.tries = 0);
+    m_retry   := case when v_perfect then 1.0 else 0.6 end;
+    m_speed   := case when v_elapsed <= 10 then 1.25 when v_elapsed <= 20 then 1.1 else 1.0 end;
+    m_theme   := case when b.on_theme then 1.0 else 0.5 end;
+    m_combo   := 1 + 0.1 * least(b.combo, 5);
+    v_damage  := greatest(1, round(v_power * m_speed * m_retry * m_theme * m_combo));
+
+    -- the card grows each time it lands a hit
+    v_new_uses  := c.usage_count + 1;
+    v_new_stage := greatest(c.evolution_stage, public._card_stage_for(v_new_uses));
+    update public.album_cards
+       set usage_count = v_new_uses, evolution_stage = v_new_stage
+     where card_id = c.card_id;
+
+    if v_new_stage > c.evolution_stage then
+      v_evolved := jsonb_build_object('word', c.word, 'stage', v_new_stage,
+        'label', coalesce((select label from public.evolution_stages where stage = v_new_stage), 'Stage ' || v_new_stage));
+    end if;
+  end if;
+
+  -- boss HP
+  b.boss_hp := greatest(0, b.boss_hp - v_damage);
+
+  if b.boss_hp = 0 then
+    v_status := 'won';
+    v_xp := 30 + least(b.player_hp / 10, 10);
+  else
+    -- the boss hits back
+    v_boss_dmg := case when v_hit and v_perfect then round(b.boss_attack / 2.0)
+                       when v_hit then b.boss_attack
+                       else round(b.boss_attack * 1.5) end;
+    b.player_hp := greatest(0, b.player_hp - v_boss_dmg);
+
+    if b.player_hp = 0 then
+      v_status := 'lost';
+      v_xp := 5;
+    end if;
+  end if;
+
+  v_event := jsonb_build_object(
+    'result',      case when v_hit then 'hit' else 'miss' end,
+    'word',        c.word,
+    'power',       v_power,
+    'damage',      v_damage,
+    'boss_damage', v_boss_dmg,
+    'perfect',     v_perfect,
+    'tries',       v_tries,
+    'elapsed',     round(v_elapsed, 1),
+    'mult',        jsonb_build_object('speed', m_speed, 'retry', m_retry, 'theme', m_theme, 'combo', m_combo),
+    'combo_after', case when v_hit and v_perfect then b.combo + 1 else 0 end,
+    'evolved',     v_evolved,
+    'answer',      q.accepted_answers ->> 0,
+    'sentence',    left(p_answer, 200),
+    'explanation', q.explanation,
+    'round',       b.round);
+
+  if v_status = 'active' then
+    v_hand := public._battle_deal(v_uid);
+
+    update public.battles
+       set boss_hp = b.boss_hp, player_hp = b.player_hp, round = round + 1, phase = 'pick',
+           combo = case when v_hit and v_perfect then combo + 1 else 0 end,
+           card_id = null, question_id = null, question_started_at = null, tries = 0,
+           hand = v_hand, last_event = v_event,
+           evolutions = case when v_evolved is null then evolutions else evolutions || jsonb_build_array(v_evolved) end
+     where id = p_battle;
+  else
+    update public.battles
+       set boss_hp = b.boss_hp, player_hp = b.player_hp, status = v_status, finished_at = now(),
+           combo = case when v_hit and v_perfect then combo + 1 else 0 end,
+           phase = 'pick', card_id = null, question_id = null, question_started_at = null, tries = 0,
+           xp_gained = v_xp, last_event = v_event,
+           evolutions = case when v_evolved is null then evolutions else evolutions || jsonb_build_array(v_evolved) end
+     where id = p_battle;
+
+    update public.profiles set xp = xp + v_xp where user_id = v_uid;
+  end if;
+
+  return public._battle_json(p_battle);
+end $$;
+
+-- ---------- battle_forfeit: give up (no XP) ----------
+create or replace function public.battle_forfeit(p_battle uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+
+  update public.battles set status = 'abandoned', finished_at = now()
+   where id = p_battle and user_id = auth.uid() and status = 'active';
+end $$;
+
+-- Only signed-in players can call these.
+revoke all on function public._card_rarity_bonus(text, text) from public, anon, authenticated;
+revoke all on function public._card_stage_for(integer) from public, anon, authenticated;
+revoke all on function public._card_power(text, text, integer, integer) from public, anon, authenticated;
+revoke all on function public._battle_card_json(bigint) from public, anon, authenticated;
+revoke all on function public._battle_deal(uuid) from public, anon, authenticated;
+revoke all on function public._battle_json(uuid) from public, anon, authenticated;
+revoke all on function public._battle_min_cards() from public, anon, authenticated;
+revoke all on function public._battle_zone_min_cards(integer) from public, anon, authenticated;
+revoke all on function public.battle_requirements() from public, anon;
+revoke all on function public.battle_deck() from public, anon;
+revoke all on function public.battle_start(integer) from public, anon;
+revoke all on function public.battle_my_active() from public, anon;
+revoke all on function public.battle_state(uuid) from public, anon;
+revoke all on function public.battle_play(uuid, bigint) from public, anon;
+revoke all on function public.battle_answer(uuid, text) from public, anon;
+revoke all on function public.battle_forfeit(uuid) from public, anon;
+
+grant execute on function public.battle_requirements() to authenticated;
+grant execute on function public.battle_deck() to authenticated;
+grant execute on function public.battle_start(integer) to authenticated;
+grant execute on function public.battle_my_active() to authenticated;
+grant execute on function public.battle_state(uuid) to authenticated;
+grant execute on function public.battle_play(uuid, bigint) to authenticated;
+grant execute on function public.battle_answer(uuid, text) to authenticated;
+grant execute on function public.battle_forfeit(uuid) to authenticated;
