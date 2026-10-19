@@ -1,16 +1,22 @@
 // Reads text from a photographed page (textbook, note, menu).
 //
-// The photo is shrunk on the phone, then sent to the get-word-meaning Edge
-// Function, where Claude reads it. There is no backup reader: a worse reader
-// (Tesseract) made up words, so if Claude cannot read the photo the player is
-// told so and can try again or type the words.
+// Main route: the photo is shrunk on the phone, then sent to the
+// get-word-meaning Edge Function, where Claude reads it. Claude is far more
+// accurate than Tesseract on phone photos, and it will not invent words that
+// are not on the page.
+//
+// Backup route: if that call fails (offline, function not deployed), the
+// photo is cleaned up and read by Tesseract.js in the browser. Low-confidence
+// guesses are thrown away so the "words found" list does not fill with junk.
 //
 // Photo highlighting (the screen after "Take a photo"): the player draws boxes
 // round the words they want, and only those parts are sent to Claude to be
 // read (extractTextFromRegions).
 
+const OCR_LANGUAGES = { zh: "chi_sim", ms: "msa", ta: "tam" };
 const OCR_MAX_SIDE = 1800;        // longest side of the photo we send
-const OCR_TRIES = 2;              // one retry if the reader is busy or the connection blips
+const OCR_MIN_CONFIDENCE = 70;    // Tesseract words below this are dropped
+const BOX_BACKUP_CONFIDENCE = 40; // lower for boxed areas: the player chose them, so a few wrong guesses do little harm
 
 // Shrinks the photo and fixes its rotation. Returns a canvas.
 async function photoToCanvas(file) {
@@ -41,39 +47,81 @@ async function photoToCanvas(file) {
   return canvas;
 }
 
-async function readWithClaude(canvas, language) {
-  const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-  const image = dataUrl.split(",")[1];
-  const { data, error } = await supabase.functions.invoke("get-word-meaning", {
-    body: { mode: "ocr", image, mediaType: "image/jpeg", language },
-  });
-  if (error) throw error;
-  if (typeof data?.text !== "string") throw new Error("No text field in reply.");
-  return data.text;
+function cloneCanvas(canvas) {
+  const copy = document.createElement("canvas");
+  copy.width = canvas.width;
+  copy.height = canvas.height;
+  copy.getContext("2d").drawImage(canvas, 0, 0);
+  return copy;
 }
 
-// Reads with Claude, trying again once. Throws an Error with a message the player can read.
-async function readWithRetry(canvas, language) {
-  let lastError = null;
-  for (let attempt = 1; attempt <= OCR_TRIES; attempt++) {
+// Greyscale + contrast stretch, which helps Tesseract on shadowy photos.
+// Works on the canvas it is given, so pass a copy if the original is still shown.
+function cleanForTesseract(canvas) {
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = img.data;
+  let min = 255;
+  let max = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    d[i] = d[i + 1] = d[i + 2] = g;
+    if (g < min) min = g;
+    if (g > max) max = g;
+  }
+  const range = Math.max(1, max - min);
+  for (let i = 0; i < d.length; i += 4) {
+    const v = ((d[i] - min) * 255) / range;
+    d[i] = d[i + 1] = d[i + 2] = v;
+  }
+  ctx.putImageData(img, 0, 0);
+  return canvas;
+}
+
+const CLAUDE_TRIES = 3;            // a busy moment on the reader's side should not lose the photo
+const CLAUDE_TIMEOUT_MS = 30000;   // one try gives up after this long
+
+function withTimeout(promise, ms) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("The reader took too long.")), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+async function readWithClaude(canvas, language) {
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+  const image = dataUrl.split(",")[1];
+  let lastError;
+  for (let attempt = 1; attempt <= CLAUDE_TRIES; attempt += 1) {
     try {
-      const text = await readWithClaude(canvas, language);
-      window.lastOcrInfo = "";
-      return text;
+      const { data, error } = await withTimeout(
+        supabase.functions.invoke("get-word-meaning", { body: { mode: "ocr", image, mediaType: "image/jpeg", language } }),
+        CLAUDE_TIMEOUT_MS
+      );
+      if (error) throw error;
+      if (typeof data?.text !== "string") throw new Error("No text field in reply.");
+      return data.text;
     } catch (err) {
       lastError = err;
-      console.error(`Photo reading failed (try ${attempt} of ${OCR_TRIES}):`, err);
+      console.warn(`Claude photo reading, try ${attempt} of ${CLAUDE_TRIES} failed:`, err);
+      if (attempt < CLAUDE_TRIES) await new Promise((r) => setTimeout(r, 600 * attempt));
     }
   }
-  window.lastOcrInfo = "";
-  const reason = lastError && lastError.message ? lastError.message : String(lastError);
-  const offline = typeof navigator !== "undefined" && navigator.onLine === false;
-  throw new Error(offline
-    ? "You seem to be offline. Connect to the internet to read a photo, or type the words instead."
-    : `Could not read the photo right now (${reason}). Try again, or type the words instead.`);
+  throw lastError;
 }
 
-// Kept for the page: empty unless there is something to tell the player.
+async function readWithTesseract(canvas, language, minConfidence = OCR_MIN_CONFIDENCE) {
+  const worker = await window.Tesseract.createWorker(OCR_LANGUAGES[language]);
+  try {
+    const { data } = await worker.recognize(cleanForTesseract(cloneCanvas(canvas)));
+    const kept = (data.words || []).filter((w) => w.confidence >= minConfidence);
+    return kept.map((w) => w.text).join(language === "zh" ? "" : " ");
+  } finally {
+    await worker.terminate();
+  }
+}
+
+// Tells the page how the last photo was read, so a wrong result can be
+// traced: "Claude", or "Tesseract (backup)" plus the reason Claude failed.
 window.lastOcrInfo = "";
 
 async function extractTextFromImage(imageFile, language) {
@@ -82,7 +130,16 @@ async function extractTextFromImage(imageFile, language) {
 
 // Reads the whole photo. Used for "Use the whole photo" on the highlight screen.
 async function extractTextFromCanvas(canvas, language) {
-  let text = await readWithRetry(canvas, language);
+  let text;
+  try {
+    text = await readWithClaude(canvas, language);
+    window.lastOcrInfo = "Read by Claude.";
+  } catch (err) {
+    console.error("Claude photo reading failed, using Tesseract instead:", err);
+    window.lastOcrInfo = "Read by backup (Tesseract) because: " + (err && err.message ? err.message : err);
+    text = await readWithTesseract(canvas, language);
+  }
+
   text = text.trim();
   return language === "zh" ? text.replace(/\s+/g, "") : text.replace(/\s+/g, " ");
 }
@@ -93,9 +150,11 @@ async function extractTextFromCanvas(canvas, language) {
 // canvas, stacked top to bottom with white gaps, so they can be read in a
 // single request. Small areas are enlarged so the text is easier to read.
 const REGION_PAD = 12;          // drawn boxes are often tight, so take a little extra round them
-const REGION_MIN_HEIGHT = 64;
+const REGION_MIN_HEIGHT = 96;
 const REGION_GAP = 24;
 const REGION_MAX_SIDE = 3600;
+const REGION_MIN_W = 640;        // a box can be any size: it is placed on a white sheet at least this big,
+const REGION_MIN_H = 400;        // because a very thin strip of text is hard for the reader to recognise
 
 function stackRegions(canvas, rects) {
   const crops = rects.map((r) => {
@@ -105,11 +164,13 @@ function stackRegions(canvas, rects) {
     const y1 = Math.min(canvas.height, Math.ceil(r.y1 + REGION_PAD));
     const w = Math.max(1, x1 - x0);
     const h = Math.max(1, y1 - y0);
-    const scale = Math.min(3, Math.max(1, REGION_MIN_HEIGHT / h));
+    const scale = Math.min(4, Math.max(1, REGION_MIN_HEIGHT / h));
     return { x0, y0, w, h, scale, dw: Math.round(w * scale), dh: Math.round(h * scale) };
   });
-  let width = Math.max(...crops.map((c) => c.dw)) + REGION_GAP;
-  let height = crops.reduce((sum, c) => sum + c.dh + REGION_GAP, REGION_GAP);
+  const contentW = Math.max(...crops.map((c) => c.dw));
+  const contentH = crops.reduce((sum, c) => sum + c.dh + REGION_GAP, REGION_GAP);
+  const width = Math.max(contentW + REGION_GAP, REGION_MIN_W);
+  const height = Math.max(contentH, REGION_MIN_H);
   const shrink = Math.min(1, REGION_MAX_SIDE / Math.max(width, height));
   const out = document.createElement("canvas");
   out.width = Math.round(width * shrink);
@@ -117,9 +178,9 @@ function stackRegions(canvas, rects) {
   const ctx = out.getContext("2d");
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, out.width, out.height);
-  let y = REGION_GAP * shrink;
+  let y = ((height - contentH) / 2 + REGION_GAP) * shrink;   // centred on the sheet
   crops.forEach((c) => {
-    ctx.drawImage(canvas, c.x0, c.y0, c.w, c.h, (REGION_GAP / 2) * shrink, y, c.dw * shrink, c.dh * shrink);
+    ctx.drawImage(canvas, c.x0, c.y0, c.w, c.h, ((width - c.dw) / 2) * shrink, y, c.dw * shrink, c.dh * shrink);
     y += (c.dh + REGION_GAP) * shrink;
   });
   return out;
@@ -130,8 +191,39 @@ function stackRegions(canvas, rects) {
 async function extractTextFromRegions(canvas, rects, language) {
   const stacked = stackRegions(canvas, rects);
   const divider = language === "zh" ? "，" : " ";
+  const hasText = (t) => typeof t === "string" && t.replace(/\s+/g, "") !== "";
 
-  let text = await readWithRetry(stacked, language);
-  text = text.trim().replace(/\s*\n+\s*/g, divider);
+  let text = "";
+  try {
+    text = await readWithClaude(stacked, language);
+    window.lastOcrInfo = "Read by Claude.";
+  } catch (err) {
+    console.error("Claude reading of the boxed area failed, using Tesseract instead:", err);
+    window.lastOcrInfo = "Read by backup (Tesseract) because: " + (err && err.message ? err.message : err);
+    text = await readWithTesseract(stacked, language, BOX_BACKUP_CONFIDENCE);
+  }
+
+  // Claude answered but found no text: the player drew this box round words, so look once more before the backup.
+  if (!hasText(text) && /^Read by Claude/.test(window.lastOcrInfo)) {
+    try {
+      text = await readWithClaude(stacked, language);
+    } catch (err) {
+      console.warn("Second reading failed:", err);
+    }
+  }
+
+  // Still nothing: let the backup have a look before giving up.
+  if (!hasText(text)) {
+    try {
+      text = await readWithTesseract(stacked, language, BOX_BACKUP_CONFIDENCE);
+      window.lastOcrInfo = hasText(text)
+        ? "Claude found no text in the box, so the backup (Tesseract) read it."
+        : "Neither Claude nor the backup (Tesseract) found text in the box.";
+    } catch (err) {
+      console.error("Backup reading failed:", err);
+    }
+  }
+
+  text = (text || "").trim().replace(/\s*\n+\s*/g, divider);
   return language === "zh" ? text.replace(/\s+/g, "") : text.replace(/\s+/g, " ");
 }
