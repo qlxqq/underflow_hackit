@@ -5,15 +5,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const db = window.supabaseClient ||
         (typeof supabase !== "undefined" && supabase.auth ? supabase : null);
 
-    // Display info for the three bosses (the numbers live in the database; these are only labels).
-    const BOSSES = {
-        1: { emoji: "🛗", name: "Lift Gremlin",     zone: "Neighbourhood",    hp: 60,  attack: 8 },
-        2: { emoji: "🐦", name: "Hawker Pigeon",    zone: "Hawker centre",    hp: 80,  attack: 10 },
-        3: { emoji: "🚇", name: "Rush Hour Crowd",  zone: "Public transport", hp: 100, attack: 12 }
-    };
+    const Art = window.BattleArt;
 
-    const MIN_CARDS = 3;
-    const CONFETTI_COLOURS = ["#2f6fd6", "#17a596", "#ffd166", "#e8772e", "#d64545", "#7a4fd6"];
+    const DEFAULT_MIN_CARDS = 20;      // the database has the final say (battle_requirements)
+    const GUIDE_KEY = "battleGuideSeen";
+    const CONFETTI_COLOURS = ["#f2a93b", "#17a596", "#2f6fd6", "#ffd166", "#e0554d", "#18233a"];
+    const REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    const HOME_PAGE = "../island/island.html";
 
     function el(id) { return document.getElementById(id); }
 
@@ -30,6 +28,9 @@ document.addEventListener("DOMContentLoaded", function () {
     let state = null;              // latest battle from the database
     let clockOffset = 0;           // database clock minus this phone's clock, in ms
     let deck = [];                 // my cards (for the menu)
+    let minCards = DEFAULT_MIN_CARDS;   // cards needed to unlock battles
+    let haveCards = 0;             // word cards I have caught
+    let totalWords = 0;            // words that exist to be found
 
     let shownQuestion = null;      // question id currently drawn on screen
     let bank = [];                 // [{ text, used }]
@@ -37,12 +38,18 @@ document.addEventListener("DOMContentLoaded", function () {
     let busy = false;              // a request is in flight
     let holdingResult = false;     // the round result is on screen
     let tickTimer = null;
+    let fxToken = 0;               // bumped to cancel a running effects sequence
+    let playedCard = null;         // the card used in the round being answered
 
     // ----------------------------------
     // Small helpers
     // ----------------------------------
 
     function now() { return Date.now() + clockOffset; }
+
+    function wait(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, REDUCED ? Math.min(ms, 60) : ms); });
+    }
 
     function make(tag, className, text) {
         const node = document.createElement(tag);
@@ -53,14 +60,9 @@ document.addEventListener("DOMContentLoaded", function () {
         return node;
     }
 
-    function stageClass(stage) {
-        const n = Math.max(0, Math.min(3, Number(stage) || 0));
-        return "stage-" + n;
-    }
+    function clamp(value, low, high) { return Math.max(low, Math.min(high, value)); }
 
-    function bossInfo(zone) {
-        return BOSSES[zone] || { emoji: "👾", name: "Boss", zone: "", hp: 0, attack: 0 };
-    }
+    function stageClass(stage) { return "stage-" + clamp(Number(stage) || 0, 0, 3); }
 
     function show(name) {
         Object.keys(screens).forEach(function (key) {
@@ -79,7 +81,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!message) return "Something went wrong. Please try again.";
 
-        // Postgres messages are already written for people; trim any prefix noise.
         return message.charAt(0).toUpperCase() + message.slice(1);
     }
 
@@ -96,73 +97,351 @@ document.addEventListener("DOMContentLoaded", function () {
         return "x" + (Math.round(Number(value) * 100) / 100);
     }
 
+    function replay(node, className, ms) {
+        node.classList.remove(className);
+        void node.offsetWidth;
+        node.classList.add(className);
+
+        if (ms) setTimeout(function () { node.classList.remove(className); }, ms);
+    }
+
+    // ----------------------------------
+    // Sound and buzz (tiny synthesised sounds, nothing to download)
+    // ----------------------------------
+
+    const sfx = (function () {
+        let ctx = null;
+        let on = true;
+
+        try { on = localStorage.getItem("battleSound") !== "off"; } catch (e) { on = true; }
+
+        function audio() {
+            if (!on) return null;
+
+            if (!ctx) {
+                try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+            }
+
+            if (ctx.state === "suspended") ctx.resume();
+
+            return ctx;
+        }
+
+        function tone(freq, dur, type, vol, when, slideTo) {
+            const c = audio();
+
+            if (!c) return;
+
+            const t = c.currentTime + (when || 0);
+            const osc = c.createOscillator();
+            const gain = c.createGain();
+
+            osc.type = type || "square";
+            osc.frequency.setValueAtTime(freq, t);
+            if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+
+            gain.gain.setValueAtTime(vol || 0.05, t);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+            osc.connect(gain);
+            gain.connect(c.destination);
+            osc.start(t);
+            osc.stop(t + dur + 0.03);
+        }
+
+        function noise(dur, vol, when) {
+            const c = audio();
+
+            if (!c) return;
+
+            const t = c.currentTime + (when || 0);
+            const buffer = c.createBuffer(1, Math.max(1, Math.floor(c.sampleRate * dur)), c.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+
+            const source = c.createBufferSource();
+            const gain = c.createGain();
+
+            source.buffer = buffer;
+            gain.gain.setValueAtTime(vol || 0.08, t);
+            source.connect(gain);
+            gain.connect(c.destination);
+            source.start(t);
+        }
+
+        const sounds = {
+            tap: function () { tone(720, 0.05, "square", 0.025); },
+            pick: function () { tone(520, 0.08, "square", 0.045); tone(780, 0.1, "square", 0.045, 0.07); },
+            hit: function () { noise(0.16, 0.1); tone(190, 0.18, "sawtooth", 0.07, 0, 60); },
+            crit: function () {
+                noise(0.2, 0.12); tone(220, 0.2, "sawtooth", 0.08, 0, 60);
+                [660, 880, 1320].forEach(function (f, i) { tone(f, 0.09, "square", 0.04, 0.08 + i * 0.07); });
+            },
+            miss: function () { tone(320, 0.3, "triangle", 0.07, 0, 110); },
+            hurt: function () { noise(0.12, 0.08); tone(150, 0.26, "sawtooth", 0.07, 0, 60); },
+            wrong: function () { tone(210, 0.16, "square", 0.045); tone(150, 0.22, "square", 0.045, 0.12); },
+            win: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.17, "square", 0.05, i * 0.12); }); },
+            lose: function () { [392, 330, 262, 196].forEach(function (f, i) { tone(f, 0.22, "triangle", 0.07, i * 0.17); }); },
+            evolve: function () { [523, 659, 784, 1047, 1319, 1568].forEach(function (f, i) { tone(f, 0.15, "sine", 0.07, i * 0.09); }); },
+            intro: function () { tone(220, 0.12, "square", 0.045); tone(330, 0.12, "square", 0.045, 0.1); tone(440, 0.22, "square", 0.045, 0.2); }
+        };
+
+        return {
+            play: function (name) { try { if (on && sounds[name]) sounds[name](); } catch (e) { /* sound is optional */ } },
+            buzz: function (ms) { try { if (on && navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* optional */ } },
+            isOn: function () { return on; },
+            toggle: function () {
+                on = !on;
+                try { localStorage.setItem("battleSound", on ? "on" : "off"); } catch (e) { /* optional */ }
+                if (on) sounds.tap();
+                return on;
+            }
+        };
+    })();
+
+    function paintSoundButton() {
+        const button = el("soundButton");
+        const on = sfx.isOn();
+
+        button.textContent = on ? "🔊" : "🔇";
+        button.setAttribute("aria-pressed", on ? "true" : "false");
+        button.setAttribute("aria-label", on ? "Sound on" : "Sound off");
+    }
+
+    // ----------------------------------
+    // Text box (types out one letter at a time)
+    // ----------------------------------
+
+    let typeTimer = null;
+    let typeResolve = null;
+    let typeFull = "";
+
+    function finishTyping() {
+        if (typeTimer) {
+            clearInterval(typeTimer);
+            typeTimer = null;
+        }
+
+        if (typeResolve) {
+            el("dialogText").textContent = typeFull;
+            el("dialog").classList.add("is-done");
+
+            const done = typeResolve;
+            typeResolve = null;
+            done();
+        }
+    }
+
+    function say(text) {
+        finishTyping();
+
+        return new Promise(function (resolve) {
+            const box = el("dialogText");
+            const chars = Array.from(text);
+
+            typeFull = text;
+            el("srLine").textContent = text;
+            el("dialog").classList.remove("is-done");
+
+            if (REDUCED || chars.length === 0) {
+                box.textContent = text;
+                el("dialog").classList.add("is-done");
+                resolve();
+                return;
+            }
+
+            let shown = 0;
+
+            box.textContent = "";
+            typeResolve = resolve;
+
+            typeTimer = setInterval(function () {
+                shown += 1;
+                box.textContent = chars.slice(0, shown).join("");
+                if (shown >= chars.length) finishTyping();
+            }, 20);
+        });
+    }
+
+    // ----------------------------------
+    // Trading cards
+    // ----------------------------------
+
+    function buildCard(card, options) {
+        const mini = !!(options && options.mini);
+        const node = make(mini ? "div" : "button", "tcg " + stageClass(card.stage) + (mini ? " mini" : ""));
+        const face = make("span", "tcg-face");
+        const head = make("span", "tcg-head");
+        const power = make("span", "tcg-power", String(card.power));
+        const art = make("span", "tcg-art");
+        const foot = make("span", "tcg-foot");
+        const stars = clamp(Number(card.stage) || 0, 0, 3);
+
+        if (!mini) node.type = "button";
+
+        power.insertBefore(make("small", "", "\u2694\uFE0E"), power.firstChild);
+
+        head.appendChild(make("span", "tcg-stage", card.stage_label || "Stage " + card.stage));
+        head.appendChild(power);
+
+        art.appendChild(make("span", "tcg-word", card.word));
+
+        foot.appendChild(make("span", "", "★".repeat(stars) + "☆".repeat(3 - stars)));
+        foot.appendChild(make("span", "", card.uses ? card.uses + " uses" : "new"));
+
+        face.appendChild(head);
+        face.appendChild(art);
+        face.appendChild(make("span", "tcg-pinyin", card.romanization || ""));
+        face.appendChild(make("span", "tcg-text", card.meaning || ""));
+        face.appendChild(foot);
+
+        node.appendChild(face);
+        node.appendChild(make("span", "tcg-foil"));
+        node.appendChild(make("span", "tcg-glare"));
+
+        node.setAttribute("aria-label", card.word + ", " + (card.meaning || "") + ", attack " + card.power);
+
+        if (!mini) addTilt(node);
+
+        return node;
+    }
+
+    // the card leans towards your finger and the foil catches the light
+    function addTilt(node) {
+        function move(event) {
+            const rect = node.getBoundingClientRect();
+            const px = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+            const py = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+
+            node.classList.add("is-tilting");
+            node.style.setProperty("--ry", (px - 0.5) * 26 + "deg");
+            node.style.setProperty("--rx", (0.5 - py) * 26 + "deg");
+            node.style.setProperty("--mx", px * 100 + "%");
+            node.style.setProperty("--my", py * 100 + "%");
+        }
+
+        function rest() {
+            node.classList.remove("is-tilting");
+            node.style.removeProperty("--ry");
+            node.style.removeProperty("--rx");
+            node.style.removeProperty("--mx");
+            node.style.removeProperty("--my");
+        }
+
+        node.addEventListener("pointermove", move);
+        node.addEventListener("pointerdown", move);
+        node.addEventListener("pointerleave", rest);
+        node.addEventListener("pointercancel", rest);
+        node.addEventListener("pointerup", function () { setTimeout(rest, 120); });
+    }
+
     // ----------------------------------
     // Menu: pick a boss, see the deck
     // ----------------------------------
 
-    function miniCard(card) {
-        const box = make("div", "mini-card " + stageClass(card.stage));
-
-        box.appendChild(make("div", "mini-word", card.word));
-        box.appendChild(make("div", "mini-power", "⚔ " + card.power));
-        box.title = (card.meaning || "") + (card.stage_label ? " · " + card.stage_label : "");
-
-        return box;
-    }
-
     function renderMenu() {
-        const enough = deck.length >= MIN_CARDS;
+        const enough = haveCards >= minCards;
         const list = el("bossList");
         const strip = el("deckStrip");
 
         list.replaceChildren();
 
         [1, 2, 3].forEach(function (zone) {
-            const boss = bossInfo(zone);
-            const button = make("button", "boss-card");
+            const boss = Art.boss(zone);
+            const button = make("button", "boss-card" + (enough ? "" : " is-locked"));
+            const face = make("span", "boss-face zone-" + zone);
+            const sprite = make("span", "mini-sprite");
 
             button.type = "button";
             button.disabled = !enough;
 
-            button.appendChild(make("span", "boss-face", boss.emoji));
+            sprite.innerHTML = Art.sprite(zone);     // our own drawing, not user data
+            face.appendChild(sprite);
+            button.appendChild(face);
 
             const text = make("span", "boss-text");
             text.appendChild(make("p", "boss-title", boss.name));
             text.appendChild(make("p", "boss-zone", boss.zone));
 
             const stats = make("span", "boss-stats");
-            stats.appendChild(make("span", "stat", "❤ " + boss.hp));
-            stats.appendChild(make("span", "stat", "⚔ " + boss.attack));
+            stats.appendChild(make("span", "stat", "Lv " + boss.level));
+            stats.appendChild(make("span", "stat", "HP " + boss.hp));
+            stats.appendChild(make("span", "stat", "ATK " + boss.attack));
             text.appendChild(stats);
 
             button.appendChild(text);
-            button.appendChild(make("span", "go", "›"));
+            button.appendChild(make("span", "go", enough ? "›" : "🔒"));
 
-            button.addEventListener("click", function () { startBattle(zone); });
+            button.addEventListener("click", function () { sfx.play("tap"); startBattle(zone); });
 
             list.appendChild(button);
         });
 
         strip.replaceChildren();
-        deck.forEach(function (card) { strip.appendChild(miniCard(card)); });
+        deck.forEach(function (card) { strip.appendChild(buildCard(card, { mini: true })); });
 
         el("deckCount").textContent = deck.length + (deck.length === 1 ? " card" : " cards");
-        el("deckEmpty").hidden = enough;
+        el("deckEmpty").hidden = deck.length > 0;
         strip.hidden = deck.length === 0;
+
+        renderLock(enough);
 
         show("menu");
     }
 
-    async function loadMenu() {
-        const { data, error } = await rpc("battle_deck");
+    function renderLock(enough) {
+        const panel = el("lockPanel");
+        const missing = Math.max(0, minCards - haveCards);
+        const left = Math.max(0, totalWords - haveCards);
+        const line = el("collectLine");
 
-        if (error) {
-            showMessage(errorText(error));
+        panel.hidden = enough;
+        el("menuIntro").textContent = enough
+            ? "Play a word card, then use that word in a correct sentence to land the hit."
+            : "The bosses are locked for now. Catch more word cards first.";
+
+        if (!enough) {
+            const percent = Math.min(100, Math.round((haveCards / minCards) * 100));
+
+            el("lockTitle").textContent = "Battles unlock at " + minCards + " word cards";
+            el("lockFill").style.width = percent + "%";
+            el("lockCount").textContent = haveCards + " / " + minCards + " cards";
+            el("lockBar").setAttribute("aria-valuemax", String(minCards));
+            el("lockBar").setAttribute("aria-valuenow", String(Math.min(haveCards, minCards)));
+            el("lockText").textContent = "Win " + missing + " more word card" + (missing === 1 ? "" : "s") +
+                " in the island mini-games to unlock the bosses." +
+                (left > 0 ? " There are still " + left + " words out there to discover." : "");
+        }
+
+        line.hidden = !(enough && totalWords > 0);
+
+        if (!line.hidden) {
+            line.textContent = left > 0
+                ? "Words caught: " + haveCards + " of " + totalWords + ". Keep playing the island mini-games to find the other " + left + "."
+                : "You have caught every word on the island. Nice!";
+        }
+    }
+
+    async function loadMenu() {
+        const [deckResult, reqResult] = await Promise.all([rpc("battle_deck"), rpc("battle_requirements")]);
+
+        if (deckResult.error) {
+            showMessage(errorText(deckResult.error));
             return;
         }
 
-        deck = Array.isArray(data) ? data : [];
+        deck = Array.isArray(deckResult.data) ? deckResult.data : [];
+
+        // If battle.sql was not re-run yet, fall back to counting the deck.
+        const req = !reqResult.error && reqResult.data ? reqResult.data : null;
+
+        minCards = req && Number(req.min_cards) > 0 ? Number(req.min_cards) : DEFAULT_MIN_CARDS;
+        haveCards = req && req.have !== undefined ? Number(req.have) : deck.length;
+        totalWords = req && req.total_words !== undefined ? Number(req.total_words) : 0;
+
         renderMenu();
+        maybeShowGuide();
     }
 
     async function startBattle(zone) {
@@ -192,42 +471,61 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         el("endOverlay").hidden = true;
-        enterBattle(loaded.data);
+        enterBattle(loaded.data, true);
     }
 
     // ----------------------------------
-    // Battle: bars and header
+    // Stage: scene, boss, plates, bars
     // ----------------------------------
 
-    function setBar(fill, hp, max) {
-        const percent = max > 0 ? Math.max(0, Math.min(100, (hp / max) * 100)) : 0;
+    function stageSetup(zone) {
+        const boss = Art.boss(zone);
+
+        el("scene").innerHTML = Art.scene(zone);          // our own drawings, not user data
+        el("bossSprite").innerHTML = Art.sprite(zone);
+        el("spriteWrap").className = "sprite-wrap";
+        el("bannerName").textContent = boss.name;
+        el("bannerZone").textContent = boss.zone + " boss";
+        el("bossLv").textContent = "Lv " + boss.level;
+    }
+
+    function paintBar(fillId, ghostId, hp, max, instant) {
+        const fill = el(fillId);
+        const ghost = el(ghostId);
+        const percent = max > 0 ? clamp((hp / max) * 100, 0, 100) : 0;
+
+        if (instant) {
+            ghost.style.transition = "none";
+            fill.style.transition = "none";
+        }
+
         fill.style.width = percent + "%";
-        return percent;
+        ghost.style.width = percent + "%";
+
+        fill.classList.toggle("is-mid", percent <= 50 && percent > 25);
+        fill.classList.toggle("is-low", percent <= 25);
+
+        if (instant) {
+            void fill.offsetWidth;
+            ghost.style.transition = "";
+            fill.style.transition = "";
+        }
     }
 
-    function renderHud() {
+    function paintBoss(hp, instant) {
         const boss = state.boss;
-        const me = state.player;
-        const info = bossInfo(state.zone);
 
-        el("bossEmoji").textContent = info.emoji;
-        el("bossName").textContent = boss.name;
-        el("roundChip").textContent = "Round " + state.round;
-
-        setBar(el("bossHpFill"), boss.hp, boss.max);
-        el("bossHpText").textContent = boss.hp + " / " + boss.max;
-
-        const percent = setBar(el("meHpFill"), me.hp, me.max);
-        const meFill = el("meHpFill");
-
-        meFill.classList.toggle("is-low", percent <= 50 && percent > 25);
-        meFill.classList.toggle("is-critical", percent <= 25);
-        el("meHpText").textContent = me.hp + " / " + me.max;
-
-        renderCombo();
+        paintBar("bossHpFill", "bossHpGhost", hp, boss.max, instant);
+        el("bossHpText").textContent = hp + " / " + boss.max;
+        el("spriteWrap").classList.toggle("is-angry", hp > 0 && hp / boss.max <= 0.4);
     }
 
-    function renderCombo() {
+    function paintMe(hp, instant) {
+        paintBar("meHpFill", "meHpGhost", hp, state.player.max, instant);
+        el("meHpText").textContent = hp + " / " + state.player.max;
+    }
+
+    function paintCombo() {
         const badge = el("comboBadge");
         const combo = state.combo || 0;
 
@@ -238,61 +536,170 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const wasHidden = badge.hidden;
 
-        badge.textContent = "🔥 Combo " + combo + " · +" + Math.min(combo, 5) * 10 + "%";
+        badge.textContent = "Combo " + combo + " +" + Math.min(combo, 5) * 10 + "%";
         badge.hidden = false;
 
-        if (!wasHidden) {
-            badge.style.animation = "none";
-            void badge.offsetWidth;
-            badge.style.animation = "";
+        if (!wasHidden) replay(badge, "combo-badge");
+    }
+
+    function renderHud(instant) {
+        el("bossName").textContent = state.boss.name;
+        el("roundChip").textContent = "Round " + state.round;
+
+        paintBoss(state.boss.hp, instant);
+        paintMe(state.player.hp, instant);
+        paintCombo();
+    }
+
+    // position of an element's centre inside the stage
+    function inStage(node) {
+        const a = node.getBoundingClientRect();
+        const s = el("stage").getBoundingClientRect();
+
+        return { x: a.left - s.left + a.width / 2, y: a.top - s.top + a.height / 2 };
+    }
+
+    function layer(node) {
+        el("fx").appendChild(node);
+        setTimeout(function () { node.remove(); }, 1700);
+    }
+
+    function floatText(point, text, className) {
+        const node = make("div", "dmg " + (className || ""), text);
+
+        node.style.left = point.x + "px";
+        node.style.top = point.y + "px";
+        layer(node);
+    }
+
+    function burst(point, colours, count) {
+        for (let i = 0; i < count; i++) {
+            const spark = make("i", "spark");
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 40 + Math.random() * 80;
+
+            spark.style.left = point.x + "px";
+            spark.style.top = point.y + "px";
+            spark.style.setProperty("--c", colours[i % colours.length]);
+            spark.style.setProperty("--dx", Math.cos(angle) * distance + "px");
+            spark.style.setProperty("--dy", Math.sin(angle) * distance + "px");
+            spark.style.setProperty("--rot", Math.random() * 360 + "deg");
+            layer(spark);
         }
     }
 
-    function replay(node, className) {
-        node.classList.remove(className);
-        void node.offsetWidth;
-        node.classList.add(className);
+    function ring(point, colour) {
+        const node = make("i", "ring");
+
+        node.style.left = point.x + "px";
+        node.style.top = point.y + "px";
+        node.style.setProperty("--c", colour);
+        layer(node);
     }
 
-    function floatNumber(anchor, text, className) {
-        const rect = anchor.getBoundingClientRect();
-        const node = make("div", "float-num " + className, text);
+    function slash(point) {
+        [-38, 32].forEach(function (rotation, i) {
+            const node = make("i", "slash");
 
-        node.style.left = rect.left + rect.width / 2 - 20 + "px";
-        node.style.top = rect.top + rect.height / 2 - 20 + "px";
+            node.style.left = point.x + (i ? 10 : -6) + "px";
+            node.style.top = point.y + (i ? 12 : -8) + "px";
+            node.style.setProperty("--rot", rotation + "deg");
+            node.style.animationDelay = i * 0.07 + "s";
+            layer(node);
+        });
+    }
 
-        document.body.appendChild(node);
-        setTimeout(function () { node.remove(); }, 1200);
+    function flash() { replay(el("flash"), "is-on", 320); }
+    function redFlash() { replay(el("vignette"), "is-on", 720); }
+    function shake(crit) { replay(el("stage"), crit ? "is-crit" : "is-shake", 520); }
+
+    function bossReact(name, ms) { replay(el("spriteWrap"), name, ms); }
+
+    // the card that flies from your hand to the boss
+    function launchCard(fromRect, card) {
+        return new Promise(function (resolve) {
+            if (!fromRect || REDUCED) {
+                resolve();
+                return;
+            }
+
+            const target = el("spriteWrap").getBoundingClientRect();
+            const shot = make("div", "shot", card.word);
+            const w = 54;
+            const h = 72;
+            const startX = fromRect.left + fromRect.width / 2 - w / 2;
+            const startY = fromRect.top + fromRect.height / 2 - h / 2;
+            const dx = target.left + target.width / 2 - w / 2 - startX;
+            const dy = target.top + target.height / 2 - h / 2 - startY;
+
+            shot.style.left = startX + "px";
+            shot.style.top = startY + "px";
+            shot.style.width = w + "px";
+            shot.style.height = h + "px";
+            document.body.appendChild(shot);
+            void shot.offsetWidth;
+
+            shot.style.transform = "translate(" + dx + "px, " + dy + "px) rotate(540deg) scale(0.35)";
+            shot.style.opacity = "0.9";
+
+            setTimeout(function () { shot.remove(); resolve(); }, 440);
+        });
     }
 
     // ----------------------------------
-    // Battle: routing between the phases
+    // Battle: entering and routing
     // ----------------------------------
 
-    function enterBattle(data) {
-        applyState(data);
-        holdingResult = false;
-        shownQuestion = null;
+    function setStageMode(mode) {
+        const battle = el("screenBattle");
 
-        el("bossEmoji").className = "boss-emoji";
-        el("battleStatus").textContent = "";
-
-        show("battle");
-        route();
-    }
-
-    function applyState(data) {
-        state = data;
-
-        if (data.server_now) clockOffset = Date.parse(data.server_now) - Date.now();
-
-        renderHud();
+        battle.classList.toggle("is-compact", mode === "answer" || mode === "result");
+        battle.classList.toggle("is-answering", mode === "answer");
     }
 
     function hideAllPanels() {
         el("pickPanel").hidden = true;
         el("answerPanel").hidden = true;
+        el("answerPanel").classList.remove("is-sent");
         el("resultPanel").hidden = true;
+    }
+
+    async function enterBattle(data, withIntro) {
+        const token = ++fxToken;
+
+        state = data;
+        if (data.server_now) clockOffset = Date.parse(data.server_now) - Date.now();
+
+        holdingResult = false;
+        shownQuestion = null;
+        stopTick();
+        hideAllPanels();
+        finishTyping();
+
+        el("battleStatus").textContent = "";
+        el("endOverlay").hidden = true;
+        el("evolveOverlay").hidden = true;
+
+        stageSetup(data.zone);
+        setStageMode("pick");
+        renderHud(true);
+        show("battle");
+
+        if (!withIntro || data.status !== "active") {
+            route();
+            return;
+        }
+
+        const boss = Art.boss(data.zone);
+
+        replay(el("spriteWrap"), "is-enter", 1000);
+        replay(el("banner"), "is-on", 1950);
+        sfx.play("intro");
+        say(boss.intro);
+
+        await wait(1700);
+
+        if (token === fxToken) route();
     }
 
     function route() {
@@ -315,52 +722,55 @@ document.addEventListener("DOMContentLoaded", function () {
     // Phase 1: choose a card
     // ----------------------------------
 
-    function handCard(card) {
-        const button = make("button", "card " + stageClass(card.stage));
-
-        button.type = "button";
-        button.appendChild(make("span", "card-stage", card.stage_label || "Stage " + card.stage));
-        button.appendChild(make("span", "card-word", card.word));
-        button.appendChild(make("span", "card-pinyin", card.romanization || ""));
-        button.appendChild(make("span", "card-meaning", card.meaning || ""));
-        button.appendChild(make("span", "card-power", "⚔ " + card.power));
-        button.appendChild(make("span", "card-uses", card.uses ? "Used " + card.uses + "x" : "New"));
-
-        button.addEventListener("click", function () { playCard(card, button); });
-
-        return button;
-    }
-
     function showPickPhase() {
         const hand = el("hand");
+        const combo = state.combo || 0;
 
         // the next question may be the same one again: always start it with a fresh word bank
         shownQuestion = null;
-        const combo = state.combo || 0;
 
+        setStageMode("pick");
         hand.replaceChildren();
-        (state.hand || []).forEach(function (card) { hand.appendChild(handCard(card)); });
+
+        (state.hand || []).forEach(function (card) {
+            const node = buildCard(card);
+
+            node.addEventListener("click", function () { playCard(card, node); });
+            hand.appendChild(node);
+        });
 
         el("pickSub").textContent = combo > 0
-            ? "🔥 Keep your combo going: a first-try hit adds +10% damage."
-            : "Use the word in a correct sentence to hit.";
+            ? "Combo " + combo + ": a first-try hit adds +10% damage."
+            : "Use its word in a correct sentence to hit.";
 
         el("battleStatus").textContent = "";
         el("pickPanel").hidden = false;
+
+        say(combo > 1
+            ? "Combo x" + combo + "! Choose a card."
+            : "Round " + state.round + ". Choose a card!");
     }
 
-    async function playCard(card, button) {
+    async function playCard(card, node) {
         if (busy) return;
 
         busy = true;
-        Array.prototype.forEach.call(el("hand").querySelectorAll(".card"), function (node) {
-            node.disabled = true;
-        });
-        button.style.opacity = "1";
+        sfx.play("pick");
+        sfx.buzz(12);
 
-        const { data, error } = await rpc("battle_play", { p_battle: state.id, p_card_id: card.card_id });
+        Array.prototype.forEach.call(el("hand").querySelectorAll(".tcg"), function (other) {
+            other.disabled = true;
+            other.classList.add(other === node ? "is-picked" : "is-dim");
+        });
+
+        const [result] = await Promise.all([
+            rpc("battle_play", { p_battle: state.id, p_card_id: card.card_id }),
+            wait(420)
+        ]);
 
         busy = false;
+
+        const { data, error } = result;
 
         if (error || !data) {
             el("battleStatus").textContent = errorText(error);
@@ -372,6 +782,14 @@ document.addEventListener("DOMContentLoaded", function () {
         el("battleStatus").classList.remove("is-error");
         applyState(data);
         route();
+    }
+
+    function applyState(data) {
+        state = data;
+
+        if (data.server_now) clockOffset = Date.parse(data.server_now) - Date.now();
+
+        renderHud(false);
     }
 
     async function resync() {
@@ -409,6 +827,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const card = state.card;
         const question = state.question;
 
+        setStageMode("answer");
+
         // the card being played
         const playing = el("playingCard");
         playing.replaceChildren();
@@ -420,7 +840,7 @@ document.addEventListener("DOMContentLoaded", function () {
         text.appendChild(make("p", "pc-pinyin", card.romanization || ""));
         text.appendChild(make("p", "pc-meaning", card.meaning || ""));
         box.appendChild(text);
-        box.appendChild(make("span", "pc-power", "⚔ " + card.power));
+        box.appendChild(make("span", "pc-power", "\u2694\uFE0E " + card.power));
         playing.appendChild(box);
 
         el("offTheme").hidden = state.on_theme !== false;
@@ -443,6 +863,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         el("answerPanel").hidden = false;
         startTick();
+
+        say(card.word + " is ready! Build a sentence with it.");
     }
 
     function renderTries() {
@@ -501,6 +923,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function pickTile(position) {
         if (!canPlay() || bank[position].used) return;
 
+        sfx.play("tap");
         bank[position].used = true;
         answer.push(position);
         el("answerArea").classList.remove("is-wrong");
@@ -548,10 +971,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (elapsed <= 10) {
             left = 1 - elapsed / 10;
-            label = "⚡ x1.25";
+            label = "x1.25";
         } else if (elapsed <= 20) {
             left = 1 - (elapsed - 10) / 10;
-            label = "⚡ x1.1";
+            label = "x1.1";
         } else {
             left = 0;
             label = "x1.0";
@@ -566,7 +989,11 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!canPlay() || answer.length === 0) return;
 
         const sentence = answer.map(function (position) { return bank[position].text; }).join("");
+        const startRect = el("playingCard").firstElementChild
+            ? el("playingCard").firstElementChild.getBoundingClientRect()
+            : null;
 
+        playedCard = state.card;
         busy = true;
         renderTiles();
         el("attackButton").disabled = true;
@@ -589,9 +1016,13 @@ document.addEventListener("DOMContentLoaded", function () {
             applyState(data);
             renderTries();
 
+            sfx.play("wrong");
+            sfx.buzz(40);
             el("answerArea").classList.add("is-wrong");
             el("answerMessage").textContent = "Not quite. One try left, but a second-try hit does less damage.";
             renderTiles();
+            say("Not quite... one more try!");
+            bossReact("is-taunt", 700);
 
             setTimeout(function () {
                 if (state && state.phase === "answer") {
@@ -604,122 +1035,224 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        resolveRound(data);
+        resolveRound(data, startRect);
     }
 
     // ----------------------------------
-    // Round result
+    // Round result and the fight animation
     // ----------------------------------
 
     function addChip(box, text, kind) {
         box.appendChild(make("span", "mult" + (kind ? " " + kind : ""), text));
     }
 
-    function resolveRound(data) {
-        const previous = state;
+    function buildResult(previous, data) {
         const event = data.last_event || {};
         const hit = event.result === "hit";
         const mult = event.mult || {};
-        const won = data.status === "won";
-
-        stopTick();
-        holdingResult = true;
-        applyState(data);
-
-        el("answerPanel").hidden = true;
-        el("pickPanel").hidden = true;
-
-        // animations on the arena
-        const bossEmoji = el("bossEmoji");
-        const damage = event.damage || 0;
-        const bossDamage = event.boss_damage || 0;
-
-        bossEmoji.className = "boss-emoji";
-
-        if (damage > 0) {
-            replay(bossEmoji, "is-hit");
-            floatNumber(bossEmoji, "-" + damage, event.perfect && (mult.speed || 1) > 1 ? "boss-dmg crit" : "boss-dmg");
-        } else {
-            floatNumber(bossEmoji, "Miss", "miss");
-        }
-
-        if (won) {
-            setTimeout(function () { replay(bossEmoji, "is-dead"); }, 450);
-        } else if (bossDamage > 0) {
-            setTimeout(function () {
-                replay(bossEmoji, "is-attack");
-                replay(el("meBox"), "is-hit");
-                floatNumber(el("meHpFill"), "-" + bossDamage, "me-dmg");
-            }, 600);
-        }
-
-        // result panel
         const panel = el("resultPanel");
 
         panel.classList.toggle("is-hit", hit);
         panel.classList.toggle("is-miss", !hit);
 
-        el("resultTitle").textContent = hit
-            ? (event.perfect ? "Direct hit!" : "Hit!")
-            : "Missed!";
-        el("resultDamage").textContent = hit ? "-" + damage : "0";
+        el("resultTitle").textContent = hit ? (event.perfect ? "Direct hit!" : "Hit!") : "Missed!";
+        el("resultDamage").textContent = hit ? "-" + (event.damage || 0) : "0";
 
         const chips = el("resultChips");
         chips.replaceChildren();
 
         if (hit) {
             addChip(chips, "Card power " + event.power);
-            if ((mult.speed || 1) > 1) addChip(chips, "⚡ Speed " + formatMult(mult.speed), "up");
-            if ((mult.combo || 1) > 1) addChip(chips, "🔥 Combo " + formatMult(mult.combo), "up");
-            if ((mult.retry || 1) < 1) addChip(chips, "🔁 Second try " + formatMult(mult.retry), "down");
-            if ((mult.theme || 1) < 1) addChip(chips, "🎯 Off-topic " + formatMult(mult.theme), "down");
+            if ((mult.speed || 1) > 1) addChip(chips, "Speed " + formatMult(mult.speed), "up");
+            if ((mult.combo || 1) > 1) addChip(chips, "Combo " + formatMult(mult.combo), "up");
+            if ((mult.retry || 1) < 1) addChip(chips, "Second try " + formatMult(mult.retry), "down");
+            if ((mult.theme || 1) < 1) addChip(chips, "Off-topic " + formatMult(mult.theme), "down");
         } else {
             addChip(chips, "Both tries wrong", "down");
             if ((previous.combo || 0) > 0) addChip(chips, "Combo lost", "down");
         }
 
-        let line;
-
-        if (won) {
-            line = data.boss.name + " is defeated!";
-        } else if (data.status === "lost") {
-            line = data.boss.name + " hits you for " + bossDamage + " and you are out of HP.";
-        } else if (bossDamage > 0) {
-            line = hit && event.perfect
-                ? data.boss.name + " staggers and only hits you for " + bossDamage + "."
-                : data.boss.name + " hits you for " + bossDamage + ".";
-        } else {
-            line = "";
-        }
-
-        el("resultBoss").textContent = line;
-        el("resultBoss").hidden = line === "";
-
-        // the sentence
         el("resultSentenceLabel").textContent = hit ? "Your sentence" : "A correct sentence";
         el("resultSentence").textContent = hit ? (event.sentence || event.answer || "") : (event.answer || "");
         el("resultNote").textContent = event.explanation || "";
 
-        // evolution
-        const evolve = el("resultEvolve");
+        el("nextButton").textContent = data.status === "active" ? "Next round" : "Continue";
+    }
 
-        if (event.evolved) {
-            evolve.textContent = "✨ " + event.evolved.word + " evolved to " + event.evolved.label + "!";
-            evolve.hidden = false;
+    async function resolveRound(data, startRect) {
+        const previous = state;
+        const event = data.last_event || {};
+        const hit = event.result === "hit";
+        const mult = event.mult || {};
+        const damage = event.damage || 0;
+        const bossDamage = event.boss_damage || 0;
+        const info = Art.boss(data.zone);
+        const token = ++fxToken;
+        const live = function () { return token === fxToken; };
+        const crit = hit && event.perfect && (mult.speed || 1) > 1;
+
+        stopTick();
+        holdingResult = true;
+
+        // keep the new numbers for later, but leave the bars where they were until the hit lands
+        state = data;
+        if (data.server_now) clockOffset = Date.parse(data.server_now) - Date.now();
+
+        buildResult(previous, data);
+
+        // 1. the card flies at the boss
+        el("answerPanel").classList.add("is-sent");
+        await launchCard(startRect, { word: event.word || (playedCard && playedCard.word) || "" });
+        if (!live()) return;
+
+        // 2. impact (the result panel shows up now)
+        el("answerPanel").hidden = true;
+        el("answerPanel").classList.remove("is-sent");
+        setStageMode("result");
+        el("resultPanel").hidden = false;
+        el("resultPanel").scrollIntoView({ block: "nearest", behavior: "smooth" });
+
+        const bossPoint = inStage(el("spriteWrap"));
+
+        if (hit) {
+            sfx.play(crit ? "crit" : "hit");
+            sfx.buzz(crit ? 60 : 30);
+            flash();
+            slash(bossPoint);
+            ring(bossPoint, "#ffffff");
+            burst(bossPoint, ["#ffffff", "#ffd34d", "#ffb347", "#7cf0d4"], 16);
+            shake(crit);
+            bossReact("is-hit", 600);
+            floatText(bossPoint, "-" + damage, crit ? "crit" : "");
+
+            if (crit) floatText({ x: bossPoint.x, y: bossPoint.y + 42 }, "QUICK!", "tag");
+            else if ((mult.combo || 1) > 1) floatText({ x: bossPoint.x, y: bossPoint.y + 42 }, "COMBO x" + event.combo_after, "tag");
+
+            paintBoss(data.boss.hp, false);
+            say(event.word + " hit " + info.name + " for " + damage + "!" + (crit ? " Lightning fast!" : ""));
         } else {
-            evolve.hidden = true;
+            sfx.play("miss");
+            floatText(bossPoint, "Miss", "miss");
+            bossReact("is-taunt", 1100);
+            say("The sentence fell apart... " + info.taunt);
         }
 
-        el("nextButton").textContent = data.status === "active" ? "Next round" : "Continue";
-        panel.hidden = false;
-        panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        await wait(1300);
+        if (!live()) return;
+
+        // 3. the boss reacts
+        if (data.status === "won") {
+            sfx.play("win");
+            bossReact("is-dead");
+            burst(bossPoint, ["#ffffff", "#ffd34d", "#7cf0d4", "#ff8fb3"], 26);
+            ring(bossPoint, "#ffd34d");
+            await say(info.defeat);
+        } else if (bossDamage > 0) {
+            await say(info.name + " used " + info.move + "!");
+            if (!live()) return;
+
+            bossReact("is-attack", 750);
+            await wait(380);
+            if (!live()) return;
+
+            sfx.play("hurt");
+            sfx.buzz(70);
+            redFlash();
+            shake(false);
+            replay(el("mePlate"), "is-hit", 500);
+            floatText(inStage(el("mePlate")), "-" + bossDamage, "hurt");
+            paintMe(data.player.hp, false);
+            say("You lost " + bossDamage + " HP.");
+
+            if (data.status === "lost") {
+                await wait(1100);
+                if (!live()) return;
+
+                sfx.play("lose");
+                bossReact("is-taunt", 1400);
+                await say("You are out of HP...");
+            }
+        }
+
+        // 4. a card grew
+        if (event.evolved && live()) {
+            await wait(500);
+            if (!live()) return;
+            await showEvolve(event.evolved);
+        }
     }
 
     function nextRound() {
+        // cancel any effects that are still running and show the true state
+        fxToken += 1;
+        finishTyping();
         holdingResult = false;
+
         el("resultPanel").hidden = true;
-        el("bossEmoji").className = "boss-emoji";
+        el("spriteWrap").classList.remove("is-hit", "is-attack", "is-taunt", "is-enter");
+        renderHud(true);
         route();
+    }
+
+    // ----------------------------------
+    // Card evolution
+    // ----------------------------------
+
+    function showEvolve(evo) {
+        return new Promise(function (resolve) {
+            const overlay = el("evolveOverlay");
+            const holder = el("evolveCard");
+            const old = playedCard || { word: evo.word, stage: evo.stage - 1, stage_label: "", uses: 0, power: 0, romanization: "", meaning: "" };
+            const oldStage = Math.max(0, evo.stage - 1);
+            const uses = (old.uses || 0) + 1;
+            const gained = 4 * (evo.stage - old.stage) +
+                (Math.floor(Math.min(uses, 30) / 3) - Math.floor(Math.min(uses - 1, 30) / 3));
+
+            const before = Object.assign({}, old, { uses: uses, stage: Math.min(old.stage, oldStage) });
+            const after = Object.assign({}, old, {
+                stage: evo.stage,
+                stage_label: evo.label,
+                uses: uses,
+                power: (old.power || 0) + gained
+            });
+
+            holder.classList.remove("is-done");
+            holder.replaceChildren(buildCard(before, { mini: true }));
+            el("evolveTitle").textContent = "What? " + evo.word + " is evolving!";
+            el("evolveSub").textContent = "";
+            el("evolveButton").hidden = true;
+            overlay.hidden = false;
+            sfx.play("evolve");
+
+            setTimeout(function () {
+                holder.replaceChildren(buildCard(after, { mini: true }));
+                holder.classList.add("is-done");
+
+                for (let i = 0; i < 18; i++) {
+                    const spark = make("i", "evolve-spark");
+                    const angle = (i / 18) * Math.PI * 2;
+                    const distance = 90 + Math.random() * 60;
+
+                    spark.style.setProperty("--dx", Math.cos(angle) * distance + "px");
+                    spark.style.setProperty("--dy", Math.sin(angle) * distance + "px");
+                    spark.style.setProperty("--rot", Math.random() * 360 + "deg");
+                    holder.appendChild(spark);
+                }
+
+                el("evolveTitle").textContent = "Congratulations!";
+                el("evolveSub").textContent = evo.word + " evolved into " + evo.label + "!";
+                sfx.buzz(80);
+
+                const button = el("evolveButton");
+                button.hidden = false;
+                button.focus();
+
+                button.onclick = function () {
+                    overlay.hidden = true;
+                    resolve();
+                };
+            }, REDUCED ? 100 : 1500);
+        });
     }
 
     // ----------------------------------
@@ -743,10 +1276,15 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    function roundsPlayed() {
+        const event = state.last_event || {};
+        return Number(event.round) || Number(state.round) || 1;
+    }
+
     function showEnd() {
         const overlay = el("endOverlay");
         const won = state.status === "won";
-        const info = bossInfo(state.zone);
+        const info = Art.boss(state.zone);
 
         overlay.classList.toggle("is-won", won);
         overlay.classList.toggle("is-lost", !won);
@@ -756,10 +1294,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (won) {
             const rounds = roundsPlayed();
-            el("endSub").textContent = "You beat " + state.boss.name + " " + info.emoji + " in " +
-                rounds + (rounds === 1 ? " round." : " rounds.");
+            el("endSub").textContent = "You beat " + info.name + " in " + rounds + (rounds === 1 ? " round." : " rounds.");
         } else if (state.status === "lost") {
-            el("endSub").textContent = state.boss.name + " wore you down. Try again with a fresh hand.";
+            el("endSub").textContent = info.name + " wore you down. Try again with a fresh hand.";
         } else {
             el("endSub").textContent = "This battle was ended.";
         }
@@ -770,7 +1307,7 @@ document.addEventListener("DOMContentLoaded", function () {
         evolutions.replaceChildren();
 
         (state.evolutions || []).forEach(function (evo) {
-            evolutions.appendChild(make("div", "evo", "✨ " + evo.word + " evolved to " + evo.label));
+            evolutions.appendChild(make("div", "evo", evo.word + " evolved to " + evo.label));
         });
 
         if (won) launchConfetti();
@@ -779,11 +1316,6 @@ document.addEventListener("DOMContentLoaded", function () {
         el("againButton").disabled = false;
         el("againButton").textContent = "Battle again";
         overlay.hidden = false;
-    }
-
-    function roundsPlayed() {
-        const event = state.last_event || {};
-        return Number(event.round) || Number(state.round) || 1;
     }
 
     async function battleAgain() {
@@ -815,7 +1347,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         el("endOverlay").hidden = true;
-        enterBattle(loaded.data);
+        enterBattle(loaded.data, true);
     }
 
     // ----------------------------------
@@ -848,14 +1380,14 @@ document.addEventListener("DOMContentLoaded", function () {
         stay.addEventListener("click", function () { overlay.remove(); });
 
         pause.addEventListener("click", function () {
-            window.location.href = "../island/island.html";
+            window.location.href = HOME_PAGE;
         });
 
         quit.addEventListener("click", async function () {
             quit.disabled = true;
 
             await rpc("battle_forfeit", { p_battle: state.id });
-            window.location.href = "../island/island.html";
+            window.location.href = HOME_PAGE;
         });
     }
 
@@ -869,12 +1401,217 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ----------------------------------
+    // How to play (first visit, and the ? button)
+    // ----------------------------------
+
+    const SAMPLE_CARDS = [
+        { word: "电梯", romanization: "diàn tī", meaning: "lift", power: 12, stage: 0, stage_label: "Basic", uses: 0 },
+        { word: "米饭", romanization: "mǐ fàn", meaning: "rice", power: 21, stage: 1, stage_label: "Grown", uses: 4 },
+        { word: "地铁", romanization: "dì tiě", meaning: "MRT", power: 33, stage: 2, stage_label: "Elite", uses: 11 }
+    ];
+
+    const GUIDE = [
+        {
+            title: "Welcome to Card Battle",
+            art: "boss",
+            body: [
+                "Street bosses are blocking the way around the island. Beat them with the word cards you have caught.",
+                "Win to earn XP. You need " + DEFAULT_MIN_CARDS + " word cards to unlock battles."
+            ]
+        },
+        {
+            title: "1. Play a card",
+            art: "cards",
+            body: [
+                "Each round you get 3 cards from your deck. Pick one.",
+                "Higher stage cards hit harder. The word on the card is the word you have to use."
+            ]
+        },
+        {
+            title: "2. Build the sentence",
+            art: "tiles",
+            body: [
+                "Tap the words in the right order to make a correct sentence that uses your card's word, then press Attack.",
+                "You get 2 tries. Answering fast gives a speed bonus, and the clock keeps running even if you open this guide.",
+                "If no question uses your card's word, the hit is only half strength."
+            ]
+        },
+        {
+            title: "3. Watch your HP",
+            art: "hearts",
+            body: [
+                "You have 100 HP. If the boss survives your hit, it hits back: a little if you got it right first time, more on the second try, and a lot if you miss.",
+                "Chain right answers for a combo bonus. Run out of HP and you lose the fight."
+            ]
+        },
+        {
+            title: "4. Evolve your cards",
+            art: "evolve",
+            body: [
+                "Every hit gives the card +1 use. Use a card enough and it evolves into a stronger stage.",
+                "A win gives 30 to 40 XP, a loss still gives 5 XP, and you always keep your cards."
+            ]
+        }
+    ];
+
+    let guideIndex = 0;
+    let guideReturnFocus = null;
+
+    function guideSeen() {
+        try { return localStorage.getItem(GUIDE_KEY) === "1"; } catch (e) { return false; }
+    }
+
+    function markGuideSeen() {
+        try { localStorage.setItem(GUIDE_KEY, "1"); } catch (e) { /* optional */ }
+    }
+
+    function guideArt(kind) {
+        const holder = el("guideArt");
+
+        holder.replaceChildren();
+        holder.className = "guide-art art-" + kind;
+
+        if (kind === "boss") {
+            const face = make("span", "boss-face zone-1");
+            const sprite = make("span", "mini-sprite");
+
+            sprite.innerHTML = Art.sprite(1);        // our own drawing
+            face.appendChild(sprite);
+            holder.appendChild(face);
+        } else if (kind === "cards") {
+            SAMPLE_CARDS.forEach(function (card) { holder.appendChild(buildCard(card, { mini: true })); });
+        } else if (kind === "evolve") {
+            holder.appendChild(buildCard(SAMPLE_CARDS[1], { mini: true }));
+            holder.appendChild(make("span", "guide-arrow", "➜"));
+            holder.appendChild(buildCard(SAMPLE_CARDS[2], { mini: true }));
+        } else if (kind === "tiles") {
+            const row = make("div", "guide-tiles");
+
+            ["我", "坐", "电梯"].forEach(function (text) { row.appendChild(make("span", "tile in-answer", text)); });
+
+            const speed = make("div", "speed");
+            const bar = make("div", "speed-bar");
+
+            bar.appendChild(document.createElement("span"));
+            speed.appendChild(make("span", "speed-ico", "⚡"));
+            speed.appendChild(bar);
+            speed.appendChild(make("span", "speed-label", "x1.25"));
+
+            holder.appendChild(row);
+            holder.appendChild(speed);
+        } else if (kind === "hearts") {
+            const row = make("div", "guide-hp");
+
+            [["You", 100, ""], ["Boss", 60, "is-mid"]].forEach(function (item) {
+                const line = make("div", "guide-hp-line");
+                const track = make("div", "hp");
+                const fill = make("i", "hp-fill " + item[2]);
+
+                fill.style.width = item[1] + "%";
+                track.appendChild(fill);
+                line.appendChild(make("span", "guide-hp-name", item[0]));
+                line.appendChild(track);
+                row.appendChild(line);
+            });
+
+            holder.appendChild(row);
+        }
+    }
+
+    function paintGuide() {
+        const slide = GUIDE[guideIndex];
+        const last = guideIndex === GUIDE.length - 1;
+        const body = el("guideBody");
+        const dots = el("guideDots");
+
+        el("guideTitle").textContent = slide.title;
+        guideArt(slide.art);
+
+        body.replaceChildren();
+        slide.body.forEach(function (line) { body.appendChild(make("p", "", line)); });
+
+        dots.replaceChildren();
+        GUIDE.forEach(function (item, index) {
+            dots.appendChild(make("i", index === guideIndex ? "is-on" : ""));
+        });
+
+        el("guideBack").disabled = guideIndex === 0;
+        el("guideNext").textContent = last ? "Got it!" : "Next";
+        el("guideSkip").hidden = last;
+    }
+
+    function openGuide() {
+        const overlay = el("guideOverlay");
+
+        guideIndex = 0;
+        guideReturnFocus = document.activeElement;
+        paintGuide();
+        overlay.hidden = false;
+        el("guideNext").focus();
+    }
+
+    function closeGuide() {
+        el("guideOverlay").hidden = true;
+        markGuideSeen();
+
+        if (guideReturnFocus && typeof guideReturnFocus.focus === "function") guideReturnFocus.focus();
+    }
+
+    function guideStep(delta) {
+        if (delta > 0 && guideIndex === GUIDE.length - 1) {
+            closeGuide();
+            return;
+        }
+
+        guideIndex = clamp(guideIndex + delta, 0, GUIDE.length - 1);
+        sfx.play("tap");
+        paintGuide();
+    }
+
+    function onGuideKey(event) {
+        if (el("guideOverlay").hidden) return;
+
+        if (event.key === "Escape") {
+            event.preventDefault();
+            closeGuide();
+        } else if (event.key === "ArrowRight") {
+            guideStep(1);
+        } else if (event.key === "ArrowLeft" && guideIndex > 0) {
+            guideStep(-1);
+        } else if (event.key === "Tab") {
+            // keep focus inside the dialog
+            const items = Array.prototype.filter.call(
+                el("guideOverlay").querySelectorAll("button"),
+                function (button) { return !button.disabled && !button.hidden; }
+            );
+
+            if (!items.length) return;
+
+            const first = items[0];
+            const lastItem = items[items.length - 1];
+
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                lastItem.focus();
+            } else if (!event.shiftKey && document.activeElement === lastItem) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+    }
+
+    // first visit only, and only on the menu (never in the middle of a fight)
+    function maybeShowGuide() {
+        if (!guideSeen() && !screens.menu.hidden) openGuide();
+    }
+
+    // ----------------------------------
     // Start
     // ----------------------------------
 
     async function start() {
-        if (!db) {
-            showMessage("Could not reach the server. Check the script paths in battle.html.");
+        if (!db || !Art) {
+            showMessage("Could not load the page. Check the script paths in battle.html.");
             return;
         }
 
@@ -882,7 +1619,17 @@ document.addEventListener("DOMContentLoaded", function () {
         el("resetButton").addEventListener("click", resetAnswer);
         el("nextButton").addEventListener("click", nextRound);
         el("againButton").addEventListener("click", battleAgain);
+        el("dialog").addEventListener("click", finishTyping);
+        el("soundButton").addEventListener("click", function () { sfx.toggle(); paintSoundButton(); });
+        el("infoButton").addEventListener("click", openGuide);
+        el("guideNext").addEventListener("click", function () { guideStep(1); });
+        el("guideBack").addEventListener("click", function () { guideStep(-1); });
+        el("guideSkip").addEventListener("click", closeGuide);
+        el("guideOverlay").addEventListener("click", function (event) { if (event.target === el("guideOverlay")) closeGuide(); });
+        document.addEventListener("keydown", onGuideKey);
         document.querySelector(".back-button").addEventListener("click", onBackClick);
+
+        paintSoundButton();
 
         const { data: sessionData } = await db.auth.getSession();
 
@@ -903,7 +1650,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const loaded = await rpc("battle_state", { p_battle: active.data });
 
             if (loaded.data) {
-                enterBattle(loaded.data);
+                enterBattle(loaded.data, false);
                 return;
             }
         }
