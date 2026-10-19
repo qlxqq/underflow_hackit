@@ -300,6 +300,9 @@ create table if not exists public.island_progress (
 -- already created the table before? these bring it up to date (safe to run again):
 alter table public.island_progress add column if not exists stats jsonb not null default '{}'::jsonb;
 alter table public.island_progress add column if not exists language varchar(10) not null default 'zh';
+-- Online / offline dots on the Friends page: each open page stamps this every minute (js/shared/presence.js).
+-- Players can already update their own profile row, so no new policy is needed.
+alter table profiles add column if not exists last_seen timestamptz;
 do $$
 begin
   -- the old table had one row per player; it now has one per player and language

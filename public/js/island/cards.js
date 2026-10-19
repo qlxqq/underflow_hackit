@@ -8,8 +8,9 @@
 //
 // Per NPC challenge: failed = no cards. Passed = 2 role cards, all right = 3, plus one
 // zone card (at most one, on any pass). Role cards come from words answered right, cards
-// not owned yet first; if there are not enough new ones the rest are duplicates. A duplicate
-// (role or zone) turns into coins and XP. Finishing the zone words earns the album badge;
+// not owned yet first; if there are not enough new ones the rest are duplicates, even when
+// the player already owns every role card of that NPC (so a pass always gives 2, a perfect run 3
+// and the zone card). A duplicate (role or zone) turns into coins and XP, and adds a spare to gift. Finishing the zone words earns the album badge;
 // every card (zone + role) earns the shiny one - both are paid when the Collection opens.
 //
 //   IslandCards.load()                      read what the player owns
@@ -124,6 +125,13 @@ const IslandCards = {
     const rightRole = this.roleList(npcId).filter((w) => rightSet.has(w.w));
     const isNew = (w) => !this.have.has(this.key(d.album, w.w));
     const chosen = [...this.shuffle(rightRole.filter(isNew)), ...this.shuffle(rightRole.filter((w) => !isNew(w)))].slice(0, count);
+    // Always give the full number of role cards: when the player has them all already (or too few of the words they
+    // answered right are role words), the rest are duplicates of role cards they own. Duplicates pay coins and XP.
+    if (chosen.length < count) {
+      const taken = new Set(chosen.map((w) => w.w));
+      const owned = this.shuffle(this.roleList(npcId).filter((w) => !taken.has(w.w) && !isNew(w)));
+      chosen.push(...owned.slice(0, count - chosen.length));
+    }
     const roleCards = chosen.filter(isNew).map((w) => ({ ...w, kind: "role" }));
     const dupes = chosen.filter((w) => !isNew(w)).map((w) => ({ ...w, kind: "role" }));
 
@@ -158,10 +166,15 @@ const IslandCards = {
   // as dupes. Used by IslandAPI.awardWords, which also opens the pack.
   // opts.max  = this many cards (what the game earned). They are drawn from the words answered right,
   //             unowned ones more likely, so a draw can still be a duplicate.
-  // opts.fill = if fewer words than that were answered right (or fit the zone), the rest are drawn from the
-  //             zone's other words, so a game that earned 4 cards always gives 4.
+  // opts.pool = this game's own words. Only these can become cards, so every game has its own cards; a word two games
+  //             share is simply a duplicate once the player owns it.
+  // opts.fill = if fewer words than that were answered right, the rest are drawn from the pool's other words
+  //             (cards the player already owns first, so duplicates), so a game that earned 4 cards always gives 4.
   async awardWords(albumId, words, opts = {}) {
-    const zone = new Map(this.zoneList(albumId).map((w) => [w.w, w]));
+    // opts.pool = the only words this game can pay (its own words); without it any word of the zone can be paid
+    const poolSet = opts && Array.isArray(opts.pool) ? new Set(opts.pool) : null;
+    const inPool = (w) => !poolSet || poolSet.has(w.w);
+    const zone = new Map(this.zoneList(albumId).filter(inPool).map((w) => [w.w, w]));
     let picked = [...new Set(words || [])].map((w) => zone.get(w)).filter(Boolean);
     const max = Number(opts && opts.max);
     const draw = (pool, count) => {
@@ -179,7 +192,13 @@ const IslandCards = {
       picked = draw(picked, max);
       if (opts.fill && picked.length < max) {
         const taken = new Set(picked.map((w) => w.w));
-        picked = [...picked, ...draw(this.zoneList(albumId).filter((w) => !taken.has(w.w)), max - picked.length)];
+        // top up from this game's own words, cards the player already owns first (duplicates, like an NPC challenge),
+        // and only if there are none of those, words they do not have yet
+        const rest = this.zoneList(albumId).filter((w) => !taken.has(w.w) && inPool(w));
+        const owned = rest.filter((w) => this.have.has(this.key(albumId, w.w)));
+        const unowned = rest.filter((w) => !this.have.has(this.key(albumId, w.w)));
+        picked = [...picked, ...draw(owned, max - picked.length)];
+        if (picked.length < max) picked = [...picked, ...draw(unowned, max - picked.length)];
       }
     }
     const fresh = picked.filter((w) => !this.have.has(this.key(albumId, w.w)));

@@ -6,6 +6,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const db = window.supabaseClient ||
         (typeof supabase !== "undefined" && supabase.auth ? supabase : null);
 
+    const heroArt = document.getElementById("friendsHeroArt");
+    if (heroArt && typeof buildFriendsScene === "function") heroArt.innerHTML = buildFriendsScene();
+
     const addFriendForm = document.getElementById("addFriendForm");
     const usernameInput = document.getElementById("friendUsername");
     const addFriendButton = document.getElementById("addFriendButton");
@@ -92,6 +95,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        await loadProfiles((data || []).map(function (row) { return row.friend_username; }));
         render(data || []);
         loadDuels();
         if (giftsReady) {
@@ -140,11 +144,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 makeButton("⚔ Duel", "btn btn-primary", function () {
                     challengeFriend(row);
                 }),
-                giftButton(row),
-                makeButton("Remove", "btn btn-outline btn-danger-text", function () {
-                    removeFriend(row, true);
-                })
-            ].filter(Boolean)));
+                giftButton(row)
+            ].filter(Boolean), function () {
+                openProfile(row);
+            }));
         });
 
         const requestTotal = incoming.length + sent.length;
@@ -160,7 +163,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function giftButton(row) {
         if (!giftsReady) return null;
 
-        const button = makeButton("🎁", "btn btn-outline", function () {
+        const button = makeButton("Gift", "btn btn-outline", function () {
             Gifts.openSend(row);
         });
 
@@ -170,10 +173,151 @@ document.addEventListener("DOMContentLoaded", function () {
         return button;
     }
 
-    function friendMeta(row) {
-        const xp = Number(row.friend_xp) || 0;
+    // ----------------------------------
+    // Profile picture and account level of the players shown (read from profiles, which everyone may read)
+    // ----------------------------------
 
-        return "⚡ " + xp + " XP";
+    const profileCache = {};
+
+    // Same formula as levelFromXp in rewards.js: total XP for level L is 50 * (L - 1)^2.
+    function levelOf(xp) {
+        return Math.floor(Math.sqrt(Math.max(0, Number(xp) || 0) / 50)) + 1;
+    }
+
+    async function loadProfiles(usernames) {
+        const wanted = usernames.filter(function (name) { return name && !profileCache[name]; });
+        if (!wanted.length) return;
+
+        let res = await db.from("profiles").select("username, avatar, xp, current_streak, last_seen").in("username", wanted);
+        // last_seen is added by database/presence.sql; until it is run, everyone just shows as offline
+        if (res.error) res = await db.from("profiles").select("username, avatar, xp, current_streak").in("username", wanted);
+        const data = res.data;
+        if (res.error || !data) return; // fall back to the letter and no level
+
+        data.forEach(function (p) { profileCache[p.username] = p; });
+    }
+
+    function friendMeta(row) {
+        const p = profileCache[row.friend_username];
+
+        return p ? "Level " + levelOf(p.xp) : "";
+    }
+
+    // Online = their page checked in (presence.js) within the last 2 and a half minutes.
+    const ONLINE_WINDOW_MS = 150000;
+
+    function isOnline(username) {
+        const p = profileCache[username];
+
+        return !!(p && p.last_seen && Date.now() - new Date(p.last_seen).getTime() < ONLINE_WINDOW_MS);
+    }
+
+    // Keeps the dots fresh while the page is open.
+    function refreshPresence() {
+        const names = Array.from(friendsList.querySelectorAll("[data-username]")).map(function (el) {
+            return el.dataset.username;
+        });
+        if (!names.length) return;
+
+        names.forEach(function (name) { delete profileCache[name]; });
+        loadProfiles(names).then(function () {
+            friendsList.querySelectorAll(".friend-row").forEach(function (item) {
+                const online = isOnline(item.dataset.username);
+
+                item.classList.toggle("is-offline", !online);
+                const dot = item.querySelector(".presence-dot");
+                if (dot) {
+                    dot.classList.toggle("is-online", online);
+                    dot.title = online ? "Online" : "Offline";
+                }
+            });
+        });
+    }
+
+    setInterval(function () {
+        if (!document.hidden && signedIn) refreshPresence();
+    }, 60000);
+
+    // ----------------------------------
+    // Friend profile pop-up (opened by tapping their picture): their details, and the place to remove them
+    // ----------------------------------
+
+    function openProfile(row) {
+        if (typeof FriendProfile === "undefined") { openBasicProfile(row); return; }
+
+        FriendProfile.open({
+            db: db,
+            friend: row,
+            online: isOnline(row.friend_username),
+            cardInfo: giftsReady ? Gifts.cardInfo : null,
+            onRemove: function () { removeFriend(row, true); },
+            onError: function (error) {
+                console.error("Friend profile failed (is database/friend_profile.sql run?):", error);
+                openBasicProfile(row); // still lets the player remove the friend
+            }
+        });
+    }
+
+    // The simple pop-up (picture, level, remove). Used only if the full profile can't be loaded.
+    function openBasicProfile(row) {
+        const p = profileCache[row.friend_username] || {};
+        const online = isOnline(row.friend_username);
+
+        const overlay = document.createElement("div");
+        overlay.className = "pf-overlay";
+
+        const card = document.createElement("div");
+        card.className = "pf-card";
+        card.setAttribute("role", "dialog");
+        card.setAttribute("aria-modal", "true");
+        card.setAttribute("aria-label", row.friend_username + " profile");
+
+        const pic = document.createElement("div");
+        pic.className = "pf-pic";
+        const picDot = document.createElement("span");
+        picDot.className = "presence-dot" + (online ? " is-online" : "");
+        if (typeof avatarSvg === "function" && p.avatar) pic.innerHTML = avatarSvg(p.avatar, 96);
+        else pic.textContent = (row.friend_username || "?").charAt(0);
+
+        pic.appendChild(picDot);
+
+        const name = document.createElement("h2");
+        name.className = "pf-name";
+        name.textContent = row.friend_username;
+
+        const status = document.createElement("p");
+        status.className = "pf-status" + (online ? " is-online" : "");
+        status.textContent = online ? "Online" : "Offline";
+
+        const facts = document.createElement("div");
+        facts.className = "pf-facts";
+        const level = document.createElement("div");
+        level.innerHTML = "<strong></strong><span>Level</span>";
+        level.querySelector("strong").textContent = String(levelOf(p.xp));
+        const streak = document.createElement("div");
+        streak.innerHTML = "<strong></strong><span>Day streak</span>";
+        streak.querySelector("strong").textContent = String(Number(p.current_streak) || 0);
+        facts.append(level, streak);
+
+        const remove = makeButton("Remove friend", "pf-remove", function () {
+            close();
+            removeFriend(row, true);
+        });
+        const closeBtn = makeButton("Close", "btn btn-outline btn-block", function () { close(); });
+
+        card.append(pic, name, status, facts, closeBtn, remove);
+        overlay.appendChild(card);
+        overlay.addEventListener("click", function (e) { if (e.target === overlay) close(); });
+
+        function onKey(e) { if (e.key === "Escape") close(); }
+        function close() {
+            document.removeEventListener("keydown", onKey);
+            overlay.remove();
+        }
+
+        document.addEventListener("keydown", onKey);
+        document.body.appendChild(overlay);
+        closeBtn.focus();
     }
 
     // ----------------------------------
@@ -199,6 +343,9 @@ document.addEventListener("DOMContentLoaded", function () {
             hideSearch();
             return;
         }
+
+        await loadProfiles((data || []).map(function (player) { return player.player_username; }));
+        if (token !== searchToken) return;
 
         searchResults.replaceChildren();
 
@@ -263,14 +410,30 @@ document.addEventListener("DOMContentLoaded", function () {
     // Build elements (textContent only, never innerHTML)
     // ----------------------------------
 
-    function makeRow(row, metaText, buttons) {
+    function makeRow(row, metaText, buttons, onAvatar) {
         const item = document.createElement("li");
         item.className = "friend-row";
+        item.dataset.username = row.friend_username || "";
 
-        const avatar = document.createElement("div");
+        // With onAvatar (the friends list) the picture is a button that opens their profile.
+        const avatar = document.createElement(onAvatar ? "button" : "div");
         avatar.className = "friend-avatar";
-        avatar.setAttribute("aria-hidden", "true");
-        avatar.textContent = (row.friend_username || "?").charAt(0);
+        if (onAvatar) {
+            avatar.type = "button";
+            avatar.setAttribute("aria-label", "View " + row.friend_username + " profile");
+            avatar.addEventListener("click", onAvatar);
+        } else {
+            avatar.setAttribute("aria-hidden", "true");
+        }
+        const profile = profileCache[row.friend_username];
+
+        if (profile && typeof avatarSvg === "function") {
+            // the picture they have equipped (built by avatars.js, never from typed text)
+            avatar.classList.add("has-pic");
+            avatar.innerHTML = avatarSvg(profile.avatar, 48);
+        } else {
+            avatar.textContent = (row.friend_username || "?").charAt(0);
+        }
 
         const info = document.createElement("div");
         info.className = "friend-info";
@@ -293,6 +456,15 @@ document.addEventListener("DOMContentLoaded", function () {
         buttons.forEach(function (button) {
             actions.appendChild(button);
         });
+
+        if (onAvatar) {
+            const online = isOnline(row.friend_username);
+            const dot = document.createElement("span");
+            dot.className = "presence-dot" + (online ? " is-online" : "");
+            dot.title = online ? "Online" : "Offline";
+            avatar.appendChild(dot);
+            item.classList.toggle("is-offline", !online);
+        }
 
         item.append(avatar, info, actions);
 
@@ -652,7 +824,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (isFriend) {
             const confirmed = await confirmDialog({
                 title: "Remove " + row.friend_username + "?",
-                text: "You will no longer see each other's XP. You can send a new request later.",
+                text: "You will no longer see each other's level. You can send a new request later.",
                 confirmLabel: "Remove friend",
                 cancelLabel: "Keep friend"
             });

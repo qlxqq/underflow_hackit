@@ -269,9 +269,20 @@ const ISLAND_TYPING_WORDS = {
  }
 };
 
-// words (optional) = the zone words the game can ask, per language and album. A game without it is assumed to ask every zone word.
+// The zone words each Composition question uses (per language and album): every zone word that is a tile in the
+// questions of database/composition_seed.sql. Only Chinese so far. Regenerate when the questions change.
+const ISLAND_COMPOSITION_WORDS = {
+ "zh": {
+  "neighbourhood": ["组屋", "住在", "家", "超市", "楼下", "公园", "邻居", "电梯", "三楼", "请问", "哪里", "买菜", "游乐场", "老人", "散步", "最近", "每天", "早上", "晚上", "跑步", "包裹", "坏了", "楼梯", "小声", "睡觉", "社区", "安静", "干净", "走"],
+  "hawker-centre": ["鸡饭", "咖啡", "冰咖啡", "茶", "面", "云吞面", "炒面", "辣", "辣椒", "吃辣", "打包", "老板", "多少钱", "好吃", "付钱", "手机", "喝", "放", "一杯", "可以"],
+  "public-transport": ["地铁", "地铁站", "巴士", "巴士站", "车票", "下一站", "乌节路", "机场", "多美歌", "转车", "刷卡", "座位", "学校", "几号", "五分钟", "三十分钟", "让给", "大约", "坐", "下车"]
+ }
+};
+
+// words = the zone words the game can ask, per language and album. A game can only pay cards for these words
+// (so to collect every card the player has to play every game). A game without a list is assumed to ask every zone word.
 const ISLAND_MINIGAMES = {
-  composition: { page: "../composition/composition.html", languages: ["zh"] },
+  composition: { page: "../composition/composition.html", languages: ["zh"], words: ISLAND_COMPOSITION_WORDS },
   pronunciation: { page: "../pronunciation/pronunciation.html", languages: ["zh", "ms", "ta"], words: ISLAND_PRONUNCIATION_WORDS },
   typing: { page: "../typing/typing.html", languages: ["zh"], words: ISLAND_TYPING_WORDS },   // Malay and Tamil sentences are not written yet
 };
@@ -405,7 +416,12 @@ const IslandMiniGames = {
     const before = album ? IslandCards.albumInfo(album) : null;
     let won = { cards: [], dupes: [] };
     if (album && cardCount > 0 && Array.isArray(result.words) && result.words.length) {
-      try { won = await IslandCards.awardWords(album, result.words, { max: cardCount, fill: true }); } catch (err) { console.error("Island: could not award cards.", err); }
+      // The cards are drawn from the words answered right in this game, and only if they are this game's own
+      // words (a word another game also asks is a duplicate once the player owns it). No words are added from outside.
+      const game = typeof getMiniGameForLevel === "function" ? getMiniGameForLevel(level.level) : null;
+      const cfg = game && ISLAND_MINIGAMES[game.id];
+      const pool = cfg && cfg.words ? ((cfg.words[IslandLang.code] || {})[album] || []) : null;
+      try { won = await IslandCards.awardWords(album, result.words, { max: cardCount, fill: false, pool }); } catch (err) { console.error("Island: could not award cards.", err); }
     }
     console.info("Island: mini-game cards", { allowed: cardCount, newCards: won.cards.length, duplicates: won.dupes.length });
     // a duplicate turns into coins and XP, the same as in an NPC challenge
