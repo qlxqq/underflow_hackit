@@ -46,6 +46,15 @@ const IslandCards = {
     } catch (err) { console.warn("Island: could not read album cards, using this device's copy.", err && err.message); }
   },
 
+  // A duplicate still pays coins and XP (the island does that), and now also adds one spare copy to the card, which
+  // the player can gift to a friend (see database/gifts.sql). Never blocks a reward: a failure is only logged.
+  async bankSpares(albumId, words) {
+    if (!words || !words.length || !this.useCloud()) return;
+    try {
+      await Promise.all(words.map((word) => supabase.rpc("card_spare_add", { p_album: albumId, p_language: this.language, p_word: word })));
+    } catch (err) { console.warn("Island: could not save a spare card.", err && err.message); }
+  },
+
   saveLocal() {
     if (IslandState.testing) return;
     try { localStorage.setItem(this.localKey(), JSON.stringify([...this.have])); } catch (err) { /* private browsing */ }
@@ -133,6 +142,7 @@ const IslandCards = {
         if (error) throw error;
       } catch (err) { console.warn("Island: could not save cards to Supabase.", err && err.message); }
     }
+    await this.bankSpares(d.album, dupes.map((w) => w.w));
     const album = this.albumInfo(d.album);
     return {
       cards: fresh.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, kind: w.kind, album: d.album, role: w.kind === "role" ? d.label : null })),
@@ -183,6 +193,7 @@ const IslandCards = {
         if (error) throw error;
       } catch (err) { console.warn("Island: could not save cards to Supabase.", err && err.message); }
     }
+    await this.bankSpares(albumId, dupes.map((w) => w.w));
     return {
       cards: fresh.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, kind: "zone", album: albumId })),
       dupes: dupes.map((w) => ({ word: w.w, pinyin: w.p, meaning: w.m, album: albumId })),

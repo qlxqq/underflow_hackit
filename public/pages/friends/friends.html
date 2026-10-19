@@ -22,6 +22,9 @@
     <link rel="stylesheet" href="../../css/shared/topbar.css">
     <link rel="stylesheet" href="../../css/shared/bottomnav.css">
     <link rel="stylesheet" href="../../css/friends/friends.css">
+<link rel="stylesheet" href="../../css/shared/theme.css">
+<script src="../../js/shared/theme.js"></script>
+    <link rel="stylesheet" href="../../css/friends/gifts.css">
 </head>
 
 <body data-page="friends">
@@ -59,6 +62,12 @@
                 <ul class="friend-list" id="duelList"></ul>
             </section>
 
+            <!-- Card gifts waiting: ones sent to me (open them) and ones I sent (filled in by gifts.js) -->
+            <section class="friends-section" id="giftSection" hidden>
+                <h2 class="section-title">Gifts <span class="count" id="giftCount"></span></h2>
+                <ul class="friend-list" id="giftList"></ul>
+            </section>
+
             <section class="friends-section" id="requestsSection" hidden>
                 <h2 class="section-title">Requests <span class="count" id="requestsCount"></span></h2>
                 <ul class="friend-list" id="requestsList"></ul>
@@ -89,6 +98,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
     <script src="../../js/shared/supabaseClient.js"></script>
     <script src="../../js/shared/bottomNav.js"></script>
+
+    <!-- Card gifts need the card word lists to show a meaning -->
+    <script src="../../js/cards/data/zoneWords.js"></script>
+    <script src="../../js/shared/roleCards.js"></script>
+    <script src="../../js/friends/gifts.js"></script>
 
     <!-- Friends feature -->
     <script src="../../js/friends/friends.js"></script>
