@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const Art = window.BattleArt;
 
-    const DEFAULT_MIN_CARDS = 20;      // the database has the final say (battle_requirements)
+    const DEFAULT_ZONE_MIN = { 1: 20, 2: 30, 3: 45 };   // the database has the final say (battle_requirements)
     const GUIDE_KEY = "battleGuideSeen";
     const CONFETTI_COLOURS = ["#f2a93b", "#17a596", "#2f6fd6", "#ffd166", "#e0554d", "#18233a"];
     const REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let state = null;              // latest battle from the database
     let clockOffset = 0;           // database clock minus this phone's clock, in ms
     let deck = [];                 // my cards (for the menu)
-    let minCards = DEFAULT_MIN_CARDS;   // cards needed to unlock battles
+    let zoneMin = Object.assign({}, DEFAULT_ZONE_MIN);   // cards needed to unlock each boss
     let haveCards = 0;             // word cards I have caught
     let totalWords = 0;            // words that exist to be found
 
@@ -340,21 +340,26 @@ document.addEventListener("DOMContentLoaded", function () {
     // Menu: pick a boss, see the deck
     // ----------------------------------
 
+    function unlockText() {
+        return "Boss 1 unlocks at " + zoneMin[1] + " word cards, boss 2 at " + zoneMin[2] + " and boss 3 at " + zoneMin[3] + ".";
+    }
+
     function renderMenu() {
-        const enough = haveCards >= minCards;
         const list = el("bossList");
         const strip = el("deckStrip");
+        const unlocked = [1, 2, 3].filter(function (zone) { return haveCards >= zoneMin[zone]; });
 
         list.replaceChildren();
 
         [1, 2, 3].forEach(function (zone) {
+            const open = haveCards >= zoneMin[zone];
             const boss = Art.boss(zone);
-            const button = make("button", "boss-card" + (enough ? "" : " is-locked"));
+            const button = make("button", "boss-card" + (open ? "" : " is-locked"));
             const face = make("span", "boss-face zone-" + zone);
             const sprite = make("span", "mini-sprite");
 
             button.type = "button";
-            button.disabled = !enough;
+            button.disabled = !open;
 
             sprite.innerHTML = Art.sprite(zone);     // our own drawing, not user data
             face.appendChild(sprite);
@@ -365,13 +370,17 @@ document.addEventListener("DOMContentLoaded", function () {
             text.appendChild(make("p", "boss-zone", boss.zone));
 
             const stats = make("span", "boss-stats");
-            stats.appendChild(make("span", "stat", "Lv " + boss.level));
-            stats.appendChild(make("span", "stat", "HP " + boss.hp));
-            stats.appendChild(make("span", "stat", "ATK " + boss.attack));
+            if (open) {
+                stats.appendChild(make("span", "stat", "Lv " + boss.level));
+                stats.appendChild(make("span", "stat", "HP " + boss.hp));
+                stats.appendChild(make("span", "stat", "ATK " + boss.attack));
+            } else {
+                stats.appendChild(make("span", "stat need", "Needs " + zoneMin[zone] + " cards"));
+            }
             text.appendChild(stats);
 
             button.appendChild(text);
-            button.appendChild(make("span", "go", enough ? "›" : "🔒"));
+            button.appendChild(make("span", "go", open ? "›" : "🔒"));
 
             button.addEventListener("click", function () { sfx.play("tap"); startBattle(zone); });
 
@@ -385,36 +394,42 @@ document.addEventListener("DOMContentLoaded", function () {
         el("deckEmpty").hidden = deck.length > 0;
         strip.hidden = deck.length === 0;
 
-        renderLock(enough);
+        renderLock(unlocked.length);
 
         show("menu");
     }
 
-    function renderLock(enough) {
+    // the panel above the bosses: progress towards the next locked boss
+    function renderLock(openCount) {
         const panel = el("lockPanel");
-        const missing = Math.max(0, minCards - haveCards);
+        const next = [1, 2, 3].find(function (zone) { return haveCards < zoneMin[zone]; });
         const left = Math.max(0, totalWords - haveCards);
         const line = el("collectLine");
 
-        panel.hidden = enough;
-        el("menuIntro").textContent = enough
-            ? "Play a word card, then use that word in a correct sentence to land the hit."
-            : "The bosses are locked for now. Catch more word cards first.";
+        panel.hidden = !next;
 
-        if (!enough) {
-            const percent = Math.min(100, Math.round((haveCards / minCards) * 100));
+        el("menuIntro").textContent = openCount === 0
+            ? "The bosses are locked for now. Catch more word cards first."
+            : "Play a word card, then use that word in a correct sentence to land the hit.";
 
-            el("lockTitle").textContent = "Battles unlock at " + minCards + " word cards";
+        if (next) {
+            const need = zoneMin[next];
+            const missing = Math.max(0, need - haveCards);
+            const percent = Math.min(100, Math.round((haveCards / need) * 100));
+
+            el("lockTitle").textContent = openCount === 0
+                ? "Battles unlock at " + need + " word cards"
+                : Art.boss(next).name + " unlocks at " + need + " word cards";
             el("lockFill").style.width = percent + "%";
-            el("lockCount").textContent = haveCards + " / " + minCards + " cards";
-            el("lockBar").setAttribute("aria-valuemax", String(minCards));
-            el("lockBar").setAttribute("aria-valuenow", String(Math.min(haveCards, minCards)));
+            el("lockCount").textContent = haveCards + " / " + need + " cards";
+            el("lockBar").setAttribute("aria-valuemax", String(need));
+            el("lockBar").setAttribute("aria-valuenow", String(Math.min(haveCards, need)));
             el("lockText").textContent = "Win " + missing + " more word card" + (missing === 1 ? "" : "s") +
-                " in the island mini-games to unlock the bosses." +
+                " in the island mini-games to unlock " + (openCount === 0 ? "the first boss" : "the next boss") + "." +
                 (left > 0 ? " There are still " + left + " words out there to discover." : "");
         }
 
-        line.hidden = !(enough && totalWords > 0);
+        line.hidden = !(!next && totalWords > 0);
 
         if (!line.hidden) {
             line.textContent = left > 0
@@ -436,7 +451,18 @@ document.addEventListener("DOMContentLoaded", function () {
         // If battle.sql was not re-run yet, fall back to counting the deck.
         const req = !reqResult.error && reqResult.data ? reqResult.data : null;
 
-        minCards = req && Number(req.min_cards) > 0 ? Number(req.min_cards) : DEFAULT_MIN_CARDS;
+        zoneMin = Object.assign({}, DEFAULT_ZONE_MIN);
+
+        if (req && req.zones) {
+            [1, 2, 3].forEach(function (zone) {
+                if (Number(req.zones[zone]) > 0) zoneMin[zone] = Number(req.zones[zone]);
+            });
+        } else if (req && Number(req.min_cards) > 0) {
+            // older battle.sql: one number for every boss
+            [1, 2, 3].forEach(function (zone) { zoneMin[zone] = Number(req.min_cards); });
+        }
+
+        GUIDE[0].body[1] = "Win to earn XP. " + unlockText();
         haveCards = req && req.have !== undefined ? Number(req.have) : deck.length;
         totalWords = req && req.total_words !== undefined ? Number(req.total_words) : 0;
 
@@ -1416,7 +1442,7 @@ document.addEventListener("DOMContentLoaded", function () {
             art: "boss",
             body: [
                 "Street bosses are blocking the way around the island. Beat them with the word cards you have caught.",
-                "Win to earn XP. You need " + DEFAULT_MIN_CARDS + " word cards to unlock battles."
+                "Win to earn XP. " + unlockText()
             ]
         },
         {
