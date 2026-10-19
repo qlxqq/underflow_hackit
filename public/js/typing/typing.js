@@ -491,6 +491,9 @@ const IslandTyping = (() => {
       // Romanisation is plain letters, so check as it goes even if the phone keyboard calls it "composing".
       if (G.romanMode || !G.composing) check();
     });
+    // The player has to type the answer themselves, so pasting or dragging the shown text
+    // into the box is blocked (covers Ctrl/Cmd-V, right-click and middle-click paste, and drag-drop).
+    ["paste", "drop"].forEach((evt) => G.el.input.addEventListener(evt, (e) => { e.preventDefault(); setFeedback(cfg.text.noPaste); }));
 
     $("zonePill").textContent = `ZONE ${zoneNum}  ${zone.name}`;
     $("zonePill").style.background = zone.color;

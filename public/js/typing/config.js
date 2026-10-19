@@ -62,6 +62,7 @@ const TYPING_CONFIG = {
     placeholderTarget: "Type it in {language}...",
     good: "Nice!",
     nudge: "Almost! Fix the red ones and keep going.",
+    noPaste: "No pasting — type it out yourself to practise.",
     noVoice: "No {language} voice on this device, so there's nothing to play.",
     noSpeech: "This browser can't read it aloud.",
     counter: "Typing · Question {n} of {total}",
