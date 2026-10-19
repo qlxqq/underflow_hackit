@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+    <title>Card Battle</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="../../manifest.webmanifest">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Noto+Sans+SC:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- Shared styles first, then this page -->
+    <link rel="stylesheet" href="../../css/shared/base.css">
+    <link rel="stylesheet" href="../../css/shared/topbar.css">
+    <link rel="stylesheet" href="../../css/battle/battle.css">
+</head>
+
+<body data-page="battle">
+    <div class="app battle-app">
+
+        <header class="top-bar has-back">
+            <a href="../island/island.html" class="icon-btn back-button" aria-label="Back to the island">&larr;</a>
+            <h1 class="top-title">Card Battle</h1>
+        </header>
+
+        <!-- Loading -->
+        <section class="screen" id="screenLoading">
+            <div class="spinner" aria-hidden="true"></div>
+            <p class="screen-text" id="loadingText">Loading...</p>
+        </section>
+
+        <!-- Menu: pick a boss -->
+        <section class="screen screen-top" id="screenMenu" hidden>
+            <h2 class="menu-title">Choose your opponent</h2>
+            <p class="screen-text">Play word cards. A card only hits when you use its word in a correct sentence.</p>
+
+            <div class="boss-list" id="bossList"></div>
+
+            <div class="deck-head">
+                <h3>Your deck</h3>
+                <span class="count" id="deckCount"></span>
+            </div>
+            <div class="deck-strip" id="deckStrip"></div>
+            <p class="screen-text" id="deckEmpty" hidden>
+                You need at least 3 word cards to battle. Win cards in the island mini-games first.
+            </p>
+
+            <div class="status-message" id="menuStatus" role="status" aria-live="polite"></div>
+        </section>
+
+        <!-- The battle -->
+        <main class="battle" id="screenBattle" hidden>
+
+            <section class="arena" aria-label="Battle status">
+                <div class="boss" id="bossBox">
+                    <div class="boss-emoji" id="bossEmoji" aria-hidden="true">👾</div>
+                    <div class="boss-info">
+                        <div class="boss-row">
+                            <p class="boss-name" id="bossName">Boss</p>
+                            <span class="chip" id="roundChip">Round 1</span>
+                        </div>
+                        <div class="hp hp-boss"><span id="bossHpFill"></span></div>
+                        <p class="hp-text"><span id="bossHpText">0 / 0</span> HP</p>
+                    </div>
+                </div>
+
+                <div class="me" id="meBox">
+                    <p class="me-name">You</p>
+                    <div class="hp hp-me"><span id="meHpFill"></span></div>
+                    <p class="hp-text"><span id="meHpText">0 / 0</span> HP</p>
+                    <span class="combo-badge" id="comboBadge" hidden>🔥 Combo x2</span>
+                </div>
+            </section>
+
+            <!-- Phase 1: pick a card -->
+            <section class="panel" id="pickPanel" hidden>
+                <h3 class="panel-title">Choose a card to play</h3>
+                <p class="panel-sub" id="pickSub">Use the word in a correct sentence to hit.</p>
+                <div class="hand" id="hand"></div>
+            </section>
+
+            <!-- Phase 2: build the sentence -->
+            <section class="panel" id="answerPanel" hidden>
+                <div class="playing" id="playingCard"></div>
+
+                <div class="speed" aria-hidden="true">
+                    <div class="speed-bar"><span id="speedFill"></span></div>
+                    <span class="speed-label" id="speedLabel">⚡ x1.25</span>
+                </div>
+
+                <p class="off-theme" id="offTheme" hidden>No question uses this word, so this attack is weaker (x0.5).</p>
+
+                <p class="prompt" id="promptText"></p>
+
+                <div class="answer-area" id="answerArea" aria-label="Your sentence" aria-live="polite">
+                    <span class="answer-placeholder" id="answerPlaceholder">Tap the words in order</span>
+                </div>
+
+                <div class="word-bank" id="wordBank"></div>
+
+                <p class="answer-message" id="answerMessage" role="status" aria-live="polite"></p>
+
+                <div class="actions">
+                    <div class="tries" id="tries" aria-label="Tries left"></div>
+                    <button type="button" class="btn btn-outline btn-sm" id="resetButton" disabled>Reset</button>
+                    <button type="button" class="btn btn-primary" id="attackButton" disabled>Attack ⚔</button>
+                </div>
+            </section>
+
+            <!-- Result of the round -->
+            <section class="panel result" id="resultPanel" hidden>
+                <h3 class="result-title" id="resultTitle">Hit!</h3>
+                <p class="result-damage" id="resultDamage">-0</p>
+                <div class="chips" id="resultChips"></div>
+                <p class="result-line" id="resultBoss"></p>
+
+                <div class="result-sentence">
+                    <p class="result-label" id="resultSentenceLabel">Sentence</p>
+                    <p class="result-zh" id="resultSentence"></p>
+                    <p class="result-note" id="resultNote"></p>
+                </div>
+
+                <div class="evolve" id="resultEvolve" hidden></div>
+
+                <button type="button" class="btn btn-primary" id="nextButton">Next round</button>
+            </section>
+
+            <div class="status-message" id="battleStatus" role="status" aria-live="polite"></div>
+        </main>
+
+        <!-- Victory / defeat -->
+        <div class="end-overlay" id="endOverlay" hidden>
+            <div class="confetti" id="confetti" aria-hidden="true"></div>
+            <div class="end-card" role="dialog" aria-modal="true" aria-labelledby="endTitle">
+                <div class="end-emoji" id="endEmoji" aria-hidden="true">🏆</div>
+                <h2 class="end-title" id="endTitle">Victory!</h2>
+                <p class="end-sub" id="endSub"></p>
+                <p class="end-xp" id="endXp"></p>
+                <div class="end-evolutions" id="endEvolutions"></div>
+                <div class="end-actions">
+                    <button type="button" class="btn btn-primary" id="againButton">Battle again</button>
+                    <a class="btn btn-outline" href="../island/island.html">Back to the island</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Supabase library (same pinned version as island.html), then the shared client, each loaded once -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+    <script src="../../js/shared/supabaseClient.js"></script>
+
+    <!-- Battle feature -->
+    <script src="../../js/battle/battle.js"></script>
+</body>
+</html>
