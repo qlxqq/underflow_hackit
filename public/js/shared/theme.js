@@ -9,7 +9,7 @@
    - Other code can use AppTheme.get(), AppTheme.set("dark"), AppTheme.isDark(). */
 (function () {
   var KEY = 'theme';
-  var CHOICES = ['system', 'light', 'dark'];
+  var CHOICES = ['light', 'dark'];
   var DARK_BAR = '#182132'; // browser bar colour on phones in dark mode (same as --white)
   var root = document.documentElement;
   var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
@@ -110,14 +110,14 @@
     for (var i = 0; i < boxes.length; i++) {
       var opts = boxes[i].querySelectorAll('.theme-opt');
       for (var j = 0; j < opts.length; j++) {
-        var on = opts[j].getAttribute('data-choice') === choice;
+        var on = opts[j].getAttribute('data-choice') === (isDark() ? 'dark' : 'light');
         opts[j].setAttribute('aria-checked', on ? 'true' : 'false');
         opts[j].tabIndex = on ? 0 : -1;
       }
       var note = boxes[i].nextElementSibling;
       if (note && note.className === 'theme-note') {
         note.textContent = choice === 'system' ? 'Matches your device (' + (isDark() ? 'dark' : 'light') + ' right now).' : '';
-        note.hidden = choice !== 'system';
+        note.hidden = true;
       }
     }
   }
