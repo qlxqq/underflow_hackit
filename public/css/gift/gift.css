@@ -1,0 +1,54 @@
+/* Opening a gifted card: pages/gift/gift.html. Uses the shared tokens from base.css. */
+
+.gf-page { display: flex; flex-direction: column; min-height: 100dvh; background: var(--bg, #f3f6fb); }
+.gf-top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; background: var(--white, #fff); border-bottom: 1px solid var(--line, #e2e8f0); }
+.gf-progress { flex: 1; display: flex; gap: 6px; min-width: 0; }
+.gf-progress span { flex: 1; height: 8px; border-radius: 999px; background: var(--lock-bg, #e2e8f0); transition: background 0.3s; }
+.gf-progress span.is-done { background: #2e9e5b; }
+.gf-progress span.is-current { background: var(--amber, #f2a93b); }
+.gf-lang { cursor: default; pointer-events: none; }
+
+.gf-main { flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 16px 16px 40px; }
+.gf-step { display: flex; flex-direction: column; gap: 14px; }
+.gf-step[hidden] { display: none; }
+
+.gf-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 18px; text-align: center; background: var(--white, #fff); border: 1px solid var(--line, #e2e8f0); border-radius: var(--radius-lg, 22px); }
+.gf-card > * { margin: 0; }
+.gf-title { font-size: 24px; font-weight: 800; color: var(--ink, #18233a); }
+.gf-sub { font-size: 14px; line-height: 1.5; color: var(--muted, #6b7a90); }
+.gf-from { font-size: 14px; font-weight: 700; color: var(--muted, #6b7a90); }
+.gf-step-label { font-size: 12px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--muted, #6b7a90); }
+.gf-ask { font-size: 16px; font-weight: 700; color: var(--ink, #18233a); }
+.gf-english { font-size: 30px; font-weight: 800; color: var(--ink, #18233a); line-height: 1.2; }
+.gf-english-sm { font-size: 17px; font-weight: 700; color: var(--muted, #6b7a90); }
+.gf-boxes { font-size: 26px; letter-spacing: 8px; color: #b6c1d3; min-height: 30px; }
+.gf-hint { font-size: 16px; font-weight: 800; color: #0f7a6f; background: #e0f4f1; border-radius: 12px; padding: 6px 12px; }
+.gf-inline-word { font-size: 22px; font-family: var(--font-cjk, inherit); }
+.gf-word { font-size: 56px; font-weight: 800; line-height: 1.1; color: var(--ink, #18233a); font-family: "Noto Sans SC", "Noto Sans Tamil", "Manrope", sans-serif; }
+.gf-roman { font-size: 20px; font-weight: 700; color: #0f7a6f; }
+
+.gf-mystery-card { width: 96px; height: 128px; border-radius: 16px; display: grid; place-items: center; background: linear-gradient(160deg, #7a5cc4, #4a6cf0); color: #fff; font-size: 52px; font-weight: 800; box-shadow: 0 10px 24px rgba(74, 108, 240, 0.35); transform: rotate(-4deg); }
+
+.gf-input { width: 100%; box-sizing: border-box; font: inherit; font-size: 20px; padding: 14px 16px; border: 2px solid var(--line, #d9e0ec); border-radius: 16px; background: var(--white, #fff); color: var(--ink, #18233a); }
+.gf-input:focus { outline: none; border-color: var(--amber, #f2a93b); }
+.gf-area { resize: none; min-height: 96px; line-height: 1.4; }
+.gf-feedback { min-height: 22px; margin: 0; text-align: center; font-size: 15px; font-weight: 700; color: var(--muted, #6b7a90); }
+.gf-feedback.is-good { color: #2e9e5b; }
+.gf-feedback.is-bad { color: #c2611a; }
+.gf-actions { display: flex; gap: 10px; }
+.gf-actions .btn { flex: 1; }
+.gf-switch { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted, #6b7a90); }
+.gf-switch[hidden] { display: none; }
+.gf-notice { margin: 0; padding: 12px 14px; border-radius: 14px; background: #fff4de; color: #8a5a10; font-size: 14px; line-height: 1.4; }
+.gf-notice[hidden] { display: none; }
+
+.gf-mic-live { background: #e0463a !important; border-color: #e0463a !important; color: #fff !important; }
+
+.gf-done-emoji { font-size: 44px; }
+.gf-final-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 18px 28px; margin: 4px 0; border-radius: 18px; background: linear-gradient(160deg, #fff7e6, #ffe9c2); border: 2px solid #f3d9a4; }
+.gf-final-word { font-size: 44px; font-weight: 800; color: var(--ink, #18233a); font-family: "Noto Sans SC", "Noto Sans Tamil", "Manrope", sans-serif; }
+.gf-final-roman { font-size: 18px; font-weight: 700; color: #0f7a6f; }
+.gf-final-meaning { font-size: 16px; font-weight: 700; color: var(--muted, #6b7a90); }
+.gf-page a.btn { text-align: center; text-decoration: none; }
+
+@media (prefers-reduced-motion: reduce) { .gf-progress span { transition: none; } }
