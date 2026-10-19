@@ -189,11 +189,91 @@ const ISLAND_PRONUNCIATION_WORDS = {
  }
 };
 
+// The zone words each Typing sentence uses (per language and album). Practise sends a card to the Typing building
+// only if one of its sentences has that word. Generated from the sentence tags in js/typing/typingData.js.
+const ISLAND_TYPING_WORDS = {
+ "zh": {
+  "neighbourhood": [
+   "今天",
+   "攀岩",
+   "手臂",
+   "酸痛",
+   "游乐场",
+   "小孩",
+   "玩",
+   "晚上",
+   "阿姨",
+   "吃饭",
+   "奶奶",
+   "喜欢",
+   "聊天",
+   "中午",
+   "滑梯",
+   "烫",
+   "公园",
+   "散步",
+   "楼下",
+   "叔叔",
+   "下棋",
+   "邻居",
+   "记得",
+   "打招呼",
+   "电梯",
+   "坏了",
+   "楼梯",
+   "走"
+  ],
+  "hawker-centre": [
+   "鸡饭",
+   "打包",
+   "老板",
+   "一包",
+   "咖啡",
+   "糖",
+   "一杯",
+   "少糖",
+   "有人",
+   "排队",
+   "好多",
+   "辣",
+   "辣椒",
+   "加",
+   "一点",
+   "多少钱",
+   "一共",
+   "位子",
+   "拥挤",
+   "找",
+   "付钱",
+   "手机",
+   "可以",
+   "好吃"
+  ],
+  "public-transport": [
+   "乌节路",
+   "师傅",
+   "车费",
+   "德士",
+   "德士站",
+   "下一站",
+   "转乘",
+   "巴士",
+   "刷卡",
+   "地铁",
+   "延误",
+   "淡滨尼",
+   "停车",
+   "谢谢",
+   "让座"
+  ]
+ }
+};
+
 // words (optional) = the zone words the game can ask, per language and album. A game without it is assumed to ask every zone word.
 const ISLAND_MINIGAMES = {
   composition: { page: "../composition/composition.html", languages: ["zh"] },
   pronunciation: { page: "../pronunciation/pronunciation.html", languages: ["zh", "ms", "ta"], words: ISLAND_PRONUNCIATION_WORDS },
-  // typing: { page: "../typing/typing.html", languages: ["zh", "ms", "ta"] },
+  typing: { page: "../typing/typing.html", languages: ["zh"], words: ISLAND_TYPING_WORDS },   // Malay and Tamil sentences are not written yet
 };
 
 const ISLAND_MINIGAME_RESULT_KEY = "island:minigame-result";

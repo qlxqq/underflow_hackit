@@ -4,7 +4,7 @@
 -- tables and columns are skipped, policies and functions are replaced.
 -- Sections: profiles, journey_progress, vocabulary, album_cards, daily_quests,
 -- user_badges, add_rewards, composition_questions, pronunciation_questions,
--- island_progress, island_earn / island_spend.
+-- typing_questions, island_progress, island_earn / island_spend.
 -- ============================================================
 
 -- ---------- profiles: one row per player ----------
@@ -235,6 +235,42 @@ ON public.pronunciation_questions;
 
 CREATE POLICY "Anyone can read pronunciation questions"
 ON public.pronunciation_questions
+FOR SELECT
+TO anon, authenticated
+USING (true);
+
+-- ============================================================
+-- TYPING: sentence bank for the Typing game of every zone
+-- ============================================================
+-- One row per sentence the player types (three times, with less help each time), in Chinese (zh) so far.
+-- Malay (ms) and Tamil (ta) rows can be added the same way. There are no levels: each run asks random
+-- sentences from the zone's bank. The sentences are added by database/typing_questions.sql (run that after
+-- this file). words = the island's zone words used in the sentence (they can win cards).
+-- Same for every player: anyone can read them, nobody can change them from the app.
+
+CREATE TABLE IF NOT EXISTS public.typing_questions (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    zone INTEGER NOT NULL,
+    topic TEXT NOT NULL,
+    language VARCHAR(10) NOT NULL,
+    target TEXT NOT NULL,                      -- the sentence the player types
+    romanization TEXT NOT NULL DEFAULT '',     -- pinyin, one syllable per typed character
+    english TEXT NOT NULL,                     -- what it means
+    words TEXT[] NOT NULL DEFAULT '{}',        -- zone words used in the sentence
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT unique_typing_sentence
+        UNIQUE (zone, language, target)
+);
+
+ALTER TABLE public.typing_questions
+ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can read typing questions"
+ON public.typing_questions;
+
+CREATE POLICY "Anyone can read typing questions"
+ON public.typing_questions
 FOR SELECT
 TO anon, authenticated
 USING (true);
