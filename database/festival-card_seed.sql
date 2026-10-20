@@ -91,32 +91,44 @@ language sql immutable as $$
     '[^a-z]', '', 'g')
 $$;
 
--- ---------- practise a hunt card ----------
-create or replace function public.festival_card_practise(p_event text, p_word text, p_answer text) returns jsonb
+-- ---------- practise a hunt card: the player did the three steps (type, say, write); this adds one use ----------
+-- Hunt cards have their own count: nothing here touches vocabulary or album_cards. The sentence must use the word (or its pinyin).
+-- A card can be practised at most once every 20 seconds, which no real player will notice but stops a script from spamming it.
+alter table public.festival_cards add column if not exists last_practised_at timestamptz;
+
+drop function if exists public.festival_card_practise(text, text, text);
+create or replace function public.festival_card_practise(p_event text, p_word text, p_sentence text) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare me uuid := auth.uid();
         fw festival_words%rowtype;
-        typed text := coalesce(p_answer, '');
-        ok boolean;
+        c festival_cards%rowtype;
+        s text := trim(coalesce(p_sentence, ''));
         n integer; st integer;
 begin
   if me is null then raise exception 'not signed in'; end if;
-  if char_length(typed) > 40 then raise exception 'too long'; end if;
+  if char_length(s) < 2 or char_length(s) > 200 then raise exception 'write a short sentence first'; end if;
   select * into fw from festival_words where event_id = p_event and word = p_word;
   if not found then raise exception 'unknown word'; end if;
-  if not exists (select 1 from festival_cards where user_id = me and event_id = p_event and word = p_word) then
-    raise exception 'you have not found this card';
+  select * into c from festival_cards where user_id = me and event_id = p_event and word = p_word for update;
+  if not found then raise exception 'you have not found this card'; end if;
+  if c.last_practised_at is not null and c.last_practised_at > now() - interval '20 seconds' then
+    raise exception 'slow down a little, then try again';
   end if;
-  ok := regexp_replace(typed, '\s', '', 'g') = fw.word
-        or (_festival_plain(typed) <> '' and _festival_plain(typed) = _festival_plain(fw.pinyin));
-  if not ok then return jsonb_build_object('correct', false); end if;
+  if position(fw.word in s) = 0
+     and not (_festival_plain(fw.pinyin) <> '' and position(_festival_plain(fw.pinyin) in _festival_plain(s)) > 0) then
+    raise exception 'the sentence must use the word';
+  end if;
   update festival_cards
      set usage_count = usage_count + 1,
-         evolution_stage = case when usage_count + 1 >= 3 then 2 else 1 end
+         evolution_stage = case when usage_count + 1 >= 3 then 2 else 1 end,
+         last_practised_at = now()
    where user_id = me and event_id = p_event and word = p_word
   returning usage_count, evolution_stage into n, st;
-  return jsonb_build_object('correct', true, 'usage_count', n, 'stage', st);
+  return jsonb_build_object('usage_count', n, 'stage', st);
 end $$;
 revoke all on function public._festival_plain(text) from public, anon, authenticated;
 revoke all on function public.festival_card_practise(text, text, text) from public, anon;
 grant execute on function public.festival_card_practise(text, text, text) to authenticated;
+
+-- make the API see the new function straight away
+notify pgrst, 'reload schema';

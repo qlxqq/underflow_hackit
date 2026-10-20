@@ -197,7 +197,7 @@ async function checkPhoto(file) {
     openAsk(r.spotted[0]); // the others wait in the list, marked "Photo approved"
     return;
   }
-  if (r.already && r.already.length) { say("You already found that one. Look for another!", "info"); return; }
+  if (r.already && r.already.length) { say("You already collected that one. Each item can only be collected once, so look for another!", "info"); return; }
   if (r.rejected && r.rejected.length) {
     const w = r.rejected[0], meaning = (eventWords.find((x) => x.word === w.word) || {}).meaning || "that";
     say(`That looks like ${WHY[w.why] || "a picture"} of a ${meaning}. Find a real one and photograph it.`, "error");

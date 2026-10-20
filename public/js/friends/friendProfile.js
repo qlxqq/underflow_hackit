@@ -11,6 +11,14 @@ const FriendProfile = (function () {
   const RARITY_NAMES = { common: "Common", uncommon: "Uncommon", rare: "Rare", epic: "Epic", legendary: "Legendary" };
   const ALBUM_NAMES = { neighbourhood: "Neighbourhood", "hawker-centre": "Hawker centre", "public-transport": "Public transport" };
   const LANG_NAMES = { zh: "Chinese", ms: "Malay", ta: "Tamil" };
+  // festival hunts: label and colour (the same as js/festival/festivalCard.js)
+  const FEST = {
+    halloween: { label: "Halloween", color: "#6a35c9", soft: "#efe6fb" },
+    cny2027: { label: "Chinese New Year", color: "#c8302b", soft: "#fde8e6" },
+    dragonboat2027: { label: "Dragon Boat", color: "#1f8a5b", soft: "#e2f5ec" },
+    midautumn2027: { label: "Mid-Autumn", color: "#b8650a", soft: "#fff1d6" },
+  };
+  const festInfo = (id, name) => FEST[id] || { label: name || "Festival", color: "#6a35c9", soft: "#efe6fb" };
 
   // Same level rule as rewards.js: total XP for level L is 50 * (L - 1)^2.
   function levelFromXp(xp) {
@@ -55,11 +63,25 @@ const FriendProfile = (function () {
     return `<svg viewBox="0 0 96 112" aria-hidden="true"><path d="M30 70L20 106L34 98L42 110L52 72z" fill="#e0463a"/><path d="M66 70L76 106L62 98L54 110L44 72z" fill="#c23a30"/><circle cx="48" cy="46" r="42" fill="#f2a93b"/><circle cx="48" cy="46" r="36" fill="#ffd166"/><circle cx="48" cy="46" r="31" fill="#fff4de"/><path d="M48 24l6.5 14 15 1.6-11.2 10 3.2 14.8L48 56l-13.5 8.4 3.2-14.8-11.2-10 15-1.6z" fill="#f2a93b"/></svg>`;
   }
 
-  function badgeInfo(id) {
-    const m = /^(album|album-master):(.+):([a-z]{2})$/.exec(String(id));
+  // A festival medal, in the festival's colour (shiny gold when every card is mastered).
+  function festMedal(eventId, master) {
+    const c = festInfo(eventId);
+    const rb = `color-mix(in srgb, ${c.color} 70%, #000)`;
+    if (master) {
+      return `<svg viewBox="0 0 96 112" aria-hidden="true"><path d="M30 70L20 106L34 98L42 110L52 72z" fill="${c.color}"/><path d="M66 70L76 106L62 98L54 110L44 72z" fill="${rb}"/><circle cx="48" cy="46" r="44" fill="#f2a93b"/><circle cx="48" cy="46" r="37" fill="#fff4c2"/><circle cx="48" cy="46" r="33" fill="#ffe28a"/><path d="M48 24l6.5 14 15 1.6-11.2 10 3.2 14.8L48 56l-13.5 8.4 3.2-14.8-11.2-10 15-1.6z" fill="${c.color}"/></svg>`;
+    }
+    return `<svg viewBox="0 0 96 112" aria-hidden="true"><path d="M30 70L20 106L34 98L42 110L52 72z" fill="${c.color}"/><path d="M66 70L76 106L62 98L54 110L44 72z" fill="${rb}"/><circle cx="48" cy="46" r="42" fill="${c.color}"/><circle cx="48" cy="46" r="36" fill="${c.soft}"/><circle cx="48" cy="46" r="31" fill="#fff"/><path d="M48 24l6.5 14 15 1.6-11.2 10 3.2 14.8L48 56l-13.5 8.4 3.2-14.8-11.2-10 15-1.6z" fill="${c.color}"/></svg>`;
+  }
+
+  // A badge the friend picked: { id: "album:<album>:<lang>" or "festival:<event>:<lang>", master: true when the shiny one is earned }.
+  function badgeInfo(b) {
+    const id = typeof b === "string" ? b : b && b.id;
+    const m = /^(album|festival):(.+):([a-z]{2})$/.exec(String(id));
     if (!m) return null;
+    const master = !!(b && typeof b === "object" && b.master);
+    if (m[1] === "festival") return { festival: true, key: m[2], master, name: festInfo(m[2]).label, lang: LANG_NAMES[m[3]] || m[3] };
     const name = ALBUM_NAMES[m[2]] || m[2].replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
-    return { master: m[1] === "album-master", name, lang: LANG_NAMES[m[3]] || m[3] };
+    return { master, name, lang: LANG_NAMES[m[3]] || m[3] };
   }
 
   function el(tag, cls, text) {
@@ -76,13 +98,17 @@ const FriendProfile = (function () {
       meaning = info.meaning || ""; roman = info.romanization || "";
       try { rarity = typeof getRarity === "function" ? getRarity(card.word, card.language) : null; } catch (err) { rarity = null; }
     }
-    const color = RARITY_COLORS[rarity] || "#8a97ab";
+    let color = RARITY_COLORS[rarity] || "#8a97ab", label = RARITY_NAMES[rarity] || "";
+    if (card.kind === "festival") {   // a treasure-hunt card: the festival's colour and name instead of a rarity
+      const f = festInfo(card.event, card.event_name);
+      color = f.color; label = f.label;
+    }
     const box = el("div", "fp-card");
     box.style.setProperty("--rc", color);
     box.append(el("div", "fp-card-word" + ([...card.word].length > 5 ? " long" : ""), card.word));
     if (roman) box.append(el("div", "fp-card-sub", roman));
     if (meaning) box.append(el("div", "fp-card-meaning", meaning));
-    box.append(el("div", "fp-card-rar", RARITY_NAMES[rarity] || ""));
+    box.append(el("div", "fp-card-rar", label));
     // how far the card has evolved from practising it: Caught -> Trained -> Mastered
     const stage = Math.min(Math.max(Number(card.stage) || 0, 0), 2);
     box.classList.add("stage-" + stage);
@@ -125,16 +151,15 @@ const FriendProfile = (function () {
     bar.append(el("p", "fp-xp-text", lv.into + " / " + lv.span + " XP to level " + (lv.level + 1)));
     card.append(stats, bar);
 
-    // badges (only the ones they have earned)
+    // badges (the up to 3 they chose to show)
     const badges = (data.badges || []).map(badgeInfo).filter(Boolean);
     const bHead = el("h3", "fp-title", "Badges");
-    bHead.append(el("span", "fp-count", badges.length ? String(badges.length) : ""));
     const bBox = el("div", "fp-badges");
-    if (!badges.length) bBox.append(el("p", "fp-empty", "No badges yet."));
+    if (!badges.length) bBox.append(el("p", "fp-empty", "No badges picked yet."));
     badges.forEach((b) => {
       const item = el("div", "fp-badge");
       item.title = b.name + " · " + b.lang + (b.master ? " (all cards)" : "");
-      item.innerHTML = medal(b.master);
+      item.innerHTML = b.festival ? festMedal(b.key, b.master) : medal(b.master);
       item.append(el("span", "", b.name));
       bBox.append(item);
     });

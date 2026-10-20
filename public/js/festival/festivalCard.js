@@ -51,5 +51,14 @@ const FESTIVAL_CARD = (() => {
     d.innerHTML = html(card, opt).trim();
     return d.firstElementChild;
   }
-  return { info, html, cardEl, stageOf, STAGES, USES_FOR_MASTER, esc };
+  // The festival badge: a medal in the festival's colour. Master (every card mastered) is the shiny gold one.
+  function medal(eventId, master) {
+    const c = info(eventId);
+    const ribbonA = c.color, ribbonB = `color-mix(in srgb, ${c.color} 70%, #000)`;
+    if (master) {
+      return `<svg viewBox="0 0 96 112" aria-hidden="true"><path d="M30 70L20 106L34 98L42 110L52 72z" fill="${ribbonA}"/><path d="M66 70L76 106L62 98L54 110L44 72z" fill="${ribbonB}"/><circle cx="48" cy="46" r="44" fill="#f2a93b"/><circle cx="48" cy="46" r="37" fill="#fff4c2"/><circle cx="48" cy="46" r="33" fill="#ffe28a"/><path d="M48 24l6.5 14 15 1.6-11.2 10 3.2 14.8L48 56l-13.5 8.4 3.2-14.8-11.2-10 15-1.6z" fill="${c.color}"/><circle cx="26" cy="22" r="3" fill="#fff" opacity=".8"/><circle cx="72" cy="30" r="2" fill="#fff" opacity=".8"/></svg>`;
+    }
+    return `<svg viewBox="0 0 96 112" aria-hidden="true"><path d="M30 70L20 106L34 98L42 110L52 72z" fill="${ribbonA}"/><path d="M66 70L76 106L62 98L54 110L44 72z" fill="${ribbonB}"/><circle cx="48" cy="46" r="42" fill="${c.color}"/><circle cx="48" cy="46" r="36" fill="${c.soft}"/><circle cx="48" cy="46" r="31" fill="#fff"/><path d="M48 24l6.5 14 15 1.6-11.2 10 3.2 14.8L48 56l-13.5 8.4 3.2-14.8-11.2-10 15-1.6z" fill="${c.color}"/></svg>`;
+  }
+  return { info, html, cardEl, stageOf, medal, STAGES, USES_FOR_MASTER, esc };
 })();
