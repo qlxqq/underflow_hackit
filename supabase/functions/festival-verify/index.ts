@@ -9,7 +9,8 @@
 //
 //   2. ANSWER { mode: "answer", eventId, word, answer }
 //      The player must give the Chinese word (characters, or pinyin with or without tones) for a spotted
-//      word. When it is right the word is claimed and paid through festival_claim.
+//      word. When it is right the word is claimed and paid through festival_claim. The listed word or its pinyin is
+//      accepted at once; any other answer is judged by a small model, so synonyms (水壶 for 水瓶) count too.
 //      -> { correct: true, claim: { found, points, bonus, total_found, total_words } } or { correct: false }
 //
 // festival_claim can only be called with the service role, so a word can only be found through this function.
@@ -21,7 +22,7 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 // A bigger model is better at telling a real object from a picture of one. Swap in a Haiku model to save cost.
-const VERIFY_MODEL = "claude-sonnet-4-5-20250929";
+const VERIFY_MODEL = "claude-sonnet-5-5";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
@@ -42,6 +43,35 @@ function answerMatches(answer: string, word: string, pinyin: string) {
   if (keepChars(answer) === keepChars(word)) return true;
   const p = plainPinyin(answer);
   return p.length > 0 && p === plainPinyin(pinyin);
+}
+
+// There is often more than one right way to say a thing (water bottle: 水瓶, 水壶, 瓶子, 矿泉水瓶...). When the answer is not
+// the listed word, a small model decides whether it is another correct Chinese word for the same thing. It accepts
+// characters or pinyin (with or without tones and spaces), and rejects a different thing, an English word or nonsense.
+const ANSWER_MODEL = "claude-haiku-4-5-20251001";
+async function aiAcceptsAnswer(answer: string, word: string, pinyin: string, meaning: string) {
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: ANSWER_MODEL, max_tokens: 60,
+        system: `You mark answers in a Chinese vocabulary game. The player photographed something and must name it in Chinese.
+Target: ${word} (${pinyin}) = "${meaning}".
+Accept the answer if it is a correct Chinese word for the SAME thing: a common synonym, an everyday alternative or a more specific name (for example 水壶, 瓶子 or 矿泉水瓶 for a water bottle), written in Chinese characters or in pinyin (tone marks, tone numbers and spaces do not matter). Singapore and Mainland usage are both fine.
+Reject an English answer, a different object, a word that only shares one character, or nonsense.
+Reply with ONLY JSON: {"ok": true or false}`,
+        messages: [{ role: "user", content: JSON.stringify({ answer }) }],
+      }),
+    });
+    if (!res.ok) return false;
+    const reply = await res.json();
+    const text = (reply.content || []).map((c: { text?: string }) => c.text || "").join("");
+    const parsed = parseObject(text);
+    return !!(parsed && parsed.ok === true);
+  } catch {
+    return false;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -70,7 +100,8 @@ Deno.serve(async (req) => {
       const { data: seen } = await admin.from("festival_spotted").select("word")
         .eq("user_id", userId).eq("event_id", eventId).eq("word", target.word).maybeSingle();
       if (!seen) return json({ error: "Take a photo of it first." }, 400);
-      if (!answerMatches(body.answer, target.word, target.pinyin)) return json({ correct: false });
+      if (!answerMatches(body.answer, target.word, target.pinyin)
+          && !(await aiAcceptsAnswer(body.answer, target.word, target.pinyin, target.meaning))) return json({ correct: false });
       const { data, error } = await admin.rpc("festival_claim", { p_user: userId, p_event: eventId, p_words: [target.word] });
       if (error) return json({ error: error.message }, 400);
       return json({ correct: true, claim: data });
@@ -106,11 +137,18 @@ ${list}`;
         ] }],
       }),
     });
-    if (!res.ok) return json({ error: "Could not check the photo." }, 502);
+    if (!res.ok) {
+      // Shows up in the function's logs (Supabase dashboard > Edge Functions > festival-verify > Logs).
+      console.error("Anthropic API error:", res.status, (await res.text()).slice(0, 600));
+      return json({ error: "Could not check the photo." }, 502);
+    }
     const reply = await res.json();
     const text = (reply.content || []).map((c: { text?: string }) => c.text || "").join("");
     const parsed = parseObject(text);
-    if (!parsed || !Array.isArray(parsed.results)) return json({ error: "Could not check the photo." }, 502);
+    if (!parsed || !Array.isArray(parsed.results)) {
+      console.error("Unreadable reply from the photo check:", text.slice(0, 600));
+      return json({ error: "Could not check the photo." }, 502);
+    }
 
     const valid = new Set(words.map((w) => w.word));
     const real: string[] = [], rejected: { word: string; why: string }[] = [];

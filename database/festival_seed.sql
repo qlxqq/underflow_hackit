@@ -40,3 +40,30 @@ insert into festival_words (event_id, word, pinyin, meaning, chars, strokes, sor
   ('cny2027', '福', 'fú', 'blessing / good fortune', '[{"c":"福","py":"fú","m":"blessing / good fortune","s":13}]'::jsonb, 13, 11),
   ('cny2027', '恭喜发财', 'gōng xǐ fā cái', 'wishing you prosperity', '[{"c":"恭","py":"gōng","m":"respectful","s":10},{"c":"喜","py":"xǐ","m":"joy / congratulate","s":12},{"c":"发","py":"fā","m":"to get rich","s":5},{"c":"财","py":"cái","m":"wealth","s":7}]'::jsonb, 34, 12)
 on conflict (event_id, word) do update set pinyin = excluded.pinyin, meaning = excluded.meaning, chars = excluded.chars, strokes = excluded.strokes, sort = excluded.sort;
+
+
+-- ============================================================
+-- TEST ONLY: adds a water bottle to the Halloween treasure hunt so it can be tried with any water bottle.
+-- Run in the Supabase SQL editor. Safe to run again.
+-- Remove it again with the "CLEAN UP" part at the bottom.
+-- ============================================================
+
+insert into festival_words (event_id, word, pinyin, meaning, chars, strokes, sort) values
+  ('halloween', '水瓶', 'shuǐ píng', 'water bottle',
+   '[{"c":"水","py":"shuǐ","m":"water","s":4},{"c":"瓶","py":"píng","m":"bottle","s":10}]'::jsonb, 14, 99)
+on conflict (event_id, word) do update set pinyin = excluded.pinyin, meaning = excluded.meaning,
+  chars = excluded.chars, strokes = excluded.strokes, sort = excluded.sort;
+
+-- ------------------------------------------------------------
+-- TRY IT AGAIN (so the water bottle counts as new for you again): run this, then repeat the photo.
+-- It only clears YOUR water-bottle find. Replace the email with your login email if different.
+-- delete from festival_finds
+--  where event_id = 'halloween' and word = '水瓶'
+--    and user_id = (select id from auth.users where email = 'qlixiiu07@gmail.com');
+-- delete from festival_spotted
+--  where event_id = 'halloween' and word = '水瓶'
+--    and user_id = (select id from auth.users where email = 'qlixiiu07@gmail.com');
+
+-- ------------------------------------------------------------
+-- CLEAN UP when you are done testing (removes the word and anyone's finds of it):
+-- delete from festival_words where event_id = 'halloween' and word = '水瓶';

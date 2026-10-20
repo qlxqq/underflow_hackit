@@ -1,0 +1,136 @@
+/* The festival card (js/festival/festivalCard.js), the reveal on the Festival page, the Festival albums and the practise box in the
+   Collection. Everything is scoped to .fcard / .fr- / .fest- so it can be loaded by both pages. */
+
+.fcard {
+  --f: #6a35c9; --f-soft: #efe6fb;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 10px 12px; text-align: center;
+  background: var(--white, #fff); color: var(--ink, #18233a);
+  border: 2px solid var(--f); border-radius: var(--radius-md, 16px);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--f) 16%, transparent);
+}
+.fcard-top { display: flex; align-items: center; width: 100%; min-height: 30px; }
+.fcard-tag {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 8px; border-radius: 999px;
+  background: var(--f); color: #fff;
+  font: 800 10.5px/1 var(--font-ui, "Manrope", sans-serif); letter-spacing: 0.06em; text-transform: uppercase;
+}
+.fcard-tag i { display: block; width: 8px; height: 8px; background: #fff; transform: rotate(45deg); }
+.fcard-art {
+  position: relative; width: 100%; aspect-ratio: 240 / 130; margin: 4px 0 6px; overflow: hidden; line-height: 0;
+  background: var(--f-soft); border-radius: 12px;
+}
+.fcard-art svg { display: block; width: 100%; height: 100%; }
+.fcard-word { font: 700 26px/1.2 var(--font-cjk, "Noto Sans SC", sans-serif); overflow-wrap: break-word; }
+.fcard-py { min-height: 16px; font-weight: 600; font-size: 12px; color: var(--muted, #5b6783); }
+.fcard-meaning { font-weight: 800; font-size: 13px; line-height: 1.35; }
+.fcard-progress { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-weight: 700; font-size: 11px; color: var(--muted, #5b6783); }
+.fcard-pips { display: flex; gap: 3px; }
+.fcard-pips i { display: block; width: 14px; height: 5px; border-radius: 3px; background: var(--line, #d7deea); }
+.fcard-pips i.on { background: var(--f); }
+.fcard-usage { font-weight: 600; font-size: 11px; color: var(--muted, #5b6783); }
+.fcard-actions { width: 100%; margin-top: 10px; }
+.fcard-practise {
+  width: 100%; min-height: 40px; padding: 0 6px; border-radius: 20px; cursor: pointer;
+  background: var(--white, #fff); border: 1.5px solid var(--f); color: color-mix(in srgb, var(--f) 60%, var(--ink, #18233a));
+  font: 800 13px var(--font-ui, "Manrope", sans-serif);
+}
+@supports not (color: color-mix(in srgb, red 10%, blue)) { .fcard { box-shadow: 0 0 0 3px var(--f-soft); } }
+
+/* Mastered: a rainbow foil edge, like the other mastered cards. The festival colour stays as the thin inner line. */
+.fcard.stage-2 {
+  border: 3px solid transparent; padding: 8px 8px 10px;
+  background:
+    linear-gradient(var(--white, #fff), var(--white, #fff)) padding-box,
+    linear-gradient(115deg, #ff5f6d, #ffc371, #f7f06d, #5fe3a1, #5fb6ff, #a77bff, #ff5fb2, #ff5f6d) border-box;
+  background-size: 100% 100%, 300% 300%;
+  box-shadow: inset 0 0 0 2px var(--f);
+  animation: fcard-foil 7s linear infinite;
+}
+@keyframes fcard-foil { from { background-position: 0 0, 0% 50%; } to { background-position: 0 0, 300% 50%; } }
+.fcard.stage-2 .fcard-art::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%);
+  transform: translateX(-130%); animation: fcard-sheen 4s ease-in-out infinite;
+}
+@keyframes fcard-sheen { 0%, 55% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
+@media (prefers-reduced-motion: reduce) { .fcard.stage-2, .fcard.stage-2 .fcard-art::after { animation: none; } }
+
+/* ---- the Festival album: badges ---- */
+.fest-badges { display: flex; gap: 10px; margin: 12px 20px 0; }
+.fest-badge {
+  flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-width: 0;
+  background: var(--white, #fff); border: 1.5px dashed var(--line, #d7deea); border-radius: 14px; color: var(--muted, #5b6783);
+}
+.fest-badge svg { flex-shrink: 0; width: 30px; height: 30px; opacity: 0.45; filter: grayscale(1); }
+.fest-badge strong { display: block; font: 800 13px var(--font-ui, "Manrope", sans-serif); color: inherit; }
+.fest-badge span { display: block; font-weight: 600; font-size: 11px; }
+.fest-badge.is-on { border-style: solid; border-color: var(--f, #6a35c9); color: var(--ink, #18233a); background: color-mix(in srgb, var(--f, #6a35c9) 10%, var(--white, #fff)); }
+.fest-badge.is-on svg { opacity: 1; filter: none; }
+.fest-badge.is-shiny {
+  border: 2px solid transparent; color: var(--ink, #18233a);
+  background:
+    linear-gradient(var(--white, #fff), var(--white, #fff)) padding-box,
+    linear-gradient(115deg, #ff5f6d, #ffc371, #f7f06d, #5fe3a1, #5fb6ff, #a77bff, #ff5fb2, #ff5f6d) border-box;
+  background-size: 100% 100%, 300% 300%; animation: fcard-foil 7s linear infinite;
+}
+.fest-badge.is-shiny svg { opacity: 1; filter: drop-shadow(0 0 6px rgba(255, 201, 77, 0.9)); animation: fest-glint 2.4s ease-in-out infinite; }
+@keyframes fest-glint { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .fest-badge.is-shiny, .fest-badge.is-shiny svg { animation: none; } }
+.fest-cards .fcard { min-width: 0; }
+
+/* ---- the reveal on the Festival page ---- */
+.fr-wrap {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px;
+  background: rgba(14, 12, 32, 0.78); animation: fr-in 0.25s ease both;
+}
+@keyframes fr-in { from { opacity: 0; } to { opacity: 1; } }
+.fr-stage { width: min(100%, 300px); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.fr-title { margin: 0; font: 800 20px var(--font-ui, "Manrope", sans-serif); color: #fff; text-align: center; }
+.fr-flip { width: 100%; perspective: 900px; }
+.fr-inner { position: relative; width: 100%; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.3, 0.7, 0.2, 1); transform: rotateY(180deg); }
+.fr-inner.is-flipped { transform: rotateY(0deg); }
+.fr-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.fr-front .fcard { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 4px color-mix(in srgb, var(--f) 40%, transparent); }
+.fr-back {
+  position: absolute; inset: 0; display: grid; place-items: center; transform: rotateY(180deg);
+  border-radius: var(--radius-md, 16px); border: 2px solid #fff;
+  background: repeating-linear-gradient(45deg, #3b2a7a, #3b2a7a 10px, #2d2060 10px, #2d2060 20px);
+  font: 800 64px var(--font-ui, "Manrope", sans-serif); color: #fff;
+}
+.fr-line { margin: 0; font-weight: 700; font-size: 14px; color: #e8e4fb; text-align: center; opacity: 0; transition: opacity 0.4s ease 0.7s; }
+.fr-actions { display: flex; flex-direction: column; gap: 8px; width: 100%; opacity: 0; transition: opacity 0.4s ease 0.8s; }
+.fr-wrap.is-shown .fr-line, .fr-wrap.is-shown .fr-actions { opacity: 1; }
+.fr-btn {
+  display: flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 16px; border-radius: 23px; cursor: pointer;
+  font: 800 15px var(--font-ui, "Manrope", sans-serif); text-decoration: none; border: 0;
+}
+.fr-btn.main { background: #f2a93b; color: #2b1d00; }
+.fr-btn.ghost { background: transparent; color: #fff; border: 1.5px solid rgba(255, 255, 255, 0.6); }
+@media (prefers-reduced-motion: reduce) { .fr-inner { transition: none; } }
+
+/* ---- Practise box (Collection) ---- */
+.fest-pr { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; background: rgba(14, 18, 36, 0.6); }
+.fest-pr-box {
+  width: min(100%, 340px); padding: 20px 18px 16px; border-radius: 18px;
+  background: var(--white, #fff); color: var(--ink, #18233a); border: 1px solid var(--line, #d7deea);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+.fest-pr-box h3 { margin: 0 0 4px; font: 800 18px var(--font-ui, "Manrope", sans-serif); }
+.fest-pr-box p { margin: 0 0 12px; font-weight: 600; font-size: 14px; line-height: 1.45; color: var(--muted, #5b6783); }
+.fest-pr-input {
+  width: 100%; min-height: 46px; padding: 0 12px; border-radius: 12px; box-sizing: border-box;
+  border: 1.5px solid var(--line, #d7deea); background: var(--white, #fff); color: var(--ink, #18233a);
+  font: 600 17px var(--font-cjk, "Noto Sans SC", sans-serif);
+}
+.fest-pr-input::placeholder { color: var(--muted, #5b6783); opacity: 0.75; font-family: var(--font-ui, "Manrope", sans-serif); font-size: 15px; }
+.fest-pr-msg { min-height: 20px; margin: 8px 0 0; font-weight: 700; font-size: 13px; }
+.fest-pr-msg.good { color: color-mix(in srgb, #12803a 80%, var(--ink, #18233a)); }
+.fest-pr-msg.bad { color: color-mix(in srgb, #c62828 80%, var(--ink, #18233a)); }
+.fest-pr-row { display: flex; gap: 8px; margin-top: 12px; }
+.fest-pr-row button {
+  flex: 1; min-height: 44px; border-radius: 22px; cursor: pointer; font: 800 14px var(--font-ui, "Manrope", sans-serif);
+  border: 1.5px solid var(--line, #d7deea); background: var(--white, #fff); color: var(--ink, #18233a);
+}
+.fest-pr-row button.main { background: #6a35c9; border-color: #6a35c9; color: #fff; }
+.fest-pr-row button:disabled { opacity: 0.55; cursor: default; }

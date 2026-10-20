@@ -22,15 +22,19 @@ function motherTongue() {
   try { return localStorage.getItem(`journeyLanguage:${user.id}`) || "zh"; } catch (e) { return "zh"; }
 }
 
-// The banner at the top of a found word: the player's own photo, or the word itself when the photo is not on this phone.
+// The banner at the top of a found word: a cartoon picture of it on a Halloween night (festivalArt.js), with the player's
+// own photo as a small round picture in the corner when it is on this phone.
 function banner(w) {
+  const box = el("div", "fw-banner fw-art");
+  box.innerHTML = typeof FESTIVAL_ART !== "undefined" ? FESTIVAL_ART.svgFor(w.word) : "";
+  if (!box.firstElementChild) { box.className = "fw-banner fw-banner-text"; box.textContent = w.word; return box; }
   const photo = Festival.loadPhoto(user.id, event.id, w.word);
   if (photo) {
-    const img = el("img", "fw-banner");
+    const img = el("img", "fw-photo");
     img.src = photo; img.alt = `Your photo of the ${w.meaning}`;
-    return img;
+    box.append(img);
   }
-  return el("div", "fw-banner fw-banner-text", w.word);
+  return box;
 }
 
 function wordCard(w) {
@@ -39,15 +43,8 @@ function wordCard(w) {
   if (found) {
     li.append(banner(w));
     const head = el("div", "fw-head");
-    head.append(el("span", "fw-word", w.word), el("span", "fw-py", w.pinyin), el("span", "fw-pts", `+${w.strokes}`));
+    head.append(el("span", "fw-word", w.word), el("span", "fw-py", w.pinyin), el("span", "fw-pts", `+${w.strokes} pts`));
     li.append(head, el("p", "fw-meaning", w.meaning));
-    const chars = el("div", "fw-chars");
-    (w.chars || []).forEach((c) => {
-      const box = el("div", "fw-char");
-      box.append(el("span", "fc-c", c.c), el("span", "fc-py", c.py), el("span", "fc-m", c.m), el("span", "fc-s", `${c.s} stroke${c.s === 1 ? "" : "s"}`));
-      chars.append(box);
-    });
-    li.append(chars);
   } else if (pending) {
     // The photo passed. The player still has to say what the word is in Chinese.
     const photo = Festival.loadPhoto(user.id, event.id, w.word);
@@ -66,6 +63,10 @@ function wordCard(w) {
   return li;
 }
 
+// Whole days from today (Singapore date, the same day the database uses) to a YYYY-MM-DD date. Worked out each time it is drawn,
+// so the count never goes stale.
+function daysFromToday(date) { return Math.round((Date.parse(date) - Date.parse(Festival.today())) / 86400000); }
+
 function renderLive() {
   const total = eventWords.length, n = foundSet.size;
   const pts = eventWords.filter((w) => foundSet.has(w.word)).reduce((s, w) => s + w.strokes, 0);
@@ -73,7 +74,8 @@ function renderLive() {
   $("fest-name").textContent = event.name;
   $("fest-native").textContent = event.name_native || "";
   $("fest-blurb").textContent = event.blurb || "";
-  $("fest-days").textContent = event.daysLeft <= 1 ? "Last day!" : `${event.daysLeft} days left`;
+  const left = daysFromToday(event.ends_on) + 1;
+  $("fest-days").textContent = left <= 1 ? "Last day!" : `${left} days left`;
   $("fest-points").textContent = `${pts} pts earned`;
   $("fest-fill").style.width = total ? `${Math.round((n / total) * 100)}%` : "0%";
   $("fest-progress").textContent = n >= total && total ? `All ${total} found! Bonus collected.` : `${n} of ${total} found. Find them all for a ${event.bonus} point bonus.`;
@@ -87,9 +89,38 @@ function renderUpcoming(list) {
     const ic = el("span", "fest-up-icon"); ic.append(Festival.iconSvg(e.icon, 30));
     const txt = el("div", "fest-up-text");
     txt.append(el("strong", "", e.name_native ? `${e.name_native}` : e.name), el("span", "", e.name));
-    li.append(ic, txt, el("span", "fest-pill", e.daysToStart <= 1 ? "Tomorrow" : `In ${e.daysToStart} days`));
+    li.append(ic, txt, el("span", "fest-pill", daysFromToday(e.starts_on) <= 1 ? "Tomorrow" : `In ${daysFromToday(e.starts_on)} days`));
     return li;
   }));
+}
+
+// The card reveal: the card's back flips over to the new hunt card with its festival label. Resolves when the player moves on.
+function revealCard(w) {
+  return new Promise((resolve) => {
+    if (typeof FESTIVAL_CARD === "undefined") { resolve(); return; }
+    const wrap = el("div", "fr-wrap");
+    wrap.setAttribute("role", "dialog"); wrap.setAttribute("aria-modal", "true"); wrap.setAttribute("aria-label", "New treasure card");
+    const stage = el("div", "fr-stage");
+    const flip = el("div", "fr-flip"), inner = el("div", "fr-inner");
+    const front = el("div", "fr-face fr-front");
+    front.append(FESTIVAL_CARD.cardEl({ event_id: event.id, event_name: event.name, word: w.word, pinyin: w.pinyin, meaning: w.meaning, usage_count: 0, evolution_stage: 0 }));
+    inner.append(front, el("div", "fr-face fr-back", "?"));
+    flip.append(inner);
+    const link = el("a", "fr-btn main", "See it in your collection");
+    link.href = `../storeVocab/storeVocab.html?festival=${encodeURIComponent(event.id)}#collection`;
+    const keep = el("button", "fr-btn ghost", "Keep hunting");
+    keep.type = "button";
+    const actions = el("div", "fr-actions"); actions.append(link, keep);
+    stage.append(el("h2", "fr-title", "New treasure card!"), flip, el("p", "fr-line", `Added to your ${FESTIVAL_CARD.info(event.id, event.name).label} album.`), actions);
+    wrap.append(stage);
+    document.body.append(wrap);
+    const done = () => { wrap.remove(); resolve(); };
+    keep.addEventListener("click", done);
+    link.addEventListener("click", () => { wrap.remove(); resolve(); });
+    setTimeout(() => inner.classList.add("is-flipped"), 350);
+    setTimeout(() => wrap.classList.add("is-shown"), 700);
+    keep.focus();
+  });
 }
 
 const WHY = { picture: "a drawing or printed picture", screen: "a screen" };
@@ -138,6 +169,9 @@ $("ask-form").addEventListener("submit", async (e) => {
     closeAsk(); renderLive();
     const lines = claim.found.map((f) => `${f.word} <b>+${f.points}</b>`);
     if (claim.bonus) lines.push(`All words found! <b>+${claim.bonus}</b> bonus`);
+    // The new hunt card is revealed first (flip, festival label), then the coins and XP.
+    const fresh = claim.found && claim.found[0] && eventWords.find((x) => x.word === claim.found[0].word);
+    if (fresh) await revealCard(fresh);
     try { await recordStreakActivity(user.id); } catch (err) { /* streak is a nice-to-have */ }
     await showCelebration({
       title: "Treasure found!",
@@ -205,3 +239,13 @@ $("fest-photo").addEventListener("change", async (e) => {
   renderUpcoming(all.filter((e) => e.upcoming));
   $("fest-main").hidden = false;
 })();
+
+// The count follows the calendar: redraw when the phone wakes up or the tab comes back, and at midnight Singapore time.
+// When the hunt has ended or the next one has begun, reload so the right event shows.
+let shownDay = Festival.today();
+function refreshDay() {
+  if (Festival.today() === shownDay) return;
+  location.reload();
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshDay(); });
+setInterval(refreshDay, 60000);
