@@ -281,3 +281,6 @@
 /* Mastered-card shine and card art keep their colours; just soften the glare */
 :root[data-theme="dark"][data-css] .card-art::after,
 :root[data-theme="dark"][data-css] .pf-card-art::after { opacity: 0.6; }
+/* login page: the app name and tagline follow the theme */
+:root[data-theme="dark"] .brand-name { color: var(--ink); }
+:root[data-theme="dark"] .brand-tagline { color: var(--muted); }
