@@ -121,16 +121,6 @@ const FESTIVAL_ART = (() => {
       <path d="M106 80 q14 9 28 0" fill="#7a1f2b" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/>
       <polygon points="110,82 114,92 118,83" fill="#fff"/><polygon points="122,83 126,92 130,82" fill="#fff"/>
       <circle cx="98" cy="76" r="4.5" fill="#f6a5c0" opacity="0.7"/><circle cx="142" cy="76" r="4.5" fill="#f6a5c0" opacity="0.7"/>`, "vampire"),
-    // water bottle (a spooky bottle: orange cap and a little ghost on the label)
-    "水瓶": () => scene(`
-      <rect x="108" y="14" width="24" height="16" rx="4" fill="${ORANGE}"/><rect x="108" y="14" width="24" height="5" rx="3" fill="${ORANGE_D}"/>
-      <rect x="112" y="30" width="16" height="10" fill="#cfeaf7"/>
-      <path d="M100 44 q20 -8 40 0 q8 4 8 14 V108 q0 10 -10 10 H102 q-10 0 -10 -10 V58 q0 -10 8 -14z" fill="#9fd6f0"/>
-      <path d="M92 76 q14 -8 28 0 t28 0 V108 q0 10 -10 10 H102 q-10 0 -10 -10z" fill="#5fb4e0" opacity="0.85"/>
-      <rect x="96" y="58" width="9" height="46" rx="4" fill="#fff" opacity="0.45"/>
-      <rect x="104" y="70" width="32" height="30" rx="6" fill="#fffdf7"/>
-      <path d="M112 94 V84 a8 8 0 0 1 16 0 V94 l-3 -3 l-3 3 l-2 -3 l-3 3 l-3 -3z" fill="#fff" stroke="#b4bfd2" stroke-width="1.4"/>
-      <circle cx="117" cy="84" r="1.5" fill="${INK}"/><circle cx="123" cy="84" r="1.5" fill="${INK}"/>`, "bottle"),
   };
 
   // The picture for a word. A word with no picture of its own gets a lit pumpkin.

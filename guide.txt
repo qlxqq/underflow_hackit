@@ -1,3 +1,7 @@
+KOPITALK - SETUP AND DEVELOPER GUIDE
+=====================================
+
+SETUP (first time)
 -------------------
 1. Clone the repo:
    git clone https://github.com/qlxqq/underflow_hackit.git
@@ -5,48 +9,69 @@
 2. Move into the project folder:
    cd underflow_hackit
 
-3. Install dependencies:
-   npm install
+3. The website is plain HTML/CSS/JS with no build step and no npm
+   packages. It connects straight to Supabase.
 
-4. Copy the env template:
-   copy .env.example .env   
+4. Open public/pages/auth/login.html in your browser, OR use VS Code's
+   "Live Server" extension for auto-refresh while editing (recommended).
 
-6. Start the server:
-   npm run dev
-
-7. Open in your browser:
-   http://localhost:3000
+5. The Supabase URL and anon key are in public/js/shared/supabaseClient.js.
+   They are safe to be public (access is controlled by Row Level
+   Security).
 
 
 FOLDER GUIDE
 ------------
-config/       - environment/config settings
-controllers/  - logic for each feature (called by routes)
-database/     - database connection setup (if used)
-middleware/   - custom Express middleware (error handling, etc.)
-model/        - data models/schemas (if using a database)
-public/       - frontend files (HTML/CSS/JS) - served directly by Express
-routes/       - defines API endpoints, points to controller functions
-services/     - shared logic used across features (e.g. AI API calls)
-tests/        - test files
-utils/        - small reusable helper functions
+public/
+  pages/<name>/<name>.html   - one folder per page (login, profile, typing,
+                               festival, storeVocab and so on)
+  css/<name>/                - styles for that page
+  css/shared/                - styles used by every page (base.css, topbar.css,
+                               theme.css for dark mode)
+  js/<name>/                 - scripts for that page
+  js/shared/                 - code used by many pages (supabaseClient.js,
+                               auth.js, streak.js, rewards.js, theme.js,
+                               leaveGuard.js)
+supabase/functions/<name>/   - edge functions (festival-verify, get-word-meaning)
+
+Page naming rule: pages/typing/typing.html loads css/typing/typing.css and
+js/typing/typing.js.
+
+
+DARK MODE
+---------
+Every page should load these two lines in its <head>, after its own CSS:
+   <link rel="stylesheet" href="../../css/shared/theme.css">
+   <script src="../../js/shared/theme.js"></script>
+theme.js sets data-theme="dark" or "light" on <html>. The dark colours for
+each stylesheet live in css/shared/theme.css.
 
 
 HOW TO ADD YOUR OWN FEATURE
 ----------------------------
-1. Create a route file in routes/ (e.g. routes/yourFeature.js)
-   - Defines the URL endpoint (e.g. POST /api/your-feature)
+1. Make pages/<feature>/<feature>.html, css/<feature>/ and js/<feature>/
+2. Load the shared files you need (supabaseClient.js, auth.js) and the
+   theme lines above
+3. Add data changes as SQL and run them in the Supabase SQL Editor
 
-2. Create a controller file in controllers/ (e.g. yourFeatureController.js)
-   - Contains the actual logic: build prompt, call AI, return response
 
-3. If you need shared AI-calling logic, put it in services/ so multiple
-   features can reuse it instead of repeating code
+DATABASE (Supabase)
+--------------------
+- Dashboard: https://supabase.com (log in, select the project)
+- Change the schema by running SQL in the SQL Editor. Keep each change as a
+  re-runnable .sql file in the repo so others can repeat it.
+- After adding or changing a function, run: notify pgrst, 'reload schema';
+- Row Level Security is ON. Users read only their own rows unless a
+  policy says otherwise. Rewards are paid by database functions that run
+  with the service role, not by the browser.
 
-4. Wire your route into app.js:
-   app.use("/api/your-feature", require("./routes/yourFeature"));
 
-5. Add your frontend HTML/CSS/JS inside public/ for the UI part
+EDGE FUNCTIONS
+--------------
+- Deploy with: supabase functions deploy <name>
+- Secrets (the AI API key and so on) are set in the Supabase dashboard or
+  with: supabase secrets set NAME=value
+- Never put a secret in the repository.
 
 
 GIT WORKFLOW
@@ -63,3 +88,20 @@ GIT WORKFLOW
 - Before starting work each session, pull the latest changes:
    git checkout main
    git pull origin main
+
+
+DEPLOY
+------
+The site is hosted on Netlify (https://underflowhackit.netlify.app).
+Pushing to main updates it.
+
+
+NOTES
+-----
+- The app is called KopiTalk. The repo is still named underflow_hackit.
+- Festival treasure hunt: the Halloween test word 水瓶 can be removed with
+  festival_remove_waterbottle.sql once testing is done.
+- Photo reading: js/cards/ocr.js sends the photo to the get-word-meaning
+  edge function (mode "ocr"), where Claude reads it. If that fails it falls
+  back to Tesseract.js in the browser (loaded from a CDN).
+- Chinese word segmentation runs in the browser (segmentit from a CDN).
