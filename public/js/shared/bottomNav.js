@@ -1,6 +1,5 @@
 // The bottom navigation is written in each page's HTML (<nav id="bottom-nav" class="bottom-nav" data-active="...">)
 // and styled by css/shared/bottomnav.css. This file only marks which tab is the current page.
-// Scenarios and Friends are not built yet, so they are disabled tabs in the HTML.
 
 // Marks the tab named in the nav's data-active (island, capture, collection or none).
 function renderBottomNav() {

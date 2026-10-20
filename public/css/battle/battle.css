@@ -279,7 +279,8 @@
 .tcg-word {
   position: relative;
   font-family: "Noto Sans SC", var(--b-pixel), sans-serif;
-  font-size: 2.15em;
+  font-size: min(2.15em, calc(5em / var(--len, 2)));
+  white-space: nowrap;
   font-weight: 700;
   line-height: 1.1;
   text-shadow: 0 0.04em 0 #fff, 0 0 0.3em rgba(255, 255, 255, 0.9);

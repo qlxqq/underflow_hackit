@@ -289,7 +289,10 @@ document.addEventListener("DOMContentLoaded", function () {
         head.appendChild(make("span", "tcg-stage", card.stage_label || "Stage " + card.stage));
         head.appendChild(power);
 
-        art.appendChild(make("span", "tcg-word", card.word));
+        // longer words get a smaller font so they stay on one line inside the picture
+        const word = make("span", "tcg-word", card.word);
+        word.style.setProperty("--len", Array.from(card.word || "").length || 1);
+        art.appendChild(word);
 
         foot.appendChild(make("span", "", "★".repeat(stars) + "☆".repeat(3 - stars)));
         foot.appendChild(make("span", "", card.uses ? card.uses + " uses" : "new"));
