@@ -75,6 +75,24 @@
 :root[data-theme="dark"][data-css~="composition-composition"] .feedback-box.incorrect { border-color: #85514e; }
 :root[data-theme="dark"][data-css~="composition-composition"] .feedback-icon { background: rgba(24, 33, 50, 0.8); }
 
+/* ---- battle/battle.css ----
+   The battle mat, name plates, text box, cards and pop-ups stay light in dark mode,
+   so they keep the light-mode text colours (dark text on the white surfaces). */
+:root[data-theme="dark"][data-css~="battle-battle"] :is(.battle, .tcg, .guide-card, .evolve-overlay, .end-card) {
+  --ink: #18233a; --muted: #5b6783; --white: #ffffff; --line: #dce3ec; --bg: #f4f7fa; --lock-bg: #e3e8ef;
+  --b-ink: #18233a; --b-muted: #5b6783; --b-line: #dce3ec; --b-white: #ffffff;
+  --b-amber-bg: #fff4de; --b-amber-bd: #f2d9a6; --b-amber-txt: #9a5b00; --b-gold-soft: #fff4de;
+  color: #18233a;
+}
+/* the card mat under the boss scene goes dark (the scene itself keeps its own picture) */
+:root[data-theme="dark"][data-css~="battle-battle"] .battle {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cg fill='none' stroke='%232bb5a5' stroke-opacity='.14' stroke-width='1.4'%3E%3Cpath d='M22 6c3 5 3 11 0 16-3-5-3-11 0-16zM22 22c3 5 3 11 0 16-3-5-3-11 0-16zM6 22c5-3 11-3 16 0-5 3-11 3-16 0zM22 22c5-3 11-3 16 0-5 3-11 3-16 0z'/%3E%3C/g%3E%3Ccircle cx='22' cy='22' r='2.2' fill='%23f2a93b' fill-opacity='.3'/%3E%3C/svg%3E") 0 0 / 44px 44px,
+    linear-gradient(180deg, #121a28, #0b111c);
+}
+:root[data-theme="dark"][data-css~="battle-battle"] .battle .mat-title { color: #e8edf5; }
+:root[data-theme="dark"][data-css~="battle-battle"] .battle .mat-sub { color: #9ba8bf; }
+
 /* ---- duel/duel.css ---- */
 :root[data-theme="dark"][data-css~="duel-duel"] .duel-app { --d-me-soft: #232b37; --d-me-line: #435a81; --d-them-soft: #31241a; --d-them-line: #714c2a; }
 :root[data-theme="dark"][data-css~="duel-duel"] .them-status { background: rgba(24, 33, 50, 0.6); }

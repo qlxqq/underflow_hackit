@@ -700,11 +700,19 @@ language sql stable security definer set search_path = public as $$
                              'Stage ' || ac.evolution_stage),
     'uses',         ac.usage_count,
     'power',        public._card_power(ac.language, ac.word, ac.evolution_stage, ac.usage_count),
-    'romanization', (select iz.romanization from public.island_zone_words iz
-                      where iz.language = ac.language and iz.word = ac.word limit 1),
-    'meaning',      (select iz.meaning from public.island_zone_words iz
-                      where iz.language = ac.language and iz.word = ac.word limit 1))
+    'romanization', w.romanization,
+    'meaning',      w.meaning)
   from public.album_cards ac
+  -- pinyin + English: zone words first, then the NPC role-card words
+  left join lateral (
+    select x.romanization, x.meaning from (
+      select iz.romanization, iz.meaning, 0 as pick from public.island_zone_words iz
+       where iz.language = ac.language and iz.word = ac.word
+      union all
+      select ir.romanization, ir.meaning, 1 from public.island_role_words ir
+       where ir.language = ac.language and ir.word = ac.word
+    ) x order by x.pick limit 1
+  ) w on true
   where ac.card_id = p_card_id;
 $$;
 
