@@ -21,11 +21,11 @@
 .gf-ask { font-size: 16px; font-weight: 700; color: var(--ink, #18233a); }
 .gf-english { font-size: 30px; font-weight: 800; color: var(--ink, #18233a); line-height: 1.2; }
 .gf-english-sm { font-size: 17px; font-weight: 700; color: var(--muted, #6b7a90); }
-.gf-boxes { font-size: 26px; letter-spacing: 8px; color: #b6c1d3; min-height: 30px; }
-.gf-hint { font-size: 16px; font-weight: 800; color: #0f7a6f; background: #e0f4f1; border-radius: 12px; padding: 6px 12px; }
+.gf-boxes { font-size: 26px; letter-spacing: 8px; color: var(--muted, #8793a8); min-height: 30px; }
+.gf-hint { font-size: 16px; font-weight: 800; color: color-mix(in srgb, #0f7a6f 45%, var(--ink, #18233a)); background: color-mix(in srgb, #17a596 16%, var(--white, #fff)); border-radius: 12px; padding: 6px 12px; }
 .gf-inline-word { font-size: 22px; font-family: var(--font-cjk, inherit); }
 .gf-word { font-size: 56px; font-weight: 800; line-height: 1.1; color: var(--ink, #18233a); font-family: "Noto Sans SC", "Noto Sans Tamil", "Manrope", sans-serif; }
-.gf-roman { font-size: 20px; font-weight: 700; color: #0f7a6f; }
+.gf-roman { font-size: 20px; font-weight: 700; color: color-mix(in srgb, #0f7a6f 45%, var(--ink, #18233a)); }
 
 .gf-mystery-card { width: 96px; height: 128px; border-radius: 16px; display: grid; place-items: center; background: linear-gradient(160deg, #7a5cc4, #4a6cf0); color: #fff; font-size: 52px; font-weight: 800; box-shadow: 0 10px 24px rgba(74, 108, 240, 0.35); transform: rotate(-4deg); }
 
@@ -33,22 +33,34 @@
 .gf-input:focus { outline: none; border-color: var(--amber, #f2a93b); }
 .gf-area { resize: none; min-height: 96px; line-height: 1.4; }
 .gf-feedback { min-height: 22px; margin: 0; text-align: center; font-size: 15px; font-weight: 700; color: var(--muted, #6b7a90); }
-.gf-feedback.is-good { color: #2e9e5b; }
-.gf-feedback.is-bad { color: #c2611a; }
+.gf-feedback.is-good { color: color-mix(in srgb, #2e9e5b 60%, var(--ink, #18233a)); }
+.gf-feedback.is-bad { color: color-mix(in srgb, #c2611a 55%, var(--ink, #18233a)); }
 .gf-actions { display: flex; gap: 10px; }
 .gf-actions .btn { flex: 1; }
 .gf-switch { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted, #6b7a90); }
 .gf-switch[hidden] { display: none; }
-.gf-notice { margin: 0; padding: 12px 14px; border-radius: 14px; background: #fff4de; color: #8a5a10; font-size: 14px; line-height: 1.4; }
+.gf-notice { margin: 0; padding: 12px 14px; border-radius: 14px; background: #fff4de; color: #6b4306; font-size: 14px; line-height: 1.4; }
 .gf-notice[hidden] { display: none; }
 
 .gf-mic-live { background: #e0463a !important; border-color: #e0463a !important; color: #fff !important; }
 
 .gf-done-emoji { font-size: 44px; }
-.gf-final-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 18px 28px; margin: 4px 0; border-radius: 18px; background: linear-gradient(160deg, #fff7e6, #ffe9c2); border: 2px solid #f3d9a4; }
-.gf-final-word { font-size: 44px; font-weight: 800; color: var(--ink, #18233a); font-family: "Noto Sans SC", "Noto Sans Tamil", "Manrope", sans-serif; }
-.gf-final-roman { font-size: 18px; font-weight: 700; color: #0f7a6f; }
-.gf-final-meaning { font-size: 16px; font-weight: 700; color: var(--muted, #6b7a90); }
+/* The reward card is always a light card with dark text, in light and dark mode, so the word stays easy to read. */
+.gf-final-card { --c-bg: #fff7e6; --c-bg2: #ffe9c2; --c-line: #f2d49a; --c-ink: #18233a; --c-soft: #4a5873; --c-teal: #0b6b61; --c-badge: #8a5a10; --c-badge-bg: #fff0cf;
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 190px; padding: 20px 30px 16px; margin: 4px 0; border-radius: 18px; border: 2px solid var(--c-line);
+  background: linear-gradient(160deg, var(--c-bg), var(--c-bg2)); box-shadow: 0 6px 18px rgba(24, 35, 58, 0.18); }
+.gf-final-card.is-common { --c-bg: #f6f7fa; --c-bg2: #e6e9f0; --c-line: #c4cbd8; --c-badge: #46526b; --c-badge-bg: #e1e5ee; }
+.gf-final-card.is-uncommon { --c-bg: #f0faf3; --c-bg2: #d6f0de; --c-line: #8fd0a6; --c-badge: #155c39; --c-badge-bg: #d2f0dc; }
+.gf-final-card.is-rare { --c-bg: #eef4ff; --c-bg2: #d4e3fb; --c-line: #7ea7ee; --c-badge: #1b4a9e; --c-badge-bg: #d3e2fb; }
+.gf-final-card.is-epic { --c-bg: #f5eefd; --c-bg2: #e4d3f6; --c-line: #b08ce4; --c-badge: #5f2d9c; --c-badge-bg: #e6d6f8; box-shadow: 0 0 0 3px rgba(176, 140, 228, 0.35), 0 6px 18px rgba(24, 35, 58, 0.18); }
+.gf-final-card.is-legendary { --c-bg: #fff6df; --c-bg2: #ffe2a3; --c-line: #f2a93b; --c-badge: #84480a; --c-badge-bg: #ffe3a6; box-shadow: 0 0 0 3px rgba(242, 169, 59, 0.4), 0 6px 18px rgba(24, 35, 58, 0.2); }
+.gf-rarity { align-self: center; margin-bottom: 4px; padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--c-badge); background: var(--c-badge-bg); border: 1px solid var(--c-line); }
+.gf-final-word { font-size: 46px; font-weight: 800; line-height: 1.15; color: var(--c-ink); font-family: "Noto Sans SC", "Noto Sans Tamil", "Manrope", sans-serif; }
+.gf-final-roman { font-size: 19px; font-weight: 800; color: var(--c-teal); }
+.gf-final-meaning { font-size: 16px; font-weight: 700; color: var(--c-soft); }
+.gf-final-used { margin-top: 4px; font-size: 13px; font-weight: 800; color: var(--c-soft); }
+.gf-final-used[hidden] { display: none; }
+.gf-input::placeholder { color: var(--muted, #6b7a90); opacity: 0.85; }
 .gf-page a.btn { text-align: center; text-decoration: none; }
 
 @media (prefers-reduced-motion: reduce) { .gf-progress span { transition: none; } }

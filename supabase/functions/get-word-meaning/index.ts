@@ -9,6 +9,7 @@
 //      "theme" is the name of one of the app's ready-made card pictures, or
 //      "none" when none of them fits the word.
 //   3. OCR: { mode: "ocr", image (base64), mediaType, language } -> { text }
+//   5. Sentence check: { mode: "sentence", word, language, sentence } -> { valid, reason }
 //   2. Art: { mode: "art", word, englishMeaning, language, note }
 //      -> { svg }   a small flat illustration drawn by Claude, cleaned up so
 //      it can only contain simple shapes.
@@ -264,6 +265,30 @@ async function drawArt(word: string, englishMeaning: string, language: string, n
   return svg;
 }
 
+const SENTENCE_SYSTEM_PROMPT = `You check sentences written by students learning their Mother Tongue in Singapore.
+You get a language, a target word and the student's sentence. Decide if it is a real, sensible sentence in that language that uses the target word.
+Be kind to learners: small mistakes and simple sentences are fine. A Chinese sentence typed in pinyin (Latin letters, with or without tone marks, with or without spaces between syllables) counts as Chinese, and Tamil typed in Latin letters counts as Tamil. Say it is NOT valid only when it is gibberish, random words or letters, just the word on its own, a list of words, not in the requested language, or the word is used in a way that makes no sense.
+Respond ONLY with JSON, no markdown: {"valid": true or false, "reason": "..."}
+"reason" is one short, friendly English sentence telling the student what to fix (leave it empty when valid).`;
+
+async function checkSentence(word: string, language: string, sentence: string) {
+  const text = await callClaude(
+    TEXT_MODEL,
+    SENTENCE_SYSTEM_PROMPT,
+    JSON.stringify({ language, word, sentence }),
+    200,
+  );
+  try {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    const parsed = JSON.parse(text.slice(start, end + 1));
+    if (typeof parsed.valid !== "boolean") return null;
+    return { valid: parsed.valid, reason: String(parsed.reason ?? "").slice(0, 200) };
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   // Browsers send an OPTIONS preflight request before the real one - this
   // has to be answered or the actual call never gets sent.
@@ -285,6 +310,17 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
+
+    // ---- check a sentence (the gift's last step) ----
+    if (body.mode === "sentence") {
+      const word = String(body.word ?? "").slice(0, 40);
+      const language = String(body.language ?? "").slice(0, 5);
+      const sentence = String(body.sentence ?? "").slice(0, 300);
+      if (!word || !sentence) return json({ error: "Missing word or sentence." }, 400);
+      const result = await checkSentence(word, language, sentence);
+      if (!result) return json({ error: "Could not check that sentence." }, 502);
+      return json(result);
+    }
 
     // ---- job 3: read the text in a photo ----
     if (body.mode === "ocr") {

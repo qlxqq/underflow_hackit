@@ -22,6 +22,8 @@
   <link rel="stylesheet" href="../../css/shared/base.css">
   <link rel="stylesheet" href="../../css/shared/topbar.css">
   <link rel="stylesheet" href="../../css/gift/gift.css">
+  <link rel="stylesheet" href="../../css/shared/theme.css">
+  <script src="../../js/shared/theme.js"></script>
 </head>
 <body>
 <div class="app gf-page">
@@ -64,7 +66,6 @@
         <button type="button" class="btn btn-outline" id="typeHintBtn">Hint</button>
         <button type="button" class="btn btn-primary" id="typeCheck">Check</button>
       </div>
-      <label class="gf-switch" id="typeSwitchWrap"><input type="checkbox" id="typeRomanMode"> <span>No keyboard for it? Type the <b id="typeRomanName">pinyin</b> instead</span></label>
     </section>
 
     <!-- 2: say it -->
@@ -100,14 +101,16 @@
       <div class="gf-card gf-done">
         <div class="gf-done-emoji" aria-hidden="true">🎉</div>
         <h1 class="gf-title" id="doneTitle">Added to your collection!</h1>
-        <div class="gf-final-card">
+        <div class="gf-final-card" id="doneCard">
+          <span class="gf-rarity" id="doneRarity">Common</span>
           <b class="gf-final-word" id="doneWord"></b>
           <span class="gf-final-roman" id="doneRoman"></span>
           <span class="gf-final-meaning" id="doneMeaning"></span>
+          <span class="gf-final-used" id="doneUsed" hidden></span>
         </div>
         <p class="gf-sub" id="doneSub"></p>
       </div>
-      <a class="btn btn-primary btn-block" href="../storeVocab/storeVocab.html#collection">See it in my collection</a>
+      <a class="btn btn-primary btn-block" id="doneCollection" href="../storeVocab/storeVocab.html#collection">Show me in collection</a>
       <a class="btn btn-outline btn-block" href="../friends/friends.html">Back to friends</a>
     </section>
   </main>
@@ -117,6 +120,11 @@
 <!-- Supabase library (same pinned version as the other pages), then the shared client, each loaded once -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
 <script src="../../js/shared/supabaseClient.js"></script>
+<!-- Rarity of the card (the same files the Collection uses) -->
+<script src="../../js/cards/data/zhFrequency.js"></script>
+<script src="../../js/cards/data/msFrequency.js"></script>
+<script src="../../js/cards/data/taFrequency.js"></script>
+<script src="../../js/cards/rarity.js"></script>
 <script src="../../js/gift/gift.js"></script>
 </body>
 </html>

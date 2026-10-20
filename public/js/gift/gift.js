@@ -127,15 +127,14 @@ const GiftPage = (() => {
     $("typeHint").hidden = true;
     $("typeInput").value = "";
     $("typeInput").lang = G.info.script;
-    $("typeSwitchWrap").hidden = !(G.info.romanName && g.romanization);
-    $("typeRomanName").textContent = G.info.romanName;
     typePlaceholder();
     say("typeFeedback", "");
     $("typeInput").focus();
   }
 
   function typePlaceholder() {
-    $("typeInput").placeholder = G.romanMode ? "Type the " + G.info.romanName + " (no tones needed)..." : "Type it in " + G.info.name + "...";
+    const r = G.info.romanName;   // the box takes the word itself or its romanization (pinyin)
+    $("typeInput").placeholder = "Type it in " + G.info.name + (r ? " or " + (r === "pinyin" ? "Pinyin" : r) : "") + "...";
   }
 
   function checkType() {
@@ -237,11 +236,11 @@ const GiftPage = (() => {
       got = true;
       const blocked = e && (e.error === "not-allowed" || e.error === "service-not-allowed");
       say("sayFeedback", blocked ? "The microphone is blocked. Allow it in your browser, or skip this step." : "I couldn't hear that. Try again, or skip this step.", "bad");
-      if (blocked) $("saySkip").hidden = false;
+      $("saySkip").hidden = false;   // any microphone problem: the player can skip at once
     };
     rec.onend = () => {
       micOff();
-      if (!got) { say("sayFeedback", "I didn't hear anything. Tap and try again.", "bad"); G.sayMisses += 1; if (G.sayMisses >= 2) $("saySkip").hidden = false; }
+      if (!got) { say("sayFeedback", "I didn't hear anything. Tap and try again.", "bad"); G.sayMisses += 1; $("saySkip").hidden = false; }
     };
     try { rec.start(); } catch (err) { micOff(); say("sayFeedback", "Couldn't start the microphone. You can skip this step.", "bad"); $("saySkip").hidden = false; }
   }
@@ -255,9 +254,19 @@ const GiftPage = (() => {
     $("writeWord").lang = G.info.script;
     $("writeInput").value = "";
     $("writeInput").lang = G.info.script;
-    $("writeInput").placeholder = g.language === "zh" ? "e.g. use " + g.word + " in your own sentence..." : "Write your sentence here...";
+    $("writeInput").placeholder = g.language === "zh" ? "Write it in Chinese or Pinyin, e.g. use " + g.word + "..." : "Write your sentence here...";
     say("writeFeedback", "");
     $("writeInput").focus();
+  }
+
+  // Asks the get-word-meaning function (mode "sentence") whether the sentence is real and uses the word.
+  // Returns { valid, reason }, or null when it could not be checked (then the player is not blocked).
+  async function checkSentence(sentence, g) {
+    try {
+      const { data, error } = await db.functions.invoke("get-word-meaning", { body: { mode: "sentence", word: g.word, language: g.language, sentence } });
+      if (error || !data || typeof data.valid !== "boolean") return null;
+      return data;
+    } catch (err) { return null; }
   }
 
   async function finish() {
@@ -268,6 +277,15 @@ const GiftPage = (() => {
     if (!GiftText.longEnough(sentence, g)) { say("writeFeedback", "Add a little more: a full sentence, not just the word.", "bad"); return; }
     G.claiming = true;
     $("writeDone").disabled = true;
+    // Is it a real, sensible sentence? (asked of the server; if it cannot be reached the sentence is let through)
+    say("writeFeedback", "Checking your sentence...");
+    const check = await checkSentence(sentence, g);
+    if (check && check.valid === false) {
+      G.claiming = false;
+      $("writeDone").disabled = false;
+      say("writeFeedback", (check.reason || "That is not a full sentence yet.") + " Try again.", "bad");
+      return;
+    }
     say("writeFeedback", "Adding it to your collection...");
     const { data, error } = await db.rpc("gift_claim", { p_gift: g.gift_id, p_sentence: sentence });
     if (error) {
@@ -286,14 +304,30 @@ const GiftPage = (() => {
     $("doneWord").lang = G.info.script;
     $("doneRoman").textContent = g.romanization || "";
     $("doneMeaning").textContent = g.meaning || "";
+    // the card's rarity (same rule as the Collection)
+    let rarity = "common";
+    try { if (typeof getRarity === "function") rarity = getRarity(g.word, g.language) || "common"; } catch (err) { /* rarity.js missing */ }
+    const badge = $("doneRarity");
+    badge.textContent = rarity.charAt(0).toUpperCase() + rarity.slice(1);
+    badge.className = "gf-rarity is-" + rarity;
+    $("doneCard").className = "gf-final-card is-" + rarity;
     const xp = Number(result.xp) || 0;
+    const friend = g.other_username || "your friend";
     if (result.added === false) {
+      // The player already had this card: it counts as one more use instead.
+      const used = Number(result.usage_count) || 0;
       $("doneTitle").textContent = "You already had this one!";
-      $("doneSub").textContent = "It was already in your collection, so you get " + xp + " bonus XP instead. " + (g.other_username || "Your friend") + " gets XP too.";
+      $("doneUsed").textContent = "Used " + used + " time" + (used === 1 ? "" : "s");
+      $("doneUsed").hidden = false;
+      $("doneSub").textContent = "It counts as one more use for the card you own. +" + xp + " XP for you, and " + friend + " gets XP too. Say thanks!";
     } else {
       $("doneTitle").textContent = "Added to your collection!";
-      $("doneSub").textContent = "+" + xp + " XP for you, and " + (g.other_username || "your friend") + " gets XP too. Say thanks!";
+      $("doneUsed").hidden = true;
+      $("doneSub").textContent = "+" + xp + " XP for you, and " + friend + " gets XP too. Say thanks!";
     }
+    // "Show me in collection": opens that album with the card showing
+    const album = result.album || g.album_id;
+    $("doneCollection").href = "../storeVocab/storeVocab.html?album=" + encodeURIComponent(album) + "&find=" + encodeURIComponent(g.word) + "#collection";
   }
 
   function leave() {
@@ -308,7 +342,6 @@ const GiftPage = (() => {
     $("typeCheck").addEventListener("click", checkType);
     $("typeHintBtn").addEventListener("click", typeHint);
     $("typeInput").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); checkType(); } });
-    $("typeRomanMode").addEventListener("change", () => { G.romanMode = $("typeRomanMode").checked; typePlaceholder(); $("typeInput").focus(); });
     $("sayHear").addEventListener("click", hear);
     $("sayMic").addEventListener("click", listen);
     $("saySkip").addEventListener("click", startWrite);

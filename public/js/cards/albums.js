@@ -330,6 +330,16 @@ function renderAlbums(data) {
   albumUi.data = data;
   const albums = buildIslandAlbums(data.albumRows, data.language);
 
+  // Coming from a gift ("Show me in collection"): open that album once, with the card searched for, so it is right there.
+  if (!albumUi.deepLinked) {
+    albumUi.deepLinked = true;
+    try {
+      const q = new URLSearchParams(location.search);
+      const want = q.get("album");
+      if (want && albums.some((a) => a.id === want)) { albumUi.openId = want; albumUi.filter = "all"; albumUi.search = q.get("find") || ""; }
+    } catch (err) { /* no link: the shelf as usual */ }
+  }
+
   if (albumUi.openId === CAPTURED_ALBUM.id) {
     box.innerHTML = capturedSkeleton(data);
     updateCaptured();

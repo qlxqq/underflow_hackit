@@ -7,7 +7,7 @@
 --  * The gift arrives LOCKED. The friend opens it on pages/gift/gift.html: type the word from its English
 --    meaning, say it, write a sentence with it. Only then is the card added to their collection (gift_claim).
 --  * Limits: friends only, 3 gifts a day (Singapore time), 3 waiting gifts per friend, a friend who already
---    owns the card cannot be sent it, and a gift nobody opens expires after 7 days. A cancelled, declined or
+--    owns the card can still be sent it (it then counts as one more use of their card), and a gift nobody opens expires after 7 days. A cancelled, declined or
 --    expired gift gives the spare back.
 --  * Both players earn XP when a gift is opened: 15 for the friend, 10 for the sender (change below).
 --
@@ -93,9 +93,7 @@ begin
   if (select count(*) from card_gifts where sender_id = me and recipient_id = p_friend_id and status = 'pending') >= 3 then
     raise exception 'this friend already has 3 gifts waiting for them';
   end if;
-  if exists (select 1 from album_cards where user_id = p_friend_id and album_id = p_album and language = p_language and word = p_word) then
-    raise exception 'your friend already has this card';
-  end if;
+  -- a friend who already has the card can still be sent it: opening it counts as one more use of their card (gift_claim)
   if exists (select 1 from card_gifts where sender_id = me and recipient_id = p_friend_id and album_id = p_album
                 and language = p_language and word = p_word and status = 'pending') then
     raise exception 'you already sent this card to this friend';
@@ -164,6 +162,8 @@ declare
   me uuid := auth.uid();
   g card_gifts;
   added integer := 0;
+  used integer := 0;
+  stage integer := 0;
   RECIPIENT_XP constant integer := 15;   -- XP for the friend who opens the gift
   SENDER_XP    constant integer := 10;   -- XP for the sender when it is opened
 begin
@@ -179,12 +179,28 @@ begin
   on conflict (user_id, album_id, language, word) do nothing;
   get diagnostics added = row_count;
 
+  if added = 1 then
+    select usage_count, evolution_stage into used, stage from album_cards
+     where user_id = me and album_id = g.album_id and language = g.language and word = g.word;
+  else
+    -- the player already had this card: the gift counts as one more use (1 use = Trained, 3 uses = Mastered, same as the Collection)
+    update album_cards
+       set usage_count = usage_count + 1,
+           evolution_stage = case when usage_count + 1 >= 3 then greatest(evolution_stage, 2)
+                                  when usage_count + 1 >= 1 then greatest(evolution_stage, 1)
+                                  else evolution_stage end
+     where user_id = me and album_id = g.album_id and language = g.language and word = g.word
+    returning usage_count, evolution_stage into used, stage;
+  end if;
+
   update card_gifts set status = 'claimed', claimed_at = now(), sentence = trim(p_sentence) where gift_id = g.gift_id;
   update profiles set xp = xp + RECIPIENT_XP where user_id = me;
   update profiles set xp = xp + SENDER_XP where user_id = g.sender_id;
 
-  return jsonb_build_object('added', added = 1, 'xp', RECIPIENT_XP, 'word', g.word, 'album', g.album_id, 'language', g.language);
+  return jsonb_build_object('added', added = 1, 'xp', RECIPIENT_XP, 'word', g.word, 'album', g.album_id, 'language', g.language,
+                            'usage_count', coalesce(used, 0), 'stage', coalesce(stage, 0));
 end $$;
+
 
 revoke all on function public.card_spare_add(text, text, text) from public, anon;
 revoke all on function public.gift_sweep() from public, anon, authenticated;
