@@ -134,9 +134,12 @@
 :root[data-theme="dark"][data-css~="island-decorate"] .decor-store-row .decor-act { background: #f2a93b; color: #18233a; }
 
 /* ---- island/app.css ---- */
-:root[data-theme="dark"][data-css~="island-app"] .brand-tagline { color: #a6c9e3; }
+/* the panel fades from the page colour into a night-blue, so the coloured estate below doesn't sit on flat black */
+:root[data-theme="dark"][data-css~="island-app"] .auth-panel { background: linear-gradient(180deg, var(--bg) 0%, #14274a 100%); }
 :root[data-theme="dark"][data-css~="island-app"] .auth-box { border: 1px solid #3e4953; }
 :root[data-theme="dark"][data-css~="island-app"] .auth-tabs { border-bottom: 1px solid #3c444d; background: #1e242f; }
+:root[data-theme="dark"][data-css~="island-app"] .auth-tab { color: #b3bfd4; }
+:root[data-theme="dark"][data-css~="island-app"] .auth-languages { color: #c3cde0; }
 :root[data-theme="dark"][data-css~="island-app"] .auth-card .field { background: #1e242f; border-color: #3e4953; }
 :root[data-theme="dark"][data-css~="island-app"] .auth-languages span + span::before { background: #3c4554; }
 :root[data-theme="dark"][data-css~="island-app"] .language-choice[data-lang="zh"] { --tint: #212a23; --tint-bd: #3d5442; --blob: #253b28; --chev: var(--green-txt); }
@@ -281,6 +284,6 @@
 /* Mastered-card shine and card art keep their colours; just soften the glare */
 :root[data-theme="dark"][data-css] .card-art::after,
 :root[data-theme="dark"][data-css] .pf-card-art::after { opacity: 0.6; }
-/* login page: the app name and tagline follow the theme */
-:root[data-theme="dark"] .brand-name { color: var(--ink); }
-:root[data-theme="dark"] .brand-tagline { color: var(--muted); }
+/* login page: the app name and tagline sit on the light sky picture, so they keep their light-mode dark text */
+:root[data-theme="dark"] .brand-name { color: #18233a; }
+:root[data-theme="dark"] .brand-tagline { color: #26445a; }

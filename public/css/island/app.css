@@ -16,8 +16,17 @@
   display: flex; flex-direction: column; align-items: center; text-align: center;
   padding: 30px 24px 0; line-height: normal;
 }
-.brand-name { margin: 0; font: 800 32px/1.1 var(--font-ui); letter-spacing: -0.4px; color: var(--ink); }
-.brand-tagline { margin: 8px 0 0; max-width: 290px; font: 500 14px/1.45 var(--font-ui); color: #35546a; }
+.brand-row { display: flex; align-items: center; gap: 10px; }
+.brand-logo { width: 40px; height: 40px; flex: none; filter: drop-shadow(0 3px 6px rgba(24, 35, 58, 0.18)); }
+/* the brand sits on the light sky in both themes, so it keeps dark text with a soft white glow */
+.brand-name {
+  margin: 0; font: 800 32px/1.1 var(--font-ui); letter-spacing: -0.4px; color: #18233a;
+  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.7);
+}
+.brand-tagline {
+  margin: 8px 0 0; max-width: 290px; font: 600 14px/1.45 var(--font-ui); color: #26445a;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.95), 0 0 12px rgba(255, 255, 255, 0.8);
+}
 
 .auth-panel {
   position: relative; flex: 1; margin-top: -20px; padding: 24px 20px 28px;
@@ -58,8 +67,10 @@
   border-radius: 50%; background: #b7c2d3; vertical-align: middle;
 }
 
-/* a pale silhouette of the estate along the bottom */
-.scene-footer { flex-shrink: 0; height: 84px; height: clamp(52px, 9dvh, 84px); }
+/* a small, coloured copy of the estate along the bottom */
+.scene-footer { flex-shrink: 0; height: 104px; height: clamp(72px, 12dvh, 104px); margin-top: -20px; background: #86c9ee; }
+/* the panel rounds off at the bottom too, over the footer sky, mirroring the top */
+.auth-panel { z-index: 1; border-radius: 24px; }
 
 /* ---- language choice ---- */
 .language-screen { min-height: 100vh; min-height: 100dvh; background: var(--bg); }

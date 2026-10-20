@@ -206,35 +206,56 @@ function buildLanguageScene() {
 }
 
 // =====================================================================
-// LOGIN FOOTER: a quiet silhouette of the same estate
-// Pale tints only, no gradients, so it sits calmly at the bottom of the page.
+// LOGIN FOOTER: a small, coloured copy of the same estate
+// Same pastel blocks, palms and grass as the hero, so the page is bookended in colour.
 // =====================================================================
 function buildFooterScene() {
-  const far = "#dde8f2", near = "#cbdae8", win = "#eef4fa";
+  const ground = 78, win = "#eaf4fb";
+  // [body, shade, trim] - the hero's three HDB palettes
+  const tones = [["#b9cfe2", "#8faecb", "#9db9d3"], ["#ebcdc4", "#d6a89e", "#ddb3a9"], ["#efe1c3", "#d9c58f", "#e1ce9c"]];
+  const clothes = ["#e0463a", "#f2a93b", "#4a6cf0", "#17a596"];
   let s = `<svg class="scene-svg" viewBox="0 0 390 84" preserveAspectRatio="xMidYMax slice" aria-hidden="true">`;
-  const block = (x, w, h, tone, cols) => {
-    let o = `<rect x="${x}" y="${84 - h}" width="${w}" height="${h}" fill="${tone}" />`;
-    o += `<rect x="${x}" y="${84 - h}" width="${(w * 0.1).toFixed(1)}" height="${h}" fill="#1c2541" opacity="0.05" />`;
-    for (let r = 0; r < Math.floor((h - 14) / 11); r++) {
+  // the same morning sky as the hero, so the top and bottom of the page match
+  s += `<defs><linearGradient id="ftSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#86c9ee" /><stop offset="0.8" stop-color="#d3ecf9" /><stop offset="1" stop-color="#edf8fd" /></linearGradient></defs>`;
+  s += `<rect width="390" height="84" fill="url(#ftSky)" />`;
+  s += scCloud(150, 46, 0.45, 0.85) + scCloud(234, 40, 0.4, 0.85);
+  const block = (x, w, h, [body, shade, trim], cols, seed) => {
+    const top = ground - h;
+    let o = `<rect x="${x}" y="${top}" width="${w}" height="${h}" fill="${body}" />`;
+    o += `<rect x="${x}" y="${top}" width="${(w * 0.1).toFixed(1)}" height="${h}" fill="${shade}" opacity="0.55" />`;
+    o += `<rect x="${x}" y="${top - 3}" width="${w}" height="3" fill="${trim}" />`;
+    const rows = Math.floor((h - 18) / 11);
+    for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const wx = x + 7 + c * ((w - 14) / cols) + ((w - 14) / cols - 5) / 2;
-        o += `<rect x="${wx.toFixed(1)}" y="${84 - h + 6 + r * 11}" width="5" height="6" rx="1" fill="${win}" />`;
+        o += `<rect x="${wx.toFixed(1)}" y="${top + 5 + r * 11}" width="5" height="6" rx="1" fill="${win}" />`;
       }
     }
+    // a line of laundry on one floor
+    if (rows > 1) {
+      const ly = top + 5 + (seed % rows) * 11 + 7, lx = x + w * 0.3;
+      o += `<rect x="${lx.toFixed(1)}" y="${ly}" width="14" height="1" fill="#9a7c58" />`;
+      for (let i = 0; i < 3; i++) o += `<rect x="${(lx + 1 + i * 4.5).toFixed(1)}" y="${ly + 1}" width="3" height="${4 + (i % 2) * 2}" fill="${clothes[(seed + i) % clothes.length]}" />`;
+    }
+    // void deck
+    o += `<rect x="${x}" y="${ground - 8}" width="${w}" height="8" fill="#52617a" />`;
+    o += `<rect x="${x + 3}" y="${ground - 7}" width="${w - 6}" height="7" fill="#2f3b52" />`;
     return o;
   };
-  // far row, then a nearer row
-  [[10, 44, 44], [74, 36, 52], [120, 40, 38], [248, 38, 48], [300, 44, 40], [350, 40, 54]].forEach(([x, w, h]) => { s += block(x, w, h, far, 3); });
-  [[-6, 56, 54], [52, 40, 40], [96, 48, 62], [268, 54, 58], [326, 40, 44], [364, 34, 66]].forEach(([x, w, h]) => { s += block(x, w, h, near, 3); });
-  // two palms in the same tint
-  [[176, 50, 5], [214, 44, -5]].forEach(([x, h, lean]) => {
-    const tx = x + lean, ty = 84 - h;
-    s += `<path d="M${x} 84 Q${x + lean * 0.2} ${84 - h * 0.55} ${tx} ${ty}" fill="none" stroke="${near}" stroke-width="4" stroke-linecap="round" />`;
-    [-160, -125, -90, -55, -20, 20].forEach((a) => {
-      s += `<path transform="translate(${tx} ${ty}) rotate(${a})" d="M0 0 Q11 -8 22 5 Q11 -1 0 0 Z" fill="${near}" />`;
-    });
+  // faint far skyline, then the coloured blocks
+  s += `<g opacity="0.55">`;
+  [[10, 44, 60], [74, 36, 66], [120, 40, 52], [248, 38, 62], [300, 44, 56], [350, 40, 68]].forEach(([x, w, h]) => {
+    s += `<rect x="${x}" y="${ground - h}" width="${w}" height="${h}" fill="#bcd5e8" />`;
   });
-  s += `<rect y="82" width="390" height="2" fill="${near}" />`;
+  s += `</g>`;
+  [[-6, 56, 54], [52, 40, 42], [96, 48, 62], [268, 54, 58], [326, 40, 46], [364, 34, 66]].forEach(([x, w, h], i) => {
+    s += block(x, w, h, tones[i % tones.length], 3, i);
+  });
+  // grass, then palms and trees on it
+  s += `<rect y="${ground}" width="390" height="${84 - ground}" fill="#a3d3a6" />`;
+  s += `<rect y="${ground}" width="390" height="1.5" fill="#1c2541" opacity="0.07" />`;
+  s += scPalm(178, ground + 2, 46, 5) + scPalm(214, ground + 2, 40, -5);
+  s += scTree(150, ground + 3, 0.6) + scTree(246, ground + 3, 0.55);
   s += `</svg>`;
   return s;
 }

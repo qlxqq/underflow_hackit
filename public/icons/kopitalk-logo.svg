@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="KopiTalk">
+  <defs>
+    <linearGradient id="ktBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6b955" />
+      <stop offset="1" stop-color="#e88a2c" />
+    </linearGradient>
+  </defs>
+  <!-- badge -->
+  <rect width="64" height="64" rx="16" fill="url(#ktBg)" />
+  <!-- speech bubble rising like steam from the kopi -->
+  <rect x="19" y="7" width="28" height="17" rx="8.5" fill="#ffffff" />
+  <path d="M27 23 L24 30 L33 23 Z" fill="#ffffff" />
+  <circle cx="26.5" cy="15.5" r="2.2" fill="#7a4a24" />
+  <circle cx="33" cy="15.5" r="2.2" fill="#7a4a24" />
+  <circle cx="39.5" cy="15.5" r="2.2" fill="#7a4a24" />
+  <!-- kopitiam cup -->
+  <path d="M46 37.5 h1.5 a4.5 4.5 0 0 1 0 9 h-3" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" />
+  <path d="M16 33 h30 v4 a12 12 0 0 1 -12 12 h-6 a12 12 0 0 1 -12 -12 Z" fill="#ffffff" />
+  <rect x="16.4" y="39" width="29.2" height="3" fill="#17a596" />
+  <ellipse cx="31" cy="33" rx="15" ry="3.2" fill="#6b3f1f" />
+  <ellipse cx="28" cy="32.4" rx="5" ry="1" fill="#a8703f" opacity="0.8" />
+  <!-- saucer -->
+  <rect x="11" y="50.5" width="40" height="4.5" rx="2.25" fill="#ffffff" opacity="0.92" />
+</svg>
