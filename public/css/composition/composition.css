@@ -44,6 +44,9 @@
   border-radius: var(--radius-lg);
   padding: 20px;
 }
+.pr-progress span.is-bonus { box-shadow: 0 0 0 2px #e0a800 inset; }  /* the bonus question */
+.pr-bonus-tag { align-self: flex-start; display: inline-block; margin: 0 0 8px; padding: 3px 10px; border-radius: 999px; background: var(--amber-bg, #fff4de); border: 1px solid var(--amber-bd, #f2d9a6); color: var(--amber-txt, #9a5b00); font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.pr-bonus-tag[hidden] { display: none; }
 .pr-prompt { margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); }
 
 /* ---------- question card ---------- */

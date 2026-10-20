@@ -391,16 +391,15 @@ const IslandTyping = (() => {
     G.el.input.focus();
   }
 
-  // Leaving mid-round needs a second tap, so a slip does not throw away a round.
-  function leave() {
-    if (!G.ready || G.finished || G.leaveArmed) {
-      try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (err) { /* no speech on this device */ }
-      location.href = ISLAND_PAGE;
-      return;
+  // Leaving mid-round asks first (LeaveGuard), so a slip does not throw away a round.
+  async function leave() {
+    // Part-way through a round the player is asked first: leaving throws the round away.
+    if (G.ready && !G.finished) {
+      const stay = !(await (typeof LeaveGuard !== "undefined" ? LeaveGuard.confirm() : Promise.resolve(window.confirm("Leave this round? All your progress will be lost and you will start again."))));
+      if (stay) return;
     }
-    G.leaveArmed = true;
-    setFeedback(cfg.text.quitConfirm);
-    setTimeout(() => { G.leaveArmed = false; if (!G.finished && !G.locked) setFeedback(""); }, cfg.quitArmMs);
+    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (err) { /* no speech on this device */ }
+    location.href = ISLAND_PAGE;
   }
 
   // ---------- the end ----------
@@ -491,9 +490,6 @@ const IslandTyping = (() => {
       // Romanisation is plain letters, so check as it goes even if the phone keyboard calls it "composing".
       if (G.romanMode || !G.composing) check();
     });
-    // The player has to type the answer themselves, so pasting or dragging the shown text
-    // into the box is blocked (covers Ctrl/Cmd-V, right-click and middle-click paste, and drag-drop).
-    ["paste", "drop"].forEach((evt) => G.el.input.addEventListener(evt, (e) => { e.preventDefault(); setFeedback(cfg.text.noPaste); }));
 
     $("zonePill").textContent = `ZONE ${zoneNum}  ${zone.name}`;
     $("zonePill").style.background = zone.color;

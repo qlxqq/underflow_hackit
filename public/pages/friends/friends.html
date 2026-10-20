@@ -25,13 +25,18 @@
 <link rel="stylesheet" href="../../css/shared/theme.css">
 <script src="../../js/shared/theme.js"></script>
     <link rel="stylesheet" href="../../css/friends/gifts.css">
+    <link rel="stylesheet" href="../../css/friends/polish.css">
 </head>
 
 <body data-page="friends">
     <div class="app friends-page">
 
-        <header class="top-bar">
-            <h1 class="top-title">Friends</h1>
+        <header class="fr-hero">
+            <div id="friendsHeroArt" class="fr-hero-art" aria-hidden="true"></div>
+            <div class="fr-hero-text">
+                <h1>Friends</h1>
+                <p>Duel your friends and send them cards.</p>
+            </div>
         </header>
 
         <main class="friends-main">
@@ -98,11 +103,22 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
     <script src="../../js/shared/supabaseClient.js"></script>
     <script src="../../js/shared/bottomNav.js"></script>
+    <script src="../../js/shared/presence.js"></script>
+
+    <!-- Profile pictures of friends (avatarSvg) -->
+    <script src="../../js/shared/avatars.js"></script>
 
     <!-- Card gifts need the card word lists to show a meaning -->
     <script src="../../js/cards/data/zoneWords.js"></script>
     <script src="../../js/shared/roleCards.js"></script>
+    <!-- Island card rarity (for the cards shown in a friend's profile) -->
+    <script src="../../js/cards/data/zhFrequency.js"></script>
+    <script src="../../js/cards/data/msFrequency.js"></script>
+    <script src="../../js/cards/data/taFrequency.js"></script>
+    <script src="../../js/cards/rarity.js"></script>
+    <script src="../../js/friends/friendsScene.js"></script>
     <script src="../../js/friends/gifts.js"></script>
+    <script src="../../js/friends/friendProfile.js"></script>
 
     <!-- Friends feature -->
     <script src="../../js/friends/friends.js"></script>

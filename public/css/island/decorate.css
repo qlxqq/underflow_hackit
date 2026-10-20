@@ -1,0 +1,41 @@
+/* Decorate mode on the home island (homeLife.js). */
+
+#decor-btn.is-on { background: var(--amber, #f2a93b); }
+
+/* while decorating, the walking controls get out of the way */
+.island-stage.is-decorating .joystick,
+.island-stage.is-decorating .act-btn,
+.island-stage.is-decorating .keys-hint { display: none !important; }
+
+.decor-bar {
+  position: absolute; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 12;
+  display: flex; flex-direction: column; gap: 10px; padding: 12px 12px 12px 16px;
+  background: rgba(255, 255, 255, 0.97); border-radius: 22px; box-shadow: 0 6px 22px rgba(24, 35, 58, 0.22);
+}
+.decor-bar[hidden] { display: none; }
+.decor-info { display: flex; flex-direction: column; gap: 2px; }
+.decor-info strong { font-size: 16px; font-weight: 800; color: var(--ink, #18233a); }
+.decor-info span { font-size: 12px; font-weight: 700; line-height: 1.3; color: var(--muted, #5b6783); }
+.decor-actions { display: flex; gap: 8px; }
+.decor-act, .decor-done {
+  flex: 1; min-height: 44px; padding: 0 10px; border: 0; border-radius: 22px; font: 800 14px var(--font-ui, inherit); cursor: pointer; white-space: nowrap;
+}
+.decor-act { background: #eef1f6; color: #55627c; }
+.decor-act:disabled { opacity: 0.45; cursor: default; }
+.decor-act span { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 4px; padding: 0 4px; border-radius: 9px; background: #4f9a8c; color: #fff; font-size: 11px; }
+.decor-done { background: var(--amber, #f2a93b); color: var(--ink, #18233a); }
+
+/* Storage list */
+.decor-store {
+  position: absolute; left: 12px; right: 12px; bottom: calc(150px + env(safe-area-inset-bottom)); z-index: 13; max-height: 46%; overflow-y: auto;
+  padding: 14px; background: #fff; border-radius: 22px; box-shadow: 0 6px 22px rgba(24, 35, 58, 0.26);
+}
+.decor-store[hidden] { display: none; }
+.decor-store-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 16px; font-weight: 800; }
+.decor-store-x { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #eef1f6; font-size: 20px; line-height: 1; cursor: pointer; color: var(--ink, #18233a); }
+.decor-store-list { display: flex; flex-direction: column; gap: 8px; }
+.decor-store-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1.5px solid #e3e8f0; border-radius: 16px; }
+.decor-store-row img { width: 48px; height: 48px; object-fit: contain; flex: none; }
+.decor-store-row span { flex: 1; font-weight: 800; }
+.decor-store-row .decor-act { flex: none; background: #f2a93b; color: #18233a; }
+.decor-store-empty { margin: 4px 0; font-size: 13px; font-weight: 700; color: var(--muted, #5b6783); line-height: 1.4; }

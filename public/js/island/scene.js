@@ -59,7 +59,7 @@ class IslandScene extends Phaser.Scene {
       spot: () => ({ x: this.player.x, y: this.player.y }),   // where the player stands (a mini-game remembers it)
     });
     this.updateHud();
-    setTimeout(() => buildIslandTexturesLater(this), 1200); // the home island's pictures, while the player plays
+    setTimeout(() => buildIslandTexturesLater(this), 250); // the home island's pictures, while the player plays
     IslandUI.setZone("Mystery Island", "#8190a8");
     IslandUI.onMap = () => this.openMap();
     IslandUI.showMapButton(true);

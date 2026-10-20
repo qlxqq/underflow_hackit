@@ -21,13 +21,13 @@ const HomeWorld = Object.assign(Object.create(IslandWorld), {
     // a little scenery, always the same
     const rnd = islandRandom(4242);
     const keepClear = [[HOME_SPAWN.x, HOME_SPAWN.y, 220], [HOME_HOUSE.x, HOME_HOUSE.y, 260], [HOME_SHOP.front.x, HOME_SHOP.front.y, 170],
-      ...HOME_ITEMS.flatMap((it) => it.spots.map((s) => [s.x, s.y - ISLAND_ART[it.key][1] * 0.4, Math.max(ISLAND_ART[it.key][0], ISLAND_ART[it.key][1]) * 0.55]))];
+      ...HOME_ITEMS.flatMap((it) => (it.spots || []).map((s) => [s.x, s.y - ISLAND_ART[it.key][1] * 0.4, Math.max(ISLAND_ART[it.key][0], ISLAND_ART[it.key][1]) * 0.55]))];
     const art = (k) => ISLAND_ART[k] || [40, 40];
     const protect = [
       { x1: HOME_SHOP.front.x - 140, x2: HOME_SHOP.front.x + 140, y1: HOME_SHOP.front.y - 90, y2: HOME_SHOP.front.y + 70 },
       { x1: HOME_SPAWN.x - 200, x2: HOME_SPAWN.x + 200, y1: HOME_SPAWN.y - 220, y2: HOME_SPAWN.y + 120 },
       { x1: HOME_DOCK.jetty.x - 200, x2: HOME_DOCK.jetty.x + 330, y1: HOME_DOCK.jetty.y - 100, y2: HOME_DOCK.jetty.y + HOME_DOCK.jetty.h + 80 },
-      ...HOME_ITEMS.flatMap((it) => it.spots.map((s) => ({ x1: s.x - art(it.key)[0] / 2 - 30, x2: s.x + art(it.key)[0] / 2 + 30, y1: s.y - art(it.key)[1] - 30, y2: s.y + 30 }))),
+      ...HOME_ITEMS.flatMap((it) => (it.spots || []).map((s) => ({ x1: s.x - art(it.key)[0] / 2 - 30, x2: s.x + art(it.key)[0] / 2 + 30, y1: s.y - art(it.key)[1] - 30, y2: s.y + 30 }))),
     ];
     this.protect = protect;
     const clearOfUse = (key, x, y) => { const a = art(key); const r = { x1: x - a[0] / 2, x2: x + a[0] / 2, y1: y - a[1], y2: y }; return !protect.some((q) => r.x1 < q.x2 && r.x2 > q.x1 && r.y1 < q.y2 && r.y2 > q.y1); };
@@ -109,7 +109,7 @@ class HomeScene extends Phaser.Scene {
     this.tweens.add({ targets: ring, scaleX: 1.6, scaleY: 1.6, alpha: 0, duration: 1500, repeat: -1, ease: "Sine.easeOut" });
 
     this.makeItems();
-    setTimeout(() => buildIslandTexturesLater(this), 1200); // the Mystery Island's pictures, while the player plays
+    setTimeout(() => buildIslandTexturesLater(this), 250); // the Mystery Island's pictures, while the player plays
 
     this.look = currentAvatarLook();
     ensureAvatarTextures(this, this.look);
@@ -157,32 +157,8 @@ class HomeScene extends Phaser.Scene {
     IslandUI.fadeIn();
   }
 
-  // Bought things appear at their spots; unbought spots show a faint outline.
-  makeItems() {
-    this.itemSprites = {};
-    HOME_ITEMS.forEach((it) => {
-      this.itemSprites[it.id] = it.spots.map((s) => {
-        const img = this.add.image(s.x, s.y, it.key).setOrigin(0.5, 1).setScale(1 / ART_SCALE).setDepth(s.y);
-        img.rect = null;
-        return img;
-      });
-      this.paintItem(it, false);
-    });
-  }
-
-  paintItem(it, animate) {
-    const owned = IslandState.owns(it.id);
-    this.itemSprites[it.id].forEach((img, i) => {
-      img.setAlpha(owned ? 1 : 0.16);
-      if (owned) img.clearTint(); else img.setTint(0x6f86ad);
-      const s = it.spots[i];
-      if (owned && !img.rect) { if (it.foot) HomeWorld.addRect(s.x, s.y, it.foot); img.rect = true; }
-      if (owned && animate) {
-        img.setScale(0.2 / ART_SCALE);
-        this.tweens.add({ targets: img, scale: 1 / ART_SCALE, duration: 420, ease: "Back.easeOut" });
-      }
-    });
-  }
+  // Bought decorations, the people visiting them and the pets are handled in homeLife.js.
+  makeItems() { this.lifeInit(); }
 
   // The character picker (first visit: must choose; later: can change).
   pickAvatar(first) {
@@ -232,6 +208,7 @@ class HomeScene extends Phaser.Scene {
     this.ground.update();
     this.updateNearby();
     this.updateWaypoint();
+    this.lifeUpdate(time, dt);
   }
 
   // ---------- map: where the shop and dock are ----------
@@ -287,19 +264,10 @@ class HomeScene extends Phaser.Scene {
     if (!this.nearby || IslandUI.open) return;
     const it = this.nearby;
     IslandUI.setAction(null);
-    const after = () => { this.nearby = null; };
     if (it.kind === "shop") {
-      IslandUI.openShop({
-        items: HOME_ITEMS, categories: HOME_CATEGORIES, coins: () => IslandState.coins, owns: (id) => IslandState.owns(id),
-        buy: (id) => {
-          const item = HOME_ITEMS.find((x) => x.id === id);
-          if (!item || !IslandState.buy(item)) return;
-          this.paintItem(item, true);
-          this.updateHud();
-          IslandUI.banner(`${item.name} placed`, "It's now on your island");
-          try { IslandHooks.onPurchase(item); } catch (err) { console.error(err); }
-        },
-      }, after);
+      // The shop is its own page now. Remember where the player stands so the island opens there again.
+      if (typeof IslandMiniGames !== "undefined") IslandMiniGames.saveReturnSpot();
+      window.location.href = "../shop/shop.html";
     } else {
       sailTo("mystery", this.game); // tapping "Take the boat" sails straight away
     }

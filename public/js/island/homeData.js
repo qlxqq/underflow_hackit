@@ -21,14 +21,15 @@ const HOME_PATHS = [
 const HOME_HOUSE = { name: "Your house", prop: "homeHouse", x: 2000, y: 950, foot: { w: 340, h: 110 } };
 const HOME_SHOP = { name: "Island Shop", prop: "islandShop", x: 2600, y: 1620, foot: { w: 240, h: 90 }, front: { x: 2600, y: 1730 } };
 
-// Things the player can buy. Each has a spot where it appears once bought
-// (a faint outline shows where it will go). `cat` groups them in the shop.
+// Things the player can buy. The first ones have a starting spot where they appear once bought;
+// the player can then move and flip them (Decorate button on the island). `cat` groups them in the shop.
 // `foot` is the area that blocks the player (leave it out to walk through).
 const HOME_CATEGORIES = [
   { id: "all", name: "All" },
   { id: "fun", name: "Rides & fun" },
   { id: "building", name: "Buildings" },
   { id: "decor", name: "Decor" },
+  { id: "pets", name: "Pets" },
 ];
 const HOME_ITEMS = [
   { id: "bounce", name: "Bouncy castle", cat: "fun", price: 40, key: "bounceCastle", foot: { w: 210, h: 60 }, spots: [{ x: 1400, y: 1050 }] },
@@ -44,4 +45,23 @@ const HOME_ITEMS = [
   { id: "arcade", name: "Game arcade", cat: "building", price: 100, key: "arcade", foot: { w: 260, h: 80 }, spots: [{ x: 2550, y: 2200 }] },
   { id: "balloon", name: "Hot-air balloon", cat: "fun", price: 120, key: "balloon", foot: { w: 60, h: 30 }, spots: [{ x: 2900, y: 1000 }] },
   { id: "ferris", name: "Ferris wheel", cat: "fun", price: 150, key: "ferrisWheel", foot: { w: 260, h: 70 }, spots: [{ x: 3000, y: 1420 }] },
+  // more to decorate with: no fixed spot, they appear near the middle and the player moves them (Decorate button)
+  { shared: true, id: "playground", name: "Playground", cat: "fun", price: 90, key: "playground", foot: { w: 200, h: 50 } },
+  { shared: true, id: "koi", name: "Koi pond", cat: "decor", price: 75, key: "koiPond", foot: { w: 230, h: 60 } },
+  { shared: true, id: "stallchicken", name: "Chicken-rice stall", cat: "building", price: 70, key: "stallRed", foot: { w: 170, h: 50 } },
+  { shared: true, id: "stallsatay", name: "Satay stall", cat: "building", price: 70, key: "stallTeal", foot: { w: 170, h: 50 } },
+  { shared: true, id: "stallpancake", name: "Pancake stall", cat: "building", price: 70, key: "stallGold", foot: { w: 170, h: 50 } },
+  { shared: true, id: "parasol", name: "Parasol table", cat: "decor", price: 45, key: "parasolTable", foot: { w: 120, h: 40 } },
+  { id: "campfire", name: "Campfire", cat: "decor", price: 35, key: "campfire", foot: { w: 60, h: 24 } },
+  { shared: true, id: "chess", name: "Chess table", cat: "fun", price: 40, key: "chessTable", foot: { w: 80, h: 30 } },
+  { id: "flowers", name: "Flower bed", cat: "decor", price: 25, key: "flowerBed", foot: { w: 150, h: 30 } },
+  { shared: true, id: "bench", name: "Park bench", cat: "decor", price: 25, key: "bench", foot: { w: 100, h: 26 } },
+  { shared: true, id: "palm", name: "Palm tree", cat: "decor", price: 20, key: "palm", foot: { w: 36, h: 20 } },
+  { shared: true, id: "lamp", name: "Street lamp", cat: "decor", price: 15, key: "lamp", foot: { w: 14, h: 10 } },
+  // pets roam the island on their own (`pet: true`)
+  { id: "pet-duck", name: "Duckling", cat: "pets", price: 50, key: "pet_duck", pet: true, speed: 55 },
+  { id: "pet-turtle", name: "Turtle", cat: "pets", price: 60, key: "pet_turtle", pet: true, speed: 26 },
+  { id: "pet-bunny", name: "Bunny", cat: "pets", price: 70, key: "pet_bunny", pet: true, speed: 85 },
+  { id: "pet-cat", name: "Kitten", cat: "pets", price: 90, key: "pet_cat", pet: true, speed: 80 },
+  { id: "pet-dog", name: "Puppy", cat: "pets", price: 90, key: "pet_dog", pet: true, speed: 95 },
 ];

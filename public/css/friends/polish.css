@@ -1,0 +1,135 @@
+/* Friends page look: same calm style as the login and language screens
+   (soft sky header, rounded white panel, white cards with a light border, amber as the only accent).
+   Loaded after friends.css and gifts.css. */
+
+.friends-page { background: var(--bg, #f4f7fa); }
+
+/* ---- header: the Marina Bay view (same picture as the language screen) with the title on the sky ---- */
+.fr-hero { position: relative; height: var(--bar-h, 72px); background: #86b8e8; overflow: hidden; }
+.fr-hero-art { position: absolute; inset: 0; line-height: 0; }
+.fr-hero-art .scene-svg { display: block; width: 100%; height: 100%; }
+/* same height as the other top bars: the title and a short line sit on the sky, with a light halo so they stay readable */
+.fr-hero-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 20px; text-align: center; }
+.fr-hero-text h1 { margin: 0; font: 800 22px/1.15 var(--font-ui, system-ui); letter-spacing: -0.2px; color: var(--ink, #18233a); text-shadow: 0 0 10px rgba(255, 255, 255, 0.85), 0 0 3px rgba(255, 255, 255, 0.8); }
+.fr-hero-text p { margin: 2px 0 0; font: 700 12.5px/1.3 var(--font-ui, system-ui); color: #22384f; text-shadow: 0 0 8px rgba(255, 255, 255, 0.9), 0 0 3px rgba(255, 255, 255, 0.8); }
+
+/* ---- the panel that slides up over the sky ---- */
+.friends-page .friends-main {
+  position: relative; margin-top: -10px; padding: 20px 20px calc(var(--nav-h, 72px) + 40px);
+  background: var(--bg, #f4f7fa); border-radius: 24px 24px 0 0;
+}
+
+/* ---- add a friend ---- */
+.friends-page .add-friend {
+  padding: 18px 18px 20px; background: var(--white, #fff);
+  border: 1px solid #dce6f0; border-radius: 20px; box-shadow: 0 10px 28px rgba(24, 35, 58, 0.07);
+}
+.friends-page .add-friend-label { display: block; margin: 0 0 12px; font: 800 19px/1.25 var(--font-ui, system-ui); color: var(--ink, #18233a); }
+.friends-page .add-friend .field { background: #f6f9fc; border-color: #dce6f0; }
+.friends-page .add-friend .field:focus { background: #fff; outline: 2px solid var(--amber, #f2a93b); outline-offset: 1px; }
+
+/* ---- sections: a plain title, then one white card holding the rows ---- */
+.friends-page .friends-section { margin-top: 26px; }
+.friends-page .section-title { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px 4px; font: 800 17px/1.2 var(--font-ui, system-ui); color: var(--ink, #18233a); }
+.friends-page .section-title .count { font-size: 14px; font-weight: 700; color: var(--muted, #5b6783); background: none; padding: 0; }
+
+.friends-page .friend-list {
+  list-style: none; margin: 0; padding: 0; overflow: hidden;
+  background: var(--white, #fff); border: 1px solid #dce6f0; border-radius: 20px;
+  box-shadow: 0 10px 28px rgba(24, 35, 58, 0.07);
+}
+.friends-page .friend-list:empty { display: none; }
+.friends-page .search-results { margin-top: 10px; }
+
+.friends-page .friend-row {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; background: transparent; border: 0; border-radius: 0; box-shadow: none;
+}
+.friends-page .friend-row + .friend-row { border-top: 1px solid #e8eef5; }
+/* ---- picture (button) with the online dot ---- */
+.friends-page .friend-avatar {
+  position: relative; flex: 0 0 50px; width: 50px; height: 50px; margin: 0; padding: 0;
+  display: grid; place-items: center; border-radius: 50%; border: 0; cursor: default;
+  font: 800 21px var(--font-ui, system-ui); color: var(--amber-txt, #9a5b00); background: var(--amber-bg, #fff4de);
+}
+.friends-page button.friend-avatar { cursor: pointer; }
+.friends-page .friend-avatar svg { display: block; width: 100%; height: 100%; border-radius: 50%; }
+.friends-page .friend-avatar.has-pic { background: transparent; font-size: 0; }
+
+/* Discord-style status dot on the corner of the picture: green when online, grey when offline */
+.presence-dot {
+  position: absolute; right: -2px; bottom: -2px; width: 16px; height: 16px; border-radius: 50%;
+  background: #8e99ab; border: 3px solid #fff; box-sizing: border-box;
+}
+.presence-dot.is-online { background: #2fb457; }
+
+.friends-page .friend-info { flex: 1 1 auto; min-width: 0; }
+.friends-page .friend-name { margin: 0; font: 800 17px/1.25 var(--font-ui, system-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friends-page .friend-meta { margin: 2px 0 0; font: 600 13px/1.3 var(--font-ui, system-ui); color: var(--muted, #5b6783); }
+
+.friends-page .friend-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.friends-page .friend-actions .btn { min-height: 40px; padding: 0 16px; border-radius: 20px; font-size: 14px; font-weight: 800; }
+
+.friends-page .empty-state {
+  margin: 8px 0 0; padding: 22px 16px; text-align: center; font-weight: 600; color: var(--muted, #5b6783);
+  background: var(--white, #fff); border: 1px solid #dce6f0; border-radius: 20px;
+}
+
+/* ---- profile pop-up ---- */
+.pf-overlay { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: rgba(24, 35, 58, 0.45); }
+.pf-card {
+  width: 100%; max-width: 340px; padding: 26px 22px 20px; text-align: center;
+  background: #fff; border-radius: 24px; box-shadow: 0 20px 50px rgba(24, 35, 58, 0.25);
+}
+.pf-pic {
+  position: relative; width: 96px; height: 96px; margin: 0 auto 12px; border-radius: 50%;
+  display: grid; place-items: center; font: 800 38px var(--font-ui, system-ui); color: var(--amber-txt, #9a5b00); background: var(--amber-bg, #fff4de);
+  box-shadow: 0 0 0 4px #fff, 0 0 0 6px var(--amber, #f2a93b);
+}
+.pf-pic svg { display: block; width: 100%; height: 100%; border-radius: 50%; }
+.pf-pic .presence-dot { width: 24px; height: 24px; right: 0; bottom: 0; border-width: 4px; }
+.pf-name { margin: 14px 0 2px; font: 800 22px/1.2 var(--font-ui, system-ui); color: var(--ink, #18233a); }
+.pf-status { margin: 0 0 16px; font: 700 13px var(--font-ui, system-ui); color: var(--muted, #5b6783); }
+.pf-status.is-online { color: #2d8a4a; }
+.pf-facts { display: flex; margin: 0 0 18px; border-top: 1px solid #e8eef5; border-bottom: 1px solid #e8eef5; }
+.pf-facts > div { flex: 1; padding: 12px 0; display: flex; flex-direction: column; gap: 2px; }
+.pf-facts > div + div { border-left: 1px solid #e8eef5; }
+.pf-facts strong { font: 800 22px var(--font-ui, system-ui); color: var(--ink, #18233a); }
+.pf-facts span { font: 600 12px var(--font-ui, system-ui); color: var(--muted, #5b6783); }
+.pf-remove { display: block; width: 100%; margin-top: 8px; padding: 12px; background: none; border: 0; font: 700 14px var(--font-ui, system-ui); color: var(--danger, #b3261e); cursor: pointer; }
+
+/* ---- a friend's mini profile (friendProfile.js) ---- */
+.pf-card.fp { max-height: 88vh; max-height: 88dvh; overflow-y: auto; text-align: left; }
+.pf-card.fp .pf-pic, .pf-card.fp .pf-name, .pf-card.fp .pf-status { text-align: center; }
+.pf-card.fp .pf-name, .pf-card.fp .pf-status { display: block; }
+.fp-stats { display: grid; grid-template-columns: 1fr 1fr; margin: 0 0 12px; border-top: 1px solid #e8eef5; border-bottom: 1px solid #e8eef5; }
+.fp-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 0; }
+.fp-stat + .fp-stat { border-left: 1px solid #e8eef5; }
+.fp-stat-art { height: 46px; display: grid; place-items: center; }
+.fp-stat strong { font: 800 18px var(--font-ui, system-ui); color: var(--ink, #18233a); }
+.fp-stat span { font: 600 12px var(--font-ui, system-ui); color: var(--muted, #5b6783); }
+.fp-xp { margin: 0 0 6px; }
+.fp-xp-bar { display: block; height: 8px; border-radius: 4px; background: #e3e8ef; overflow: hidden; }
+.fp-xp-bar i { display: block; height: 100%; border-radius: 4px; background: var(--teal, #17a596); }
+.fp-xp-text { margin: 6px 0 0; text-align: center; font: 600 12px var(--font-ui, system-ui); color: var(--muted, #5b6783); }
+.fp-title { display: flex; align-items: baseline; gap: 6px; margin: 18px 0 8px; font: 800 15px var(--font-ui, system-ui); color: var(--ink, #18233a); }
+.fp-count { font: 700 13px var(--font-ui, system-ui); color: var(--muted, #5b6783); }
+.fp-empty { margin: 0; padding: 10px 0; font: 600 13px var(--font-ui, system-ui); color: var(--muted, #5b6783); }
+.fp-badges { display: flex; flex-wrap: wrap; gap: 12px; }
+.fp-badge { width: 64px; text-align: center; }
+.fp-badge svg { display: block; width: 52px; height: 60px; margin: 0 auto 4px; }
+.fp-badge span { display: block; font: 700 11px/1.2 var(--font-ui, system-ui); color: var(--muted, #5b6783); }
+.fp-favs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+.fp-favs .fp-empty { grid-column: 1 / -1; }
+.fp-card { min-width: 0; padding: 10px 6px 8px; text-align: center; background: #fff; border: 1px solid #dce6f0; border-top: 4px solid var(--rc, #8a97ab); border-radius: 12px; }
+.fp-card.stage-1 { background: #f6fbff; }
+.fp-card.stage-2 { border: 2px solid transparent; border-top-width: 4px; background: linear-gradient(#fff, #fff) padding-box, linear-gradient(135deg, #7c5cff, #2fd0c0, #ff8ad8, #f2a93b) border-box; }
+.fp-card-stage { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 6px; }
+.fp-card-stage i { display: inline-block; width: 12px; height: 4px; margin: 0 1px; border-radius: 2px; background: #dfe5ee; }
+.fp-card-stage i.on { background: var(--teal, #17a596); }
+.fp-card-stage span { font: 700 10px var(--font-ui, system-ui); color: var(--muted, #5b6783); }
+.fp-card-word { font: 800 22px/1.2 var(--font-cjk, system-ui); color: var(--ink, #18233a); overflow: hidden; text-overflow: ellipsis; }
+.fp-card-word.long { font-size: 16px; }
+.fp-card-sub { margin-top: 2px; font: 600 11px var(--font-ui, system-ui); color: var(--muted, #5b6783); }
+.fp-card-meaning { margin-top: 4px; font: 700 12px/1.25 var(--font-ui, system-ui); color: var(--ink, #18233a); }
+.fp-card-rar { margin-top: 6px; font: 800 10px var(--font-ui, system-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--rc, #8a97ab); }

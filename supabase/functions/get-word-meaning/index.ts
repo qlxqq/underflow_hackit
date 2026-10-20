@@ -44,8 +44,18 @@ For each word, give a concise English meaning that fits how the word is used in 
 Romanization rules: pinyin with tone marks for Mandarin; standard Latin transliteration for Tamil; null for Malay.
 Also choose "theme": the name from this list whose picture best shows the word's meaning: ${THEME_NAMES.join(", ")}.
 If no picture on the list clearly fits the word, use "none". Prefer "none" over a poor match.
+Also give "commonness": a whole number 1 to 5 that becomes the card's rarity, judged from how often the WORD ITSELF is used
+in everyday speech and writing by a Singaporean young adult (not from the sentence it appears in):
+1 = Common: basic words used every day by everyone (e.g. 吃, 今天, 谢谢, makan, bas, thank you, 的).
+2 = Uncommon: everyday words most learners know (e.g. 公园, 排队, 邻居, kedai, queue).
+3 = Rare: known to many but only in particular situations or a bit specific (e.g. 药房, 包裹, 装修, 转账, parcel, renovate).
+4 = Epic: formal, specialised or advanced words (e.g. 巡逻, 书法, 谈判, 效率, negotiate, calligraphy).
+5 = Legendary: truly rare: classical or literary words, four-character idioms (成语), archaic or highly technical terms.
+Rough spread across the words students meet: 1 about 40%, 2 about 30%, 3 about 18%, 4 about 8%, 5 about 4%. Be strict with 5.
+Words people in Singapore use every day, like 组屋 (HDB flat), kopi, void deck, are 1 or 2, not rare. Names of famous places are 3.
+Single characters and grammar words (的, 了, 在) are 1. Judge each word separately and consistently. If unsure, choose 3.
 Respond ONLY with a JSON array, no markdown, in exactly this shape:
-[{"word": "...", "englishMeaning": "...", "romanization": "...", "theme": "..."}]`;
+[{"word": "...", "englishMeaning": "...", "romanization": "...", "theme": "...", "commonness": 1}]`;
 
 const ART_SYSTEM_PROMPT = `You draw small flat icons for a vocabulary card game used by Singaporean students.
 You will get a word, its English meaning and optionally an extra request from the player.
@@ -223,7 +233,7 @@ async function lookupMeanings(words: string[], language: string, contextSentence
   );
   const parsed = parseJsonArray(text);
 
-  const meanings: Record<string, { englishMeaning: string | null; romanization: string | null; theme: string | null }> = {};
+  const meanings: Record<string, { englishMeaning: string | null; romanization: string | null; theme: string | null; commonness: number | null }> = {};
   if (parsed) {
     for (const item of parsed) {
       if (item?.word) {
@@ -233,6 +243,8 @@ async function lookupMeanings(words: string[], language: string, contextSentence
           romanization: item.romanization ?? null,
           // Only a real picture name, or "none" (meaning: draw a new one).
           theme: THEME_SET.has(theme) || theme === "none" ? theme : null,
+          // 1 (used all the time) to 5 (very rare); the app turns it into the card's rarity.
+          commonness: Number.isFinite(Number(item.commonness)) ? Math.min(5, Math.max(1, Math.round(Number(item.commonness)))) : null,
         };
       }
     }
@@ -284,6 +296,17 @@ Deno.serve(async (req) => {
         return json({ error: "Unsupported photo type." }, 400);
       }
       return json({ text: await readTextFromPhoto(image, mediaType, language) });
+    }
+
+    // ---- job 4: rate how common some words are (used to fix the rarity of cards captured earlier) ----
+    if (body.mode === "rate") {
+      const words = Array.isArray(body.words) ? body.words.slice(0, 40).map((w: unknown) => String(w).slice(0, 40)) : [];
+      const language = String(body.language ?? "").slice(0, 5);
+      if (!words.length) return json({ ratings: {} });
+      const found = await lookupMeanings(words, language, "");
+      const ratings: Record<string, number> = {};
+      for (const w of Object.keys(found)) if (found[w].commonness) ratings[w] = found[w].commonness as number;
+      return json({ ratings });
     }
 
     // ---- job 2: draw a picture for one word ----

@@ -44,9 +44,9 @@ const IslandUI = {
     this.el.mapBtn.addEventListener("click", () => { if (this.onMap) this.onMap(); });
     if (this.el.boatBtn) { this.el.boatBtn.addEventListener("click", () => { if (this.onBoat) this.onBoat(); }); this.el.boatBtn.style.display = "none"; }
     if (this.el.avatarBtn) { this.el.avatarBtn.addEventListener("click", () => { if (this.onAvatar) this.onAvatar(); }); this.el.avatarBtn.style.display = "none"; }
-    this.el.overlay.addEventListener("click", (e) => { if (e.target === this.el.overlay) this.close(); });
-    this.el.sheet.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) this.close(); });
-    window.addEventListener("keydown", (e) => { if (e.key === "Escape" && this.open) this.close(); });
+    this.el.overlay.addEventListener("click", (e) => { if (e.target === this.el.overlay) this.requestClose(); });
+    this.el.sheet.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) this.requestClose(); });
+    window.addEventListener("keydown", (e) => { if (e.key === "Escape" && this.open) this.requestClose(); });
   },
 
   esc(text) {
@@ -102,8 +102,21 @@ const IslandUI = {
     IslandControls.setEnabled(false);
     this.el.sheet.scrollTop = 0;
   },
+  // Closing from the player's side (back arrow, tapping outside, Escape). In the middle of an NPC challenge it asks first,
+  // because leaving throws the challenge away. The game's own code calls close() directly, which never asks.
+  leaveGuard: null,   // set by openNpc: () => true while questions are being asked
+  async requestClose() {
+    if (!this.open) return;
+    if (this.leaveGuard && this.leaveGuard()) {
+      const leave = await (typeof LeaveGuard !== "undefined" ? LeaveGuard.confirm() : Promise.resolve(window.confirm("Leave this round? All your progress will be lost and you will start again.")));
+      if (!leave) return;
+    }
+    this.close();
+  },
+
   close(force) {
     if (!this.open || (this.locked && !force)) return;
+    this.leaveGuard = null;
     this.locked = false;
     this.open = false;
     this.el.overlay.hidden = true;
@@ -280,6 +293,7 @@ body:has(#overlay.npc-full) .bottom-nav { display: none !important; }
 .npc-card > * { margin-top: 0; margin-bottom: 0; }
 .npc-card .sheet-title { margin: 0; }
 .npc-card .q-part { margin: 0; }
+.q-bonus { display: inline-block; margin: 0 0 8px; padding: 3px 10px; border-radius: 999px; background: #fff4de; border: 1px solid #f2d9a6; color: #9a5b00; font: 800 11px var(--font-ui, system-ui); letter-spacing: 0.04em; text-transform: uppercase; }
 .npc-full .q-options { display: flex; flex-direction: column; gap: 10px; margin: 0; }
 .npc-full .q-feedback { margin: 0; text-align: center; }
 .npc-full .npc-main > .btn-block { margin-top: 0; }
@@ -319,6 +333,8 @@ body:has(#overlay.npc-full) .bottom-nav { display: none !important; }
     let index = 0;
     let score = 0;
     const marks = [];   // "ok" = right, "weak" = wrong, per question (the progress bar)
+    let running = false;   // true from the first question until the result: leaving then needs a confirm
+    this.leaveGuard = () => running;
 
     const intro = () => {
       const pr = opts.progress ? opts.progress() : null;
@@ -350,9 +366,11 @@ body:has(#overlay.npc-full) .bottom-nav { display: none !important; }
     const goNext = () => { index++; if (index < total) ask(); else finish(); };
     const nextButton = () => `<button class="btn btn-primary btn-block" id="q-next" type="button" hidden>${index + 1 < total ? "Next" : "See result"}</button>`;
     const header = (q) => `${this.npcBar(total, marks, index)}<div class="npc-main">${this.npcZoneRow(zone, `${npc.name} · ${index + 1} of ${total}`)}`;
-    const tag = (q) => `<p class="q-part">${partText[q.kind] || "Question"}</p>`;
+    // A question that uses one of the player's own captured words gets a "Bonus" tag
+    const tag = (q) => `${q.bonus ? `<span class="q-bonus">Bonus \u00b7 your own word</span>` : ""}<p class="q-part">${partText[q.kind] || "Question"}</p>`;
 
     const ask = () => {
+      running = true;
       const q = steps[index];
       if (q.word) asked.add(q.word);
       if (q.kind === "match") { q.words.forEach((w) => asked.add(w)); return askMatch(q); }
@@ -465,6 +483,7 @@ body:has(#overlay.npc-full) .bottom-nav { display: none !important; }
     };
 
     const finish = async () => {
+      running = false;
       const passed = score >= pass;
       this.el.sheet.innerHTML = `${this.npcBar(total, marks, -1)}<div class="npc-main"><section class="npc-card"><h2 class="sheet-title">${score} / ${total}</h2><p class="sheet-sub">Collecting your reward...</p></section></div>`;
       let reward = null;
