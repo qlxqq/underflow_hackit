@@ -60,6 +60,43 @@ document.addEventListener("DOMContentLoaded", function () {
         return node;
     }
 
+    // Difficulty faces, Geometry Dash style: calm, angry, horned demon.
+    const FACE = '<circle class="face" cx="10" cy="11" r="7.5"/>';
+    const DIFF_ICONS = {
+        easy: FACE +
+            '<circle class="ink" cx="7.4" cy="9.6" r="1.1"/><circle class="ink" cx="12.6" cy="9.6" r="1.1"/>' +
+            '<path class="line" d="M6.8 12.6q3.2 3 6.4 0"/>',
+        hard: FACE +
+            '<path class="line" d="M5.6 7.4l3 1.3M14.4 7.4l-3 1.3"/>' +
+            '<circle class="ink" cx="7.6" cy="10.4" r="1"/><circle class="ink" cx="12.4" cy="10.4" r="1"/>' +
+            '<path class="line" d="M7.4 14.6q2.6-1.8 5.2 0"/>',
+        demon: '<path class="face" d="M3.6 7.8L2.4 1.8l4.4 3.4zM16.4 7.8l1.2-6-4.4 3.4z"/>' + FACE +
+            '<path class="ink" d="M5.4 8.6l3.6 1.6-3.2.9zM14.6 8.6l-3.6 1.6 3.2.9z"/>' +
+            '<path class="ink" d="M6.2 13.2h7.6l-1.3 2.6h-5z"/>' +
+            '<path class="face" d="M8 13.2l.7 1.3.7-1.3zM10.6 13.2l.7 1.3.7-1.3z"/>'
+    };
+
+    // Difficulty chip: a five-step bar plus a face icon for the tier.
+    function difficultyChip(boss, className) {
+        const chip = make("span", className + " diff tier-" + boss.tier);
+        const bar = make("span", "diff-bar");
+        const icon = make("span", "diff-icon");
+        const kind = boss.tier >= 5 ? "demon" : boss.tier >= 3 ? "hard" : "easy";
+
+        for (let step = 1; step <= 5; step++) {
+            bar.appendChild(make("i", step <= boss.tier ? "on" : ""));
+        }
+
+        icon.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true">' + DIFF_ICONS[kind] + "</svg>";   // our own drawing
+
+        chip.title = "Difficulty: " + boss.difficulty;
+        chip.setAttribute("aria-label", "Difficulty: " + boss.difficulty);
+        chip.appendChild(icon);
+        chip.appendChild(bar);
+
+        return chip;
+    }
+
     function clamp(value, low, high) { return Math.max(low, Math.min(high, value)); }
 
     function stageClass(stage) { return "stage-" + clamp(Number(stage) || 0, 0, 3); }
@@ -377,7 +414,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const stats = make("span", "boss-stats");
             if (open) {
-                stats.appendChild(make("span", "stat", "Lv " + boss.level));
+                stats.appendChild(difficultyChip(boss, "stat"));
                 stats.appendChild(make("span", "stat", "HP " + boss.hp));
                 stats.appendChild(make("span", "stat", "ATK " + boss.attack));
             } else {
@@ -511,7 +548,9 @@ document.addEventListener("DOMContentLoaded", function () {
         el("spriteWrap").className = "sprite-wrap";
         el("bannerName").textContent = boss.name;
         el("bannerZone").textContent = boss.zone + " boss";
-        el("bossLv").textContent = "Lv " + boss.level;
+        const lv = difficultyChip(boss, "plate-lv");
+        lv.id = "bossLv";
+        el("bossLv").replaceWith(lv);
     }
 
     function paintBar(fillId, ghostId, hp, max, instant) {

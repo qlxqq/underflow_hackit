@@ -1462,6 +1462,27 @@
 .boss-face.zone-1 { --face-bg: linear-gradient(180deg, #6db8ec, #ffe9bd); }
 .boss-face.zone-3 { --face-bg: linear-gradient(180deg, #6db4e8, #ffdca8); }
 
+/* difficulty chip: five small steps + tier name */
+.diff { display: inline-flex; align-items: center; gap: 6px; --diff: var(--b-teal); }
+.diff.tier-2, .diff.tier-3 { --diff: var(--b-amber); }
+.diff.tier-4, .diff.tier-5 { --diff: var(--b-bad); }
+.diff-bar { display: inline-flex; align-items: flex-end; gap: 2px; height: 11px; }
+.diff-bar i { display: block; width: 3px; border-radius: 2px; background: var(--b-line); }
+.diff-bar i:nth-child(1) { height: 5px; }
+.diff-bar i:nth-child(2) { height: 6.5px; }
+.diff-bar i:nth-child(3) { height: 8px; }
+.diff-bar i:nth-child(4) { height: 9.5px; }
+.diff-bar i:nth-child(5) { height: 11px; }
+.diff-bar i.on { background: var(--diff); }
+.plate-lv.diff { gap: 5px; }
+
+.diff-icon { display: inline-flex; width: 18px; height: 18px; margin-left: -3px; }
+.diff-icon svg { width: 100%; height: 100%; overflow: visible; }
+.diff-icon .face { fill: var(--diff); }
+.diff-icon .ink { fill: #1c2433; }
+.diff-icon .line { fill: none; stroke: #1c2433; stroke-width: 1.5; stroke-linecap: round; }
+.diff.tier-5 .diff-icon svg { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--diff) 55%, transparent)); }
+
 .boss-card .stat.need { border-color: var(--b-amber-bd); background: var(--b-amber-bg); color: var(--b-amber-txt); }
 
 /* room for the bottom navigation bar */

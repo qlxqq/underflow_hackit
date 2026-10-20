@@ -7,7 +7,7 @@
     // Labels and flavour text for each boss (the real HP / attack numbers live in the database).
     const BOSSES = {
         1: {
-            name: "Lift Gremlin", zone: "Neighbourhood", level: 8, hp: 60, attack: 8,
+            name: "Lift Gremlin", zone: "Neighbourhood", level: 8, difficulty: "Easy", tier: 1, hp: 60, attack: 8,
             move: "Door Slam",
             intro: "A Lift Gremlin rattles out of the void deck!",
             taunt: "Aiyo, lift spoilt again!",
@@ -15,7 +15,7 @@
             glow: "#8fd16f"
         },
         2: {
-            name: "Hawker Pigeon", zone: "Hawker centre", level: 12, hp: 80, attack: 10,
+            name: "Hawker Pigeon", zone: "Hawker centre", level: 12, difficulty: "Hard", tier: 3, hp: 80, attack: 10,
             move: "Wok Hei Blast",
             intro: "A Hawker Pigeon swoops in, wok sizzling!",
             taunt: "Eh, chope first, can or not?",
@@ -23,7 +23,7 @@
             glow: "#ffb347"
         },
         3: {
-            name: "Rush Hour Crowd", zone: "Public transport", level: 16, hp: 100, attack: 12,
+            name: "Rush Hour Crowd", zone: "Public transport", level: 16, difficulty: "Demon", tier: 5, hp: 100, attack: 12,
             move: "Rush Hour Shove",
             intro: "The Rush Hour Crowd squeezes on board!",
             taunt: "Move in lah, move in!",
