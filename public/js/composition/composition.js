@@ -111,6 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const seg = document.createElement("span");
             if (questionResults[i]) seg.className = questionResults[i] === "ok" ? "is-done" : "is-weak";
             else if (i === currentQuestionIndex && !finished) seg.className = "is-current";
+            if (questions[i] && questions[i].bonus) seg.classList.add("is-bonus");   // gold outline: the bonus question
             progressBar.appendChild(seg);
         }
     }
@@ -216,7 +217,7 @@ document.addEventListener("DOMContentLoaded", function () {
             bonus: true,
             bonusWords: [a.word, b.word],
             bonusMeanings: [a.simpleMeaning, b.simpleMeaning],
-            prompt: "Bonus: arrange the words to say \u201C" + frame.en(a.simpleMeaning, b.simpleMeaning) + "\u201D",
+            prompt: "Arrange the words to say \u201C" + frame.en(a.simpleMeaning, b.simpleMeaning) + "\u201D",
             hint: "Use your own words: " + spelled(a) + "; " + spelled(b) + ".",
             tiles: frame.before.concat([a.word, frame.between, b.word], frame.after),
             accepted_answers: [build(a, b), build(b, a)],
@@ -338,6 +339,19 @@ document.addEventListener("DOMContentLoaded", function () {
     // Render a question
     // ----------------------------------
 
+    // "Arrange the words to say you take the lift." -> Arrange the words to say \u201Cyou take the lift\u201D
+    // so the player can see exactly what they have to build. Prompts that already have quotes are left as they are.
+    function withQuotes(text) {
+        const t = String(text || "");
+        if (/[\u201C"]/.test(t)) return t;
+        const m = /^(Arrange the words to (say|ask|order))\s+(.+?)([.?!]?)$/.exec(t);
+        if (!m) return t;
+        // capital first letter, and the sentence ends with its punctuation ("?" for questions, otherwise ".")
+        const sentence = m[3].charAt(0).toUpperCase() + m[3].slice(1);
+        const end = m[4] || (m[2] === "ask" ? "?" : ".");
+        return m[1] + " \u201C" + sentence + end + "\u201D";
+    }
+
     function loadQuestion() {
         const question = questions[currentQuestionIndex];
 
@@ -345,7 +359,18 @@ document.addEventListener("DOMContentLoaded", function () {
         answered = false;
         wrongTries = 0;
 
-        questionPrompt.textContent = question.prompt;
+        questionPrompt.textContent = withQuotes(question.prompt);
+
+        // a question built from the player's own captured words is tagged "Bonus"
+        let bonusTag = document.getElementById("bonusTag");
+        if (!bonusTag) {
+            bonusTag = document.createElement("span");
+            bonusTag.id = "bonusTag";
+            bonusTag.className = "pr-bonus-tag";
+            bonusTag.textContent = "Bonus \u00b7 your own words";
+            questionPrompt.parentNode.insertBefore(bonusTag, questionPrompt.parentNode.firstChild);
+        }
+        bonusTag.hidden = !question.bonus;
 
         questionHint.textContent = question.hint || (question.topic
             ? "Topic: " + question.topic
@@ -730,6 +755,18 @@ document.addEventListener("DOMContentLoaded", function () {
         finished = true;
         nextButton.hidden = false;
         nextButton.textContent = text;
+    }
+
+    // The back arrow in the top bar: leaving part-way throws the round away, so ask first.
+    // (Once the round is finished there is nothing to lose, so it just goes back.)
+    const backLink = document.querySelector(".back-button");
+    if (backLink) {
+        backLink.addEventListener("click", async function (event) {
+            if (finished || !questions.length) return;
+            event.preventDefault();
+            const leave = await (typeof LeaveGuard !== "undefined" ? LeaveGuard.confirm() : Promise.resolve(window.confirm("Leave this round? All your progress will be lost and you will start again.")));
+            if (leave) window.location.href = backLink.href;
+        });
     }
 
     // Start the feature.

@@ -22,6 +22,20 @@ const THEME_ZONE = {
   food: "hawker", drink: "hawker", stall: "hawker", fruit: "hawker", cake: "hawker", chilli: "hawker",
   bus: "transport", taxi: "transport", train: "transport", car: "transport", bicycle: "transport", plane: "transport",
 };
+// Which captured-word themes each NPC can ask about. A captured word joins an NPC's challenge only if its theme is
+// one this NPC's job is about (whatever zone the word is from), so a bus word never turns up with the chicken rice seller. Themes are the picture themes of the AI lookup (the names in cardArt.js). A word whose theme
+// no NPC lists simply is not asked here (it still appears in the mini-games' bonus questions when it fits the zone).
+const NPC_THEMES = {
+  teacher: ["book", "pencil", "bulb", "clock", "star", "playground", "bag", "shirt", "shoe"],
+  ccAuntie: ["people", "chat", "smile", "heart", "family", "chess", "gift", "park", "flower", "home"],
+  officer: ["key", "lift", "phone", "eye", "medical", "people", "home"],
+  stallUncle: ["food", "stall", "chilli", "coin"],
+  tehAuntie: ["drink", "cake", "stall", "coin"],
+  fruitSeller: ["fruit", "stall", "coin"],
+  stationMaster: ["train", "card"],
+  busCaptain: ["bus", "card", "car"],
+  taxiDriver: ["taxi", "car"],
+};
 const USAGE_STAGES = [1, 3]; // usage 1 -> Trained, usage 3 -> Mastered (same rule as the Collection)
 
 const IslandCaptured = {
@@ -52,6 +66,19 @@ const IslandCaptured = {
     return this.rows.filter((r) => this.zoneOf(r) === zoneId && !this.isAuthored(r.word)).map((r) => ({
       w: r.word, p: r.romanization || "", m: r.english_meaning, captured: true, id: r.vocab_id, usage: r.usage_count || 0, stage: r.evolution_stage || 0,
     }));
+  },
+  // The captured words one NPC can ask: any captured word whose theme is about this NPC's job (NPC_THEMES).
+  // Only the theme counts, not which zone the word's theme would normally belong to.
+  forNpc(npcId) {
+    const themes = NPC_THEMES[npcId] || [];
+    if (!themes.length) return [];
+    return this.rows.filter((r) => themes.includes(r.theme) && !this.isAuthored(r.word)).map((r) => ({
+      w: r.word, p: r.romanization || "", m: r.english_meaning, captured: true, id: r.vocab_id, usage: r.usage_count || 0, stage: r.evolution_stage || 0,
+    }));
+  },
+  // The NPCs that can ask this captured word (none = no practice for it yet).
+  npcsFor(row) {
+    return ISLAND_NPCS.filter((n) => (NPC_THEMES[n.id] || []).includes(row.theme));
   },
   find(word) { return this.rows.find((r) => r.word === word) || null; },
 };
@@ -97,7 +124,8 @@ const IslandPractice = {
     }
     if (!options.some((o) => o.npcId) && !options.length) {
       const row = IslandCaptured.find(word);
-      if (row) ISLAND_NPCS.filter((n) => n.zone === IslandCaptured.zoneOf(row)).forEach((n) => options.push({ npcId: n.id, plays: IslandState.playsOf(`npc:${n.id}`) }));
+      // only the NPCs whose job fits the word's theme can ask it
+      if (row) IslandCaptured.npcsFor(row).forEach((n) => options.push({ npcId: n.id, plays: IslandState.playsOf(`npc:${n.id}`) }));
     }
     if (!options.length) return null;
     const least = Math.min(...options.map((o) => o.plays));

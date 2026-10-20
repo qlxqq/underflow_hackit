@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Island Shop</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@500;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="../../css/shared/base.css">
+  <link rel="stylesheet" href="../../css/shared/topbar.css">
+  <link rel="stylesheet" href="../../css/shop/shop.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+</head>
+
+<body data-page="shop">
+  <div class="app shop-page">
+
+    <header class="shop-bar">
+      <button type="button" id="shop-back" class="shop-back" aria-label="Back to your island">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <h1 class="shop-heading">Island Shop</h1>
+      <div id="shop-coins" class="shop-coins" role="img" aria-label="Coins">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#f2a93b"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#fff3d6" stroke-width="2"/></svg>
+        <span class="coin-num">0</span>
+      </div>
+    </header>
+
+    <main class="shop-main">
+      <p class="shop-sub" id="shop-sub">You have <strong>0 coins</strong>. Earn more by finishing levels and helping the locals on the mystery island.</p>
+      <div class="shop-tabs" id="shop-tabs"></div>
+      <div class="shop-list" id="shop-list"></div>
+      <button type="button" id="shop-done" class="btn btn-block shop-done">Done</button>
+    </main>
+
+    <div id="shop-banner" class="shop-banner" role="status" aria-live="polite" hidden></div>
+  </div>
+
+  <script src="../../js/shared/supabaseClient.js"></script>
+  <script src="../../js/shared/auth.js"></script>
+  <script src="../../js/shared/streak.js"></script>
+  <script src="../../js/shared/rewards.js"></script>
+  <script src="../../js/shared/profile.js"></script>
+  <script src="../../js/island/islandData.js"></script>
+  <script src="../../js/island/homeData.js"></script>
+  <script src="../../js/island/lang.js"></script>
+  <script src="../../js/island/save.js"></script>
+  <script src="../../js/island/state.js"></script>
+  <script src="../../js/island/art.js"></script>
+  <script src="../../js/island/art2.js"></script>
+  <script src="../../js/island/art3.js"></script>
+  <script src="../../js/island/art4.js"></script>
+  <script src="../../js/shop/shop.js"></script>
+</body>
+</html>

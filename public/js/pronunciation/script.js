@@ -494,7 +494,14 @@ els.finishBtn.addEventListener('click', goToJourney);
 els.retryLevelBtn.addEventListener('click', restartLevel);
 els.playMineBtn.addEventListener('click', () => playMine());
 els.compareBtn.addEventListener('click', compareWithCorrect);
-els.backBtn.addEventListener('click', goToJourney);
+els.backBtn.addEventListener('click', async () => {
+  // Part-way through a run the player is asked first: leaving throws the run away. Once the results are showing there is nothing to lose.
+  if (els.done.hidden) {
+    const leave = await (typeof LeaveGuard !== "undefined" ? LeaveGuard.confirm() : Promise.resolve(window.confirm("Leave this round? All your progress will be lost and you will start again.")));
+    if (!leave) return;
+  }
+  goToJourney();
+});
 
 /* ---------- Init ---------- */
 els.langBadge.textContent = LANG_LABELS[state.lang];

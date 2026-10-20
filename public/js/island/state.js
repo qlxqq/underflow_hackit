@@ -9,6 +9,7 @@
 const IslandState = {
   coins: 0,
   owned: new Set(),        // shop items bought
+  placements: {},          // where each decoration stands on the home island: { id: { x, y, flip } }
   npcsDone: new Set(),     // NPC challenges passed
   levelsDone: new Set(),   // mystery island levels finished (1-9)
   zonesRevealed: new Set(),// zones whose mist has lifted
@@ -41,6 +42,7 @@ const IslandState = {
       const stats = blob.stats || {};
       this.plays = stats.plays && typeof stats.plays === "object" ? { ...stats.plays } : {};
       this.weak = Array.isArray(stats.weak) ? stats.weak.slice(0, this.WEAK_MAX) : [];
+      this.placements = stats.placements && typeof stats.placements === "object" ? { ...stats.placements } : {};
     }
     // Logged in: coins are the profile's coins (the same balance as quests and the rest of the app).
     const serverCoins = await coinsAsked;
@@ -66,7 +68,7 @@ const IslandState = {
     return {
       coins: this.coins, owned: [...this.owned], npcs: [...this.npcsDone], levels: [...this.levelsDone],
       zones: [...this.zonesRevealed], avatar: this.avatar,
-      stats: { plays: this.plays, weak: this.weak },
+      stats: { plays: this.plays, weak: this.weak, placements: this.placements },
     };
   },
 
@@ -135,11 +137,26 @@ const IslandState = {
     return true;
   },
   owns(id) { return this.owned.has(id); },
+  // ---- where the decorations stand (home island) ----
+  placementOf(id) {
+    const p = this.placements[id];
+    return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? { x: p.x, y: p.y, flip: !!p.flip } : null;
+  },
+  // In storage: bought, but not on the island (the player can place it again any time).
+  // Anything bought starts here: the player decides where it goes (Decorate > Storage > Place).
+  isStored(id) { const p = this.placements[id]; return !p || !!p.stored; },
+  setStored(id) {
+    this.placements[id] = { stored: true };
+    this.save();
+  },
+  setPlacement(id, p) { this.placements[id] = { x: Math.round(p.x), y: Math.round(p.y), flip: !!p.flip }; this.save(); },
   buy(item) {
     if (this.owned.has(item.id)) return false;
     // if the server refuses the payment the item is taken back
     if (!this.spend(item.price, () => { this.owned.delete(item.id); this.save(); this.emit(); })) return false;
-    this.owned.add(item.id); this.save(); this.emit(); return true;
+    this.owned.add(item.id);
+    if (!item.pet) this.placements[item.id] = { stored: true };   // a new decoration goes straight into storage
+    this.save(); this.emit(); return true;
   },
   // ---- how often each challenge was played, and the words the player got wrong ----
   WEAK_MAX: 40,

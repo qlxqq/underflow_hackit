@@ -1,0 +1,63 @@
+/* The Island Shop page. Same look as the old pop-up: tabs, rows with a picture, a yellow buy button. */
+
+.shop-page { display: flex; flex-direction: column; min-height: 100dvh; background: var(--bg); }
+
+.shop-bar {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px;
+  height: var(--bar-h); padding: 0 16px; background: var(--white); border-bottom: 1px solid var(--line);
+}
+.shop-back {
+  width: 40px; height: 40px; border: 0; border-radius: 50%; display: grid; place-items: center;
+  background: var(--bg); color: var(--ink); cursor: pointer; flex: none;
+}
+.shop-heading { flex: 1; margin: 0; font-size: 20px; font-weight: 800; }
+.shop-coins {
+  display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px 8px 10px; border-radius: 22px;
+  background: var(--bg); font-weight: 800; font-size: 15px;
+}
+
+.shop-main { flex: 1; padding: 16px 20px 40px; }
+.shop-sub { margin: 0 0 4px; color: var(--muted); font-weight: 600; line-height: 1.4; }
+.shop-sub strong { color: var(--ink); }
+
+/* category tabs */
+.shop-tabs { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; padding-bottom: 2px; }
+.shop-tab {
+  flex: none; border: 0; border-radius: 999px; padding: 7px 14px; font: inherit; font-weight: 800; font-size: 13px;
+  background: #eef1f6; color: #55627c; cursor: pointer;
+}
+.shop-tab.is-on { background: #4f9a8c; color: #fff; }
+
+/* items */
+.shop-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.shop-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px;
+  border: 1.5px solid var(--line, #e3e8f0); border-radius: 16px; background: #fff;
+}
+.shop-row.is-owned { background: #eef7f0; border-color: #cfe6d6; }
+.shop-thumb { width: 54px; height: 54px; object-fit: contain; flex: none; margin-right: 10px; }
+.shop-name { flex: 1; font-weight: 800; }
+.shop-buy {
+  border: 0; border-radius: 14px; padding: 9px 14px; font-weight: 800; font-size: 14px; cursor: pointer;
+  background: #f2a93b; color: #18233a; display: flex; flex-direction: column; align-items: center; line-height: 1.15;
+}
+.shop-buy small { font-size: 11px; font-weight: 700; opacity: 0.75; }
+.shop-buy:disabled { background: #e8ecf3; color: #8190a8; cursor: default; }
+.shop-owned { font-weight: 800; font-size: 13px; color: #2f9e5b; }
+
+.shop-done { margin-top: 16px; background: var(--white); border: 1px solid var(--line); }
+
+/* "X placed" message after buying */
+.shop-banner {
+  position: fixed; left: 50%; top: calc(var(--bar-h) + 12px); z-index: 20; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 20px; border-radius: 18px;
+  background: var(--ink); color: #fff; box-shadow: 0 6px 20px rgba(24, 35, 58, 0.25); pointer-events: none;
+}
+.shop-banner strong { font-size: 17px; font-weight: 800; }
+.shop-banner span { font-size: 12px; font-weight: 700; opacity: 0.75; }
+.shop-banner.is-show { animation: shop-banner-in 3s ease both; }
+@keyframes shop-banner-in {
+  0% { opacity: 0; transform: translate(-50%, -12px); }
+  10%, 80% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}

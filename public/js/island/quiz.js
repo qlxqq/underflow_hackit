@@ -55,7 +55,8 @@ const IslandQuiz = {
   makeFromData(npc, data, opts = {}) {
     const own = (typeof IslandCards !== "undefined" ? IslandCards.roleList(npc.id) : data.words).map((w) => ({ ...w, npcId: npc.id }));
     const zoneId = typeof ZONE_OF_ALBUM !== "undefined" ? ZONE_OF_ALBUM[data.album] : npc.zone;
-    const captured = typeof IslandCaptured !== "undefined" ? IslandCaptured.forZone(zoneId) : [];
+    // captured words in this NPC's zone AND about this NPC's job (their questions are tagged "Bonus")
+    const captured = typeof IslandCaptured !== "undefined" ? IslandCaptured.forNpc(npc.id) : [];
     const focusWord = opts.focus || null;
     // Practising a zone card whose mini-game is not built yet: that one word joins this NPC's challenge.
     const zoneExtra = focusWord && typeof IslandCards !== "undefined"
@@ -86,7 +87,7 @@ const IslandQuiz = {
 
     const pickOthers = (word, n, key) => this.shuffle(everyone.filter((x) => x.w !== word.w && x[key])).slice(0, n);
     const steps = jobs.map(({ word, kind }) => {
-      const base = { kind, word: word.w };
+      const base = { kind, word: word.w, bonus: !!word.captured };
       if (kind === "meaning") {
         const opts3 = this.shuffle([word, ...pickOthers(word, 2, "m")]);
         return { ...base, prompt: "What does this word mean?", big: word.w, answer: word.m, reveal: word.m, options: opts3.map((o) => ({ value: o.m, label: o.m })) };
@@ -129,7 +130,7 @@ const IslandQuiz = {
     if (focus && !pairWords.includes(focus)) pairWords[pairWords.length - 1] = focus;
     pairWords = this.shuffle(pairWords);
     const side = IslandLang.hasRoman && Math.random() < 0.5 ? "pinyin" : "meaning";
-    order.push({ kind: "match", prompt: side === "meaning" ? "Match each word to its meaning" : `Match each word to its ${IslandLang.roman}`, side, allowedMistakes: 2,
+    order.push({ kind: "match", bonus: pairWords.some((x) => x.captured), prompt: side === "meaning" ? "Match each word to its meaning" : `Match each word to its ${IslandLang.roman}`, side, allowedMistakes: 2,
       words: pairWords.map((x) => x.w),
       pairs: pairWords.map((x) => ({ word: x.w, pinyin: x.p, meaning: x.m, target: side === "meaning" ? x.m : x.p })) });
     return order;
