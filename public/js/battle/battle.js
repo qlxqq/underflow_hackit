@@ -68,6 +68,10 @@ document.addEventListener("DOMContentLoaded", function () {
         Object.keys(screens).forEach(function (key) {
             screens[key].hidden = key !== name;
         });
+
+        // the bottom bar is for browsing; hide it during a fight
+        const nav = el("bottom-nav");
+        if (nav) nav.hidden = name === "battle";
     }
 
     function showMessage(text) {
@@ -346,7 +350,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function renderMenu() {
         const list = el("bossList");
-        const strip = el("deckStrip");
         const unlocked = [1, 2, 3].filter(function (zone) { return haveCards >= zoneMin[zone]; });
 
         list.replaceChildren();
@@ -386,13 +389,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             list.appendChild(button);
         });
-
-        strip.replaceChildren();
-        deck.forEach(function (card) { strip.appendChild(buildCard(card, { mini: true })); });
-
-        el("deckCount").textContent = deck.length + (deck.length === 1 ? " card" : " cards");
-        el("deckEmpty").hidden = deck.length > 0;
-        strip.hidden = deck.length === 0;
 
         renderLock(unlocked.length);
 

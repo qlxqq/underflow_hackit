@@ -1461,3 +1461,6 @@
 .boss-face.zone-3 { --face-bg: linear-gradient(180deg, #6db4e8, #ffdca8); }
 
 .boss-card .stat.need { border-color: var(--b-amber-bd); background: var(--b-amber-bg); color: var(--b-amber-txt); }
+
+/* room for the bottom navigation bar */
+#screenMenu, #screenLoading { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
