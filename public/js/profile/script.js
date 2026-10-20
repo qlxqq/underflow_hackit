@@ -6,12 +6,13 @@ const $ = (id) => document.getElementById(id);
 
 const JOURNEY_PAGE = "../auth/login.html"; 
 const MAX_FAVOURITES = 3;
+const MAX_BADGES = 3;
 const MAX_PICK_LIST = 80; // keeps the picker light; search finds the rest
 const RARITY_COLORS = { common: "#8a97ab", uncommon: "#3aa675", rare: "#2f6fd6", epic: "#8a4fd3", legendary: "#f2a93b" };
 const RARITY_RANK = { legendary: 4, epic: 3, rare: 2, uncommon: 1, common: 0 };
 
 const appSection = $("app-section");
-const views = { profile: $("profile-view"), avatar: $("avatar-view"), favs: $("favs-view") };
+const views = { profile: $("profile-view"), avatar: $("avatar-view"), favs: $("favs-view"), badges: $("badges-view") };
 const statusMessage = $("status-message");
 
 let currentUser = null;
@@ -19,10 +20,14 @@ let profile = null;
 let stats = { xp: 0, coins: 0, available: false };
 let language = "zh";
 let entries = []; // every card the player owns in this language
-let entryMap = new Map(); // "v:<id>" (captured) or "a:<id>" (island) -> card
+let entryMap = new Map(); // "v:<id>" (captured), "a:<id>" (island) or "f:<event>|<word>" (festival hunt card) -> card
 let favKeys = [];
 let favsAvailable = true;
 let earnedBadges = new Set();
+let badgeKeys = []; // the badges shown on the profile (up to 3), e.g. "album:hawker-centre:zh" or "festival:halloween:zh"
+let badgesAvailable = true;
+let festivalNames = new Map(); // event id -> name
+let pendingBadges = [];
 let pending = []; // favourites being picked
 let statusTimer = null;
 
@@ -66,7 +71,7 @@ async function loadAll() {
       return fallback;
     }
   };
-  const [loadedProfile, loadedStats, badgeRows, capturedRows, albumRowsLoaded, fav] = await Promise.all([
+  const [loadedProfile, loadedStats, badgeRows, capturedRows, albumRowsLoaded, fav, festival, favBadges] = await Promise.all([
     tryTo(() => loadProfile(currentUser.id), null, "Could not load profile:")
       .then((loaded) => (loaded ? recordDailyVisit(currentUser.id, loaded).catch(() => loaded) : null)),
     getPlayerStats(currentUser.id).catch(() => ({ xp: 0, coins: 0, available: false })),
@@ -74,6 +79,8 @@ async function loadAll() {
     tryTo(() => getAllVocabulary(currentUser.id, language), [], "Could not load cards:"),
     tryTo(() => getAlbumCards(currentUser.id, language), [], "Could not load island cards:"),
     tryTo(() => supabase.from("profiles").select("favourite_cards").eq("user_id", currentUser.id).maybeSingle(), { error: new Error("not loaded") }, "Could not load favourite cards:"),
+    tryTo(() => loadFestivalEntries(language), [], "Could not load festival cards:"),
+    tryTo(() => supabase.from("profiles").select("favourite_badges").eq("user_id", currentUser.id).maybeSingle(), { error: new Error("not loaded") }, "Could not load favourite badges:"),
   ]);
   profile = loadedProfile;
   stats = loadedStats;
@@ -86,7 +93,18 @@ async function loadAll() {
   buildIslandAlbums(albumRows, language).forEach((album) =>
     album.slots.filter((s) => s.row).forEach((slot) => entryMap.set(`a:${slot.row.card_id}`, albumCardEntry(album, slot, language))),
   );
+  festival.forEach((entry) => entryMap.set(`f:${entry.event_id}|${entry.word}`, entry));
   entries = [...entryMap.entries()].map(([key, entry]) => ({ key, entry }));
+
+  if (favBadges.error) {
+    console.error("Could not load favourite badges (is database/profile_festival.sql run?):", favBadges.error);
+    badgesAvailable = false;
+    badgeKeys = [];
+  } else {
+    badgesAvailable = true;
+    badgeKeys = Array.isArray(favBadges.data && favBadges.data.favourite_badges)
+      ? favBadges.data.favourite_badges.filter((k) => typeof k === "string" && earnedBadges.has(k)).slice(0, MAX_BADGES) : [];
+  }
 
   if (fav.error) {
     console.error("Could not load favourite cards (is database/profile.sql run?):", fav.error);
@@ -98,8 +116,46 @@ async function loadAll() {
   }
 }
 
+// The hunt cards (festival_cards) the player owns for the festivals of this language, shaped like the other cards.
+async function loadFestivalEntries(lang) {
+  if (typeof FESTIVAL_CARD === "undefined") return [];
+  const ev = await supabase.from("festival_events").select("id, name").eq("language", lang);
+  if (ev.error) throw ev.error;
+  festivalNames = new Map((ev.data || []).map((e) => [e.id, e.name]));
+  const ids = (ev.data || []).map((e) => e.id);
+  if (!ids.length) return [];
+  const [w, c] = await Promise.all([
+    supabase.from("festival_words").select("event_id, word, pinyin, meaning").in("event_id", ids),
+    supabase.from("festival_cards").select("event_id, word, usage_count, evolution_stage, earned_at").in("event_id", ids),
+  ]);
+  if (w.error) throw w.error;
+  if (c.error) throw c.error;
+  return (c.data || []).map((card) => {
+    const word = (w.data || []).find((x) => x.event_id === card.event_id && x.word === card.word) || {};
+    return {
+      festival: true, event_id: card.event_id, event_name: festivalNames.get(card.event_id) || "", word: card.word, language: lang,
+      romanization: word.pinyin || "", english_meaning: word.meaning || "", usage_count: card.usage_count, evolution_stage: card.evolution_stage,
+      created_at: card.earned_at, rarity: "festival",
+    };
+  });
+}
+
 // ---- profile view ----
 function miniCardHtml(entry) {
+  if (entry.festival) {
+    // a hunt card: the festival's colour and label instead of a rarity
+    const c = FESTIVAL_CARD.info(entry.event_id, entry.event_name);
+    const stage = Math.min(Math.max(entry.evolution_stage || 0, 0), 2);
+    const long = [...String(entry.word)].length > 5 ? " long" : "";
+    const art = typeof FESTIVAL_ART !== "undefined" ? FESTIVAL_ART.svgFor(entry.word) : "";
+    return `
+    <div class="pf-card${stage >= 2 ? " is-mastered" : ""}" style="--rc:${c.color}">
+      <div class="pf-card-art">${art}</div>
+      <div class="pf-card-word${long}">${escapeHtml(entry.word)}</div>
+      <div class="pf-card-sub">${escapeHtml(entry.romanization || "")}</div>
+      <div class="pf-card-rar">${escapeHtml(c.label)}</div>
+    </div>`;
+  }
   const rarity = RARITY_COLORS[entry.rarity] ? entry.rarity : "common";
   const stage = Math.min(Math.max(entry.evolution_stage || 0, 0), 2);
   const long = [...String(entry.word)].length > 5 ? " long" : "";
@@ -142,18 +198,51 @@ function renderStats() {
     </div>`;
 }
 
+// Every badge the player has earned, as tiles to pick from. An island album badge is "album:<album>:<lang>" and a festival
+// badge is "festival:<event>:<lang>"; the shiny version of either ("album-master:..." / "festival-master:...") shows on the same tile.
+function badgeCatalog() {
+  const list = [];
+  earnedBadges.forEach((id) => {
+    const m = /^(album|festival):(.+):([a-z]{2})$/.exec(id);
+    if (!m) return;
+    const kind = m[1], key = m[2], lang = m[3];
+    const master = earnedBadges.has(`${kind === "album" ? "album-master" : "festival-master"}:${key}:${lang}`);
+    let name, svg;
+    if (kind === "album") {
+      const album = (typeof ALBUMS !== "undefined" && ALBUMS.find((a) => a.id === key)) || { id: key, name: key.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase()), art: "home" };
+      name = album.name; svg = albumBadgeSvg(album, master);
+    } else {
+      if (typeof FESTIVAL_CARD === "undefined") return;
+      name = FESTIVAL_CARD.info(key, festivalNames.get(key)).label; svg = FESTIVAL_CARD.medal(key, master);
+    }
+    list.push({ id, name, svg, master, lang });
+  });
+  return list.sort((a, b) => (b.lang === language) - (a.lang === language) || a.name.localeCompare(b.name));
+}
+
+function badgeTileHtml(b) {
+  const where = b.lang !== language ? ` (${LANGUAGE_NAMES[b.lang] || b.lang})` : "";
+  return `<div class="pf-badge" title="${escapeHtml(b.name + where)}${b.master ? " (every card)" : ""}">${b.svg}<span>${escapeHtml(b.name)}</span></div>`;
+}
+
 function renderBadges() {
-  const albums = buildIslandAlbums([], language);
-  const earned = albums.filter((a) => earnedBadges.has(`album:${a.id}:${language}`));
-  $("pf-badge-count").textContent = `${LANGUAGE_NAMES[language]} · ${earned.length} of ${albums.length}`;
-  const html = albums
-    .map((album) => {
-      const got = earnedBadges.has(`album:${album.id}:${language}`);
-      return `<div class="pf-badge${got ? "" : " is-locked"}" title="${escapeHtml(album.name)}${got ? "" : " (not earned yet)"}">${albumBadgeSvg(album, earnedBadges.has(`album-master:${album.id}:${language}`))}<span>${escapeHtml(album.name)}</span></div>`;
-    })
-    .join("");
-  $("pf-badges").innerHTML =
-    (earned.length === 0 ? '<p class="pf-empty">Complete an island album to earn your first badge.</p>' : "") + html;
+  const catalog = badgeCatalog();
+  $("pf-edit-badges").hidden = !badgesAvailable;   // Edit is always there; with no badges earned it says so instead of opening
+  if (!badgesAvailable) {
+    $("pf-badges").innerHTML = '<p class="pf-empty">Badges are not set up yet. Run database/profile_festival.sql in Supabase.</p>';
+    return;
+  }
+  const slots = [];
+  if (catalog.length === 0) slots.push('<p class="pf-empty" style="grid-column:1/-1;margin:0">No badges to add yet. Finish an album or a festival hunt to earn one.</p>');
+  for (let i = 0; i < MAX_BADGES; i++) {
+    const b = badgeKeys[i] ? catalog.find((x) => x.id === badgeKeys[i]) : null;
+    slots.push(
+      b
+        ? `<button type="button" class="pf-card-btn" data-open-badges aria-label="Change badges. ${escapeHtml(b.name)}">${badgeTileHtml(b)}</button>`
+        : `<button type="button" class="pf-slot-empty" data-open-badges><span><b>+</b>Add a badge</span></button>`,
+    );
+  }
+  $("pf-badges").innerHTML = slots.join("");
 }
 
 function renderFavs() {
@@ -298,7 +387,58 @@ $("favs-save").addEventListener("click", async () => {
   showView("profile");
 });
 
+// ---- choose badges ----
+function renderBadgePicker() {
+  const full = pendingBadges.length >= MAX_BADGES;
+  $("badges-grid").innerHTML = badgeCatalog()
+    .map((b) => {
+      const on = pendingBadges.includes(b.id);
+      return `<button type="button" class="fv-pick" data-badge="${escapeHtml(b.id)}" aria-pressed="${on}" ${!on && full ? "disabled" : ""}><span class="fv-tick" aria-hidden="true">&#10003;</span>${badgeTileHtml(b)}</button>`;
+    })
+    .join("");
+  $("badges-save").textContent = `Save (${pendingBadges.length} / ${MAX_BADGES})`;
+}
+
+function openBadgesView() {
+  if (badgeCatalog().length === 0) {
+    showStatus("You don't have any badges to add yet. Finish an album or a festival hunt to earn one.", "info");
+    return;
+  }
+  pendingBadges = [...badgeKeys];
+  renderBadgePicker();
+  showView("badges");
+}
+
+$("badges-grid").addEventListener("click", (e) => {
+  const pick = e.target.closest("[data-badge]");
+  if (!pick || pick.disabled) return;
+  const id = pick.dataset.badge;
+  pendingBadges = pendingBadges.includes(id) ? pendingBadges.filter((k) => k !== id) : pendingBadges.length < MAX_BADGES ? [...pendingBadges, id] : pendingBadges;
+  renderBadgePicker();
+});
+
+$("badges-save").addEventListener("click", async () => {
+  const button = $("badges-save");
+  button.disabled = true;
+  const { error } = await supabase.from("profiles").update({ favourite_badges: pendingBadges }).eq("user_id", currentUser.id);
+  button.disabled = false;
+  if (error) {
+    console.error("Could not save badges:", error);
+    showView("profile");
+    showStatus("Couldn't save your badges. Try again.", "error");
+    return;
+  }
+  badgeKeys = [...pendingBadges];
+  renderBadges();
+  showView("profile");
+});
+
 // ---- wiring ----
+$("pf-edit-badges").addEventListener("click", openBadgesView);
+$("pf-badges").addEventListener("click", (e) => {
+  if (e.target.closest("[data-open-badges]")) openBadgesView();
+});
+$("badges-back").addEventListener("click", () => showView("profile"));
 $("pf-avatar-btn").addEventListener("click", openAvatarView);
 $("pf-change-pic").addEventListener("click", openAvatarView);
 $("avatar-back").addEventListener("click", () => {

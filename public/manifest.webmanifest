@@ -1,6 +1,6 @@
 {
-  "name": "Mother Tongue",
-  "short_name": "Mother Tongue",
+  "name": "KopiTalk",
+  "short_name": "KopiTalk",
   "description": "Practise your Mother Tongue, one zone at a time.",
   "start_url": "/pages/island/island.html",
   "scope": "/",

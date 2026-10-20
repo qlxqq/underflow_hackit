@@ -664,7 +664,7 @@ async function loadFestival(language) {
   let result = [];
   if (db && typeof FESTIVAL_CARD !== "undefined") {
     try {
-      const ev = await db.from("festival_events").select("id, name, name_native, icon, starts_on, ends_on").eq("language", language).order("starts_on");
+      const ev = await db.from("festival_events").select("id, name, name_native, icon, starts_on, ends_on, language").eq("language", language).order("starts_on");
       if (ev.error) throw ev.error;
       const ids = (ev.data || []).map((e) => e.id);
       if (ids.length) {
@@ -682,10 +682,6 @@ async function loadFestival(language) {
   albumUi.fest = result;
   // redraw only the shelf or a festival album, so a search box somewhere else keeps its focus
   if (albumUi.data && (!albumUi.openId || albumUi.openId.startsWith(FEST_PREFIX))) renderAlbums(albumUi.data);
-}
-
-function festBadgeIcon() {
-  return '<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="14" r="10" fill="#ffc94d"/><circle cx="16" cy="14" r="6.5" fill="#fff3c4"/><path d="M16 9l1.6 3.3 3.6.5-2.6 2.5.6 3.6L16 17l-3.2 1.9.6-3.6-2.6-2.5 3.6-.5z" fill="#f2a93b"/><path d="M10 22l-2 8 8-3 8 3-2-8" fill="#6a35c9"/></svg>';
 }
 
 function festivalShelfHtml() {
@@ -722,24 +718,19 @@ function festLoadingHtml() {
 
 function festDetailSkeleton(album) {
   const c = FESTIVAL_CARD.info(album.id, album.name);
+  // only a finished album gets a line here; while cards are still missing the "?" slots say what is left
   const status = album.master
     ? "Master! Every card is mastered and the badge is shining."
     : album.complete
       ? "Every card found! Practise each one until it is Mastered to make the badge shine."
-      : album.live
-        ? `${album.have} of ${album.total} found. Find the rest on the treasure hunt.`
-        : `${album.have} of ${album.total} found. This hunt has finished, so the rest can't be found now.`;
+      : "";
   return `
     <div class="album-detail-head">
       <button type="button" class="album-back" data-album-back aria-label="Back to albums">${icon("chevLeft", 22)}</button>
       <h2 class="album-title">${escapeHtml(album.name)}</h2>
     </div>
-    ${album.complete ? `<p class="album-done">${status}</p>` : `<p class="album-how">${status}</p>`}
-    <div class="fest-badges" style="--f:${c.color}">
-      <div class="fest-badge${album.complete ? " is-on" : ""}">${festBadgeIcon()}<div><strong>Complete</strong><span>${album.have} / ${album.total} found</span></div></div>
-      <div class="fest-badge${album.master ? " is-shiny" : ""}">${festBadgeIcon()}<div><strong>Master</strong><span>${album.mastered} / ${album.total} mastered</span></div></div>
-    </div>
-    <p class="album-how">Hunt cards come only from the treasure hunt. They can't be gifted or deleted. Practise a card to level it up: once is Trained, three times is Mastered.</p>
+    ${status ? `<p class="album-done">${status}</p>` : ""}
+    <p class="album-how">Hunt cards come only from the treasure hunt. They can't be gifted or deleted, and they aren't used in mini-games, NPC challenges or battles. There are no games for these cards yet, so practise one in three quick steps to level it up: once is Trained, three times is Mastered.</p>
     <div class="card-grid fest-cards"></div>`;
 }
 
@@ -759,59 +750,30 @@ function fillFestCards(album) {
   });
 }
 
-// "Practise": type the Chinese word (characters or pinyin) for the card's meaning. A right answer is one more use.
+// "Practise": the three steps (type it, say it, write a sentence) in festivalPractice.js. There are no games for hunt cards,
+// and their use count is their own: it is not shared with captured or island cards.
 function openFestPractise(eventId, word) {
   const album = (albumUi.fest || []).find((a) => a.id === eventId);
   const slot = album && album.slots.find((s) => s.word === word && s.card);
-  if (!slot) return;
-  const wrap = document.createElement("div");
-  wrap.className = "fest-pr";
-  wrap.setAttribute("role", "dialog");
-  wrap.setAttribute("aria-modal", "true");
-  wrap.innerHTML = `
-    <form class="fest-pr-box" autocomplete="off">
-      <h3>Practise</h3>
-      <p>Type the Chinese word for <b>${escapeHtml(slot.meaning)}</b>. Characters or pinyin both work.</p>
-      <input class="fest-pr-input" type="text" lang="zh-Hans" placeholder="Type it in Chinese or Pinyin..." />
-      <div class="fest-pr-msg" role="status" aria-live="polite"></div>
-      <div class="fest-pr-row"><button type="button" data-pr-close>Close</button><button type="submit" class="main">Check</button></div>
-    </form>`;
-  document.body.appendChild(wrap);
-  const form = wrap.querySelector("form"), input = wrap.querySelector("input"), msg = wrap.querySelector(".fest-pr-msg");
-  const check = form.querySelector(".main");
-  let done = false, wrong = 0, busy = false;
-  const close = () => { wrap.remove(); document.removeEventListener("keydown", onKey); if (done && albumUi.data) renderAlbums(albumUi.data); };
-  const onKey = (e) => { if (e.key === "Escape") close(); };
-  document.addEventListener("keydown", onKey);
-  wrap.querySelector("[data-pr-close]").addEventListener("click", close);
-  setTimeout(() => input.focus(), 50);
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (done) { close(); return; }
-    const text = input.value.trim();
-    if (!text || busy) return;
-    busy = true; check.disabled = true;
-    msg.className = "fest-pr-msg"; msg.textContent = "Checking...";
-    try {
-      const { data, error } = await festDb().rpc("festival_card_practise", { p_event: eventId, p_word: word, p_answer: text });
-      if (error) throw error;
-      if (!data || !data.correct) {
-        wrong += 1;
-        msg.className = "fest-pr-msg bad";
-        msg.textContent = wrong >= 2 ? `Not quite. Hint: it sounds like "${slot.pinyin}".` : "Not quite. Have another go!";
-      } else {
-        slot.card.usage_count = data.usage_count; slot.card.evolution_stage = data.stage;
-        album.mastered = album.slots.filter((s) => s.card && FESTIVAL_CARD.stageOf(s.card) >= 2).length;
-        album.master = album.complete && album.mastered === album.slots.length;
-        done = true;
-        msg.className = "fest-pr-msg good";
-        msg.textContent = data.stage >= 2 ? "Mastered! " + slot.word + " is now a shiny card." : `Yes! Used ${data.usage_count} time${data.usage_count === 1 ? "" : "s"}. ${Math.max(0, FESTIVAL_CARD.USES_FOR_MASTER - data.usage_count)} more to master it.`;
-        check.textContent = "Done";
-        input.disabled = true;
+  if (!slot || typeof FestivalPractice === "undefined") return;
+  FestivalPractice.open({
+    eventId, word, pinyin: slot.pinyin, meaning: slot.meaning, language: album.language || "zh",
+    onDone: (res) => {
+      // look the card up again: the list may have been reloaded while the box was open
+      const a2 = (albumUi.fest || []).find((a) => a.id === eventId);
+      const s2 = a2 && a2.slots.find((s) => s.word === word && s.card);
+      if (s2) {
+        s2.card.usage_count = res.usage_count; s2.card.evolution_stage = res.stage;
+        a2.mastered = a2.slots.filter((s) => s.card && FESTIVAL_CARD.stageOf(s.card) >= 2).length;
+        a2.master = a2.complete && a2.mastered === a2.slots.length;
       }
-    } catch (err) {
-      console.warn("Collection: practise failed.", err && err.message);
-      msg.className = "fest-pr-msg bad"; msg.textContent = "Could not check that. Try again.";
-    } finally { busy = false; check.disabled = false; }
+      if (albumUi.data) renderAlbums(albumUi.data);
+    },
   });
 }
+
+// Counts are read once when the Collection opens. When the page comes back (the back button, or switching back to the app),
+// read them again so a card found or practised elsewhere shows its new numbers.
+function refreshFestival() { if (albumUi.festFor && !document.hidden) loadFestival(albumUi.festFor); }
+window.addEventListener("pageshow", (e) => { if (e.persisted) refreshFestival(); });
+document.addEventListener("visibilitychange", refreshFestival);

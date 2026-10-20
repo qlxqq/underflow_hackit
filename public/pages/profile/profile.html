@@ -48,7 +48,7 @@
         <section class="pf-section">
           <div class="pf-section-head">
             <h2>Badges</h2>
-            <span id="pf-badge-count" class="pf-meta"></span>
+            <button type="button" id="pf-edit-badges" class="pf-link">Edit</button>
           </div>
           <div id="pf-badges" class="pf-badges"></div>
         </section>
@@ -104,6 +104,19 @@
         </div>
       </section>
 
+      <!-- Choose badges -->
+      <section id="badges-view" class="pf-screen" hidden>
+        <header class="top-bar has-back">
+          <button type="button" id="badges-back" class="icon-btn" aria-label="Back to profile"><svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg></button>
+          <h1 class="top-title">Badges</h1>
+        </header>
+        <p class="pf-lead">Pick up to 3 badges to show off on your profile.</p>
+        <div id="badges-grid" class="fv-grid"></div>
+        <div class="pf-footer pf-footer-sticky">
+          <button type="button" id="badges-save" class="btn btn-primary btn-block">Save</button>
+        </div>
+      </section>
+
       <nav id="bottom-nav" class="bottom-nav" aria-label="Main" data-active="">
         <a class="nav-tab" data-nav="journey" href="../island/island.html"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></svg><span>Island</span></a>
         <a class="nav-tab" data-nav="battle" href="../battle/battle.html"><svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2" /><path d="M14.5 6.5 18 3h3v3l-3.5 3.5M5 14l4 4M7 17l-3 3M3 19l2 2" /></svg><span>Battle</span></a>
@@ -130,6 +143,8 @@
   <script src="../../js/cards/albumCards.js"></script>
   <script src="../../js/shared/roleCards.js"></script>
   <script src="../../js/cards/albums.js"></script>
+  <script src="../../js/festival/festivalArt.js"></script>
+  <script src="../../js/festival/festivalCard.js"></script>
   <script src="../../js/shared/streak.js"></script>
   <script src="../../js/shared/profile.js"></script>
   <script src="../../js/shared/rewards.js"></script>
