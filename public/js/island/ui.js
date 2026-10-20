@@ -230,7 +230,7 @@ const IslandUI = {
     this.openSheet(
       `${this.head("Map", "#c0786a")}
        <canvas id="map-canvas" class="map-canvas" width="680" height="476" aria-label="Map of your island"></canvas>
-       <p class="sheet-sub map-help">Tap the shop or the dock to get an arrow pointing there.</p>
+       <p class="sheet-sub map-help">${(info.things || []).length} placed${info.stored ? ` · ${info.stored} in storage` : ""}. Tap the shop, the dock or anything you placed to get an arrow pointing there.</p>
        <div class="map-zones">${rows}</div>`,
       onClose
     );
@@ -243,11 +243,19 @@ const IslandUI = {
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     HomeWorld.paths.forEach((line) => { ctx.beginPath(); line.forEach(([x, y], i) => (i ? ctx.lineTo(x * k, y * k) : ctx.moveTo(x * k, y * k))); ctx.lineWidth = 9; ctx.strokeStyle = "#f5e6cf"; ctx.stroke(); });
     const j = HOME_DOCK.jetty; ctx.fillStyle = "#b88a64"; ctx.fillRect((j.x - j.w / 2) * k, j.y * k, j.w * k, j.h * k);
-    // things bought (filled) and spots still free (hollow)
-    HOME_ITEMS.forEach((it) => it.spots.forEach((s) => {
-      ctx.beginPath(); ctx.arc(s.x * k, (s.y - 40) * k, 7, 0, Math.PI * 2);
-      if (info.owns(it.id)) { ctx.fillStyle = "#4f9a8c"; ctx.fill(); } else { ctx.setLineDash([3, 3]); ctx.lineWidth = 2; ctx.strokeStyle = "#9fb0c8"; ctx.stroke(); ctx.setLineDash([]); }
-    }));
+    // what you placed, drawn as a small picture of the thing, standing where it really is
+    const icon = (key, x, y, maxSide) => {
+      const img = info.art ? info.art(key) : null;
+      if (img && img.width) {
+        const s = maxSide / Math.max(img.width, img.height);
+        ctx.drawImage(img, x - (img.width * s) / 2, y - img.height * s, img.width * s, img.height * s);
+      } else { ctx.beginPath(); ctx.arc(x, y - 6, 6, 0, Math.PI * 2); ctx.fillStyle = "#4f9a8c"; ctx.fill(); }
+    };
+    (info.things || []).slice().sort((a, b) => a.y - b.y).forEach((t) => {
+      ctx.fillStyle = "rgba(35,48,72,0.16)"; ctx.beginPath(); ctx.ellipse(t.x * k, t.y * k, Math.max(8, t.w * k * 0.35), 4, 0, 0, Math.PI * 2); ctx.fill();
+      icon(t.key, t.x * k, t.y * k, Math.max(26, Math.min(56, Math.max(t.w, t.h) * k * 1.15)));
+    });
+    (info.pets || []).forEach((p) => icon(p.key, p.x * k, p.y * k, 22));
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     info.places.forEach((p) => {
       const x = p.x * k, y = p.y * k;
@@ -263,7 +271,10 @@ const IslandUI = {
     canvas.addEventListener("click", (e) => {
       const r = canvas.getBoundingClientRect();
       const wx = ((e.clientX - r.left) / r.width) * HOME_W, wy = ((e.clientY - r.top) / r.height) * HOME_H;
-      const hit = info.places.find((p) => p.id !== "house" && Math.hypot(wx - p.x, wy - p.y) < 220);
+      const things = (info.things || []).map((t) => ({ id: "thing:" + t.id, x: t.x, y: t.y - t.h * 0.4 }));
+      const spots = [...info.places.filter((p) => p.id !== "house").map((p) => ({ id: p.id, x: p.x, y: p.y })), ...things];
+      let hit = null, best = 200;
+      spots.forEach((p) => { const d = Math.hypot(wx - p.x, wy - p.y); if (d < best) { best = d; hit = p; } });
       if (hit) pick(hit.id);
     });
   },

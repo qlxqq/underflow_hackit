@@ -47,12 +47,28 @@ function fillEllipse(ctx, x, y, rx, ry, color, rot = 0) {
 function groundShadow(ctx, cx, y, rx, ry) {
   fillEllipse(ctx, cx, y, rx, ry, PAL.shadow);
 }
-function artText(ctx, text, x, y, size, color, weight = 800) {
-  ctx.font = `${weight} ${size}px "Noto Sans SC", "Manrope", system-ui, sans-serif`;
+// maxWidth (optional): if the text is wider than this, the font shrinks until it fits.
+function artText(ctx, text, x, y, size, color, weight = 800, maxWidth) {
+  const stack = '"Noto Sans SC", "Noto Sans Tamil", "Manrope", system-ui, sans-serif';
+  ctx.font = `${weight} ${size}px ${stack}`;
+  if (maxWidth) {
+    let s = size;
+    while (s > 8 && ctx.measureText(text).width > maxWidth) { s -= 1; ctx.font = `${weight} ${s}px ${stack}`; }
+  }
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = color;
   ctx.fillText(text, x, y);
+}
+
+// Sign text on the buildings: the Chinese name, or the same sign in the language being practised.
+const SIGN_TEXT = {
+  ms: { "小学": "Sekolah", "民众俱乐部": "Kelab Komuniti", "警察岗亭": "Pondok Polis", "诊所": "Klinik", "售票处": "Tiket" },
+  ta: { "小学": "பள்ளி", "民众俱乐部": "சமூக மன்றம்", "警察岗亭": "காவல் சாவடி", "诊所": "மருந்தகம்", "售票处": "சீட்டு" },
+};
+function sg(zh) {
+  const code = typeof IslandLang !== "undefined" && IslandLang ? IslandLang.code : "zh";
+  return (SIGN_TEXT[code] && SIGN_TEXT[code][zh]) || zh;
 }
 
 // ---------- housing ----------

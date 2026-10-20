@@ -224,9 +224,20 @@ class HomeScene extends Phaser.Scene {
   openMap() {
     if (IslandUI.open) return;
     IslandUI.setAction(null);
+    // what is on the island right now (placed decorations and the pets), so the map shows it
+    const L = this.life || { items: {}, pets: [] };
+    const things = Object.values(L.items).map((o) => ({ id: o.it.id, name: o.it.name, x: o.x, y: o.y, w: o.W, h: o.H, key: o.it.key }));
+    const pets = L.pets.map((p) => ({ id: p.it.id, name: p.it.name, x: p.x, y: p.y, key: p.it.key }));
+    const stored = typeof this.lifeStoredItems === "function" ? this.lifeStoredItems().length : 0;
+    const art = (key) => { try { return this.textures.exists(key) ? this.textures.get(key).getSourceImage() : null; } catch (err) { return null; } };
     IslandUI.openHomeMap({
-      places: this.places(), owns: (id) => IslandState.owns(id), player: { x: this.player.x, y: this.player.y }, waypoint: this.waypoint,
-      onPick: (id) => { const p = this.places().find((x) => x.id === id); if (p && p.go) this.waypoint = { x: p.go.x, y: p.go.y, label: p.name }; },
+      places: this.places(), things, pets, stored, art, owns: (id) => IslandState.owns(id), player: { x: this.player.x, y: this.player.y }, waypoint: this.waypoint,
+      onPick: (id) => {
+        const t = things.find((x) => "thing:" + x.id === id);
+        if (t) { this.waypoint = { x: t.x, y: t.y + 40, label: t.name }; return; }
+        const p = this.places().find((x) => x.id === id);
+        if (p && p.go) this.waypoint = { x: p.go.x, y: p.go.y, label: p.name };
+      },
     }, () => { this.nearby = null; });
   }
 
