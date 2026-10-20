@@ -103,6 +103,36 @@
 :root[data-theme="dark"][data-css~="festival-style"] .fest-word.is-found { border-color: #406447; }
 :root[data-theme="dark"][data-css~="festival-style"] .fw-banner-text { border: 1px dashed #406447; }
 
+/* ---- friends/polish.css ---- */
+/* the Marina Bay header picture stays light, so its title keeps dark text */
+:root[data-theme="dark"][data-css~="friends-polish"] .fr-hero-text h1 { color: #18233a; }
+:root[data-theme="dark"][data-css~="friends-polish"] .friends-page :is(.add-friend, .friend-list, .empty-state) { border-color: var(--line); }
+:root[data-theme="dark"][data-css~="friends-polish"] .friends-page .add-friend .field { background: var(--bg); border-color: var(--line); }
+:root[data-theme="dark"][data-css~="friends-polish"] .friends-page .add-friend .field:focus { background: var(--white); }
+:root[data-theme="dark"][data-css~="friends-polish"] .friends-page .friend-row + .friend-row { border-top-color: var(--line); }
+:root[data-theme="dark"][data-css~="friends-polish"] .presence-dot { border-color: var(--white); }
+:root[data-theme="dark"][data-css~="friends-polish"] .pf-card { background: var(--white); }
+:root[data-theme="dark"][data-css~="friends-polish"] .pf-pic { box-shadow: 0 0 0 4px var(--white), 0 0 0 6px var(--amber); }
+:root[data-theme="dark"][data-css~="friends-polish"] .pf-status.is-online { color: var(--green-txt); }
+:root[data-theme="dark"][data-css~="friends-polish"] :is(.pf-facts, .fp-stats) { border-color: var(--line); }
+:root[data-theme="dark"][data-css~="friends-polish"] :is(.pf-facts > div + div, .fp-stat + .fp-stat) { border-left-color: var(--line); }
+:root[data-theme="dark"][data-css~="friends-polish"] .fp-xp-bar { background: var(--lock-bg); }
+:root[data-theme="dark"][data-css~="friends-polish"] .fp-card { background: var(--white); border-left-color: var(--line); border-right-color: var(--line); border-bottom-color: var(--line); }
+:root[data-theme="dark"][data-css~="friends-polish"] .fp-card.stage-1 { background: #1d2738; }
+:root[data-theme="dark"][data-css~="friends-polish"] .fp-card.stage-2 { border-color: transparent; background: linear-gradient(var(--white), var(--white)) padding-box, linear-gradient(135deg, #7c5cff, #2fd0c0, #ff8ad8, #f2a93b) border-box; }
+:root[data-theme="dark"][data-css~="friends-polish"] .fp-card-stage i { background: var(--lock-bg); }
+
+/* ---- friends/gifts.css ---- */
+:root[data-theme="dark"][data-css~="friends-gifts"] .gift-spare { background: #183532; color: #7dcfc2; }
+
+/* ---- island/decorate.css ---- */
+:root[data-theme="dark"][data-css~="island-decorate"] .decor-bar { background: rgba(24, 33, 50, 0.97); }
+:root[data-theme="dark"][data-css~="island-decorate"] .decor-act { background: #242a35; color: #aebdda; }
+:root[data-theme="dark"][data-css~="island-decorate"] .decor-store { background: var(--white); }
+:root[data-theme="dark"][data-css~="island-decorate"] .decor-store-x { background: #242a35; }
+:root[data-theme="dark"][data-css~="island-decorate"] .decor-store-row { border-color: var(--line); }
+:root[data-theme="dark"][data-css~="island-decorate"] .decor-store-row .decor-act { background: #f2a93b; color: #18233a; }
+
 /* ---- island/app.css ---- */
 :root[data-theme="dark"][data-css~="island-app"] .brand-tagline { color: #a6c9e3; }
 :root[data-theme="dark"][data-css~="island-app"] .auth-box { border: 1px solid #3e4953; }
@@ -185,6 +215,15 @@
 :root[data-theme="dark"][data-css~="scenarios-style"] .sc-send { color: #fff; }
 :root[data-theme="dark"][data-css~="scenarios-style"] .sc-fix-you { text-decoration-color: rgba(255, 154, 140, 0.5); }
 
+/* ---- shop/shop.css ---- */
+:root[data-theme="dark"][data-css~="shop-shop"] .shop-tab { background: #242a35; color: #aebdda; }
+:root[data-theme="dark"][data-css~="shop-shop"] .shop-tab.is-on { background: #4f9a8c; color: #fff; }
+:root[data-theme="dark"][data-css~="shop-shop"] .shop-row { background: var(--white); }
+:root[data-theme="dark"][data-css~="shop-shop"] .shop-row.is-owned { background: #212a23; border-color: #395342; }
+:root[data-theme="dark"][data-css~="shop-shop"] .shop-buy:disabled { background: #272d39; }
+:root[data-theme="dark"][data-css~="shop-shop"] .shop-owned { color: #71cf8f; }
+:root[data-theme="dark"][data-css~="shop-shop"] .shop-banner { color: var(--white); }
+
 /* ---- storeVocab/albums.css ---- */
 :root[data-theme="dark"][data-css~="storeVocab-albums"] .cap-filter-btn[aria-expanded="true"] { color: var(--white); }
 :root[data-theme="dark"][data-css~="storeVocab-albums"] .cap-badge { color: #18233a; }
@@ -229,6 +268,11 @@
 :root[data-theme="dark"][data-css] .sc-goal summary,
 :root[data-theme="dark"][data-css] .sc-level,
 :root[data-theme="dark"][data-css] .sc-tool[aria-pressed="true"] { color: color-mix(in srgb, var(--mode) 65%, #fff); }
+/* Island: the dark tab / option colours above must not hide the selected and right / wrong states */
+:root[data-theme="dark"][data-css~="island-style"] .shop-tab.is-on { background: #4f9a8c; color: #fff; }
+:root[data-theme="dark"][data-css~="island-style"] .av-body.is-on { border-color: #f2a93b; }
+:root[data-theme="dark"][data-css~="island-style"] .match-opt.is-right { background: var(--green-bg); border-color: #5bb27f; color: var(--green-txt); }
+:root[data-theme="dark"][data-css~="island-style"] .match-opt.is-wrong { background: var(--danger-bg); border-color: #e08a84; color: var(--danger); }
 /* Tour: the grey "Back" button keeps light text (the amber "Next" one gets dark text) */
 :root[data-theme="dark"][data-css] .tour-btn.secondary { color: var(--ink); }
 /* Streak flame before there is a streak: dim grey instead of light grey */
